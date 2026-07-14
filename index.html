@@ -1,0 +1,1470 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.6">
+  <style type="text/css">
+    body {background-color: #0a120f}
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #ffffff; -webkit-text-stroke: #000000}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #ffffff; -webkit-text-stroke: #000000; min-height: 14.0px}
+    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Times; color: #40a33f; -webkit-text-stroke: #40a33f}
+    p.p4 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.0px Times; color: #c9dbfc; color: rgba(201, 219, 252, 0.7); -webkit-text-stroke: rgba(201, 219, 252, 0.7)}
+    span.s1 {font-kerning: none}
+    span.s2 {font: 12.0px Times; font-kerning: none; color: #ffffff; -webkit-text-stroke: 0px #000000}
+    span.s3 {font-kerning: none; color: rgba(201, 219, 252, 0.7); background-color: #0f0f0f; -webkit-text-stroke: 0px rgba(201, 219, 252, 0.7)}
+    span.s4 {font-kerning: none; background-color: #0f0f0f}
+    span.s5 {font-kerning: none; color: #40a33f; background-color: #0f0f0f; -webkit-text-stroke: 0px #40a33f}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1">&lt;!DOCTYPE html&gt;</span></p>
+<p class="p1"><span class="s1">&lt;html lang="pt-BR"&gt;</span></p>
+<p class="p1"><span class="s1">&lt;head&gt;</span></p>
+<p class="p1"><span class="s1">&lt;meta charset="UTF-8" /&gt;</span></p>
+<p class="p1"><span class="s1">&lt;meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /&gt;</span></p>
+<p class="p1"><span class="s1">&lt;title&gt;PES Manager&lt;/title&gt;</span></p>
+<p class="p1"><span class="s1">&lt;link rel="icon" href="data:,"&gt;</span></p>
+<p class="p1"><span class="s1">&lt;style&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>html, body { margin: 0; padding: 0; background: #0A1712; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>* { box-sizing: border-box; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>::-webkit-scrollbar { display: none; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>.animate-spin { animation: spin 1s linear infinite; }</span></p>
+<p class="p1"><span class="s1">&lt;/style&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">&lt;!-- React --&gt;</span></p>
+<p class="p1"><span class="s1">&lt;script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"&gt;&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"&gt;&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;!-- Babel (transforms the JSX below, right in the browser) --&gt;</span></p>
+<p class="p1"><span class="s1">&lt;script src="https://unpkg.com/@babel/standalone/babel.min.js"&gt;&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;!-- Firebase (shared database, no login needed for visitors) --&gt;</span></p>
+<p class="p1"><span class="s1">&lt;script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"&gt;&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"&gt;&lt;/script&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">&lt;script&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// ============================================================</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// PASTE YOUR FIREBASE CONFIG HERE (see the setup instructions).</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// Get this from: Firebase Console &gt; Project Settings &gt; Your apps &gt; SDK setup and configuration</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// ============================================================</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>window.__FIREBASE_CONFIG__ = {</span></p>
+<p class="p3"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s3">apiKey: </span><span class="s4">"AIzaSyDmQqmMiaUIlVGtUGQ4FzHv_pQsf0YLMZw"</span><span class="s3">,</span></p>
+<p class="p3"><span class="s3">  authDomain: </span><span class="s4">"manchado-patch.firebaseapp.com"</span><span class="s3">,</span></p>
+<p class="p3"><span class="s3">  databaseURL: </span><span class="s4">"https://manchado-patch-default-rtdb.firebaseio.com"</span><span class="s3">,</span></p>
+<p class="p3"><span class="s3">  projectId: </span><span class="s4">"manchado-patch"</span><span class="s3">,</span></p>
+<p class="p3"><span class="s3">  storageBucket: </span><span class="s4">"manchado-patch.firebasestorage.app"</span><span class="s3">,</span></p>
+<p class="p4"><span class="s4">  messagingSenderId: </span><span class="s5">"792838211036"</span><span class="s4">,</span></p>
+<p class="p3"><span class="s3">  appId: </span><span class="s4">"1:792838211036:web:c3b8c20ed2652e60b37b19"</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>};</span></p>
+<p class="p1"><span class="s1">&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/head&gt;</span></p>
+<p class="p1"><span class="s1">&lt;body&gt;</span></p>
+<p class="p1"><span class="s1">&lt;div id="root"&gt;&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">&lt;script type="text/babel" data-presets="react"&gt;</span></p>
+<p class="p1"><span class="s1">const { useState, useEffect, useCallback, useMemo } = React;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function makeIcon(emoji) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return function Icon({ size = 16, color, style = {}, className }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return React.createElement("span", {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>className,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>style: { fontSize: size, color, lineHeight: 1, display: "inline-flex", verticalAlign: "middle", ...style },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}, emoji);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>};</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">const Home = makeIcon("🏠");</span></p>
+<p class="p1"><span class="s1">const Shield = makeIcon("🛡️");</span></p>
+<p class="p1"><span class="s1">const Trophy = makeIcon("🏆");</span></p>
+<p class="p1"><span class="s1">const ArrowLeftRight = makeIcon("🔄");</span></p>
+<p class="p1"><span class="s1">const History = makeIcon("📜");</span></p>
+<p class="p1"><span class="s1">const Plus = makeIcon("➕");</span></p>
+<p class="p1"><span class="s1">const X = makeIcon("✕");</span></p>
+<p class="p1"><span class="s1">const ChevronRight = makeIcon("›");</span></p>
+<p class="p1"><span class="s1">const ChevronDown = makeIcon("⌄");</span></p>
+<p class="p1"><span class="s1">const Check = makeIcon("✓");</span></p>
+<p class="p1"><span class="s1">const Star = makeIcon("★");</span></p>
+<p class="p1"><span class="s1">const Users = makeIcon("👤");</span></p>
+<p class="p1"><span class="s1">const Shuffle = makeIcon("🔀");</span></p>
+<p class="p1"><span class="s1">const Award = makeIcon("🎖️");</span></p>
+<p class="p1"><span class="s1">const Loader2 = makeIcon("⏳");</span></p>
+<p class="p1"><span class="s1">const Edit2 = makeIcon("✎");</span></p>
+<p class="p1"><span class="s1">const Trash2 = makeIcon("🗑️");</span></p>
+<p class="p1"><span class="s1">const Crown = makeIcon("👑");</span></p>
+<p class="p1"><span class="s1">const Circle = makeIcon("●");</span></p>
+<p class="p1"><span class="s1">const ArrowRight = makeIcon("→");</span></p>
+<p class="p1"><span class="s1">const Calendar = makeIcon("📅");</span></p>
+<p class="p1"><span class="s1">const Target = makeIcon("🎯");</span></p>
+<p class="p1"><span class="s1">const Flag = makeIcon("🚩");</span></p>
+<p class="p1"><span class="s1">const AlertCircle = makeIcon("⚠️");</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">const POSITIONS = ["GOL", "ZAG", "LAT", "VOL", "MEI", "ATA"];</span></p>
+<p class="p1"><span class="s1">const POS_LABELS = { GOL: "Goleiro", ZAG: "Zagueiro", LAT: "Lateral", VOL: "Volante", MEI: "Meia", ATA: "Atacante" };</span></p>
+<p class="p1"><span class="s1">const TEAM_COLORS = ["#D4AF37", "#4A7FC1", "#C1443D", "#2F7A4D", "#9B59B6", "#E67E22", "#1ABC9C", "#95A5A6"];</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">const uid = () =&gt; Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function shuffle(arr) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const a = [...arr];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>for (let i = a.length - 1; i &gt; 0; i--) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const j = Math.floor(Math.random() * (i + 1));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>[a[i], a[j]] = [a[j], a[i]];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return a;</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function generateRoundRobin(teamIds) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>let arr = [...teamIds];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (arr.length % 2 !== 0) arr.push(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const n = arr.length;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const rounds = [];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>for (let r = 0; r &lt; n - 1; r++) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const roundMatches = [];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>for (let i = 0; i &lt; n / 2; i++) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const home = arr[i], away = arr[n - 1 - i];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (home !== null &amp;&amp; away !== null) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>roundMatches.push(r % 2 === 0 ? { home, away } : { home: away, away: home });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>rounds.push(roundMatches);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const fixed = arr[0];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const rest = arr.slice(1);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>rest.unshift(rest.pop());</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>arr = [fixed, ...rest];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return rounds;</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function generateKnockoutRound(teamIds) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const s = shuffle(teamIds);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const matches = [];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>for (let i = 0; i &lt; s.length; i += 2) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (i + 1 &lt; s.length) matches.push({ home: s[i], away: s[i + 1], bye: false });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>else matches.push({ home: s[i], away: null, bye: true });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return matches;</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function splitGroups(teamIds, numGroups) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const s = shuffle(teamIds);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const groups = Array.from({ length: numGroups }, () =&gt; []);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>s.forEach((id, i) =&gt; groups[i % numGroups].push(id));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return groups;</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function computeStandings(teamIds, matches) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const table = {};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>teamIds.forEach((id) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>table[id] = { id, pj: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0, pts: 0 };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>matches.forEach((m) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!m.played || m.bye) return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const h = table[m.homeId], a = table[m.awayId];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!h || !a) return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>h.pj++; a.pj++;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>h.gp += m.homeScore; h.gc += m.awayScore;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>a.gp += m.awayScore; a.gc += m.homeScore;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (m.homeScore &gt; m.awayScore) { h.v++; a.d++; h.pts += 3; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>else if (m.homeScore &lt; m.awayScore) { a.v++; h.d++; a.pts += 3; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>else { h.e++; a.e++; h.pts += 1; a.pts += 1; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>Object.values(table).forEach((t) =&gt; (t.sg = t.gp - t.gc));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return Object.values(table).sort(</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>(x, y) =&gt; y.pts - x.pts || y.sg - x.sg || y.gp - x.gp</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function matchWinner(m) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (m.bye) return m.home;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (!m.played) return null;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (m.homeScore &gt; m.awayScore) return m.homeId;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (m.awayScore &gt; m.homeScore) return m.awayId;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return m.penaltyWinner || null;</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ---------- FIREBASE STORAGE (shared, realtime) ----------</span></p>
+<p class="p1"><span class="s1">// Config is set at the bottom of this file (window.__FIREBASE_CONFIG__) — see instructions.</span></p>
+<p class="p1"><span class="s1">let db = null;</span></p>
+<p class="p1"><span class="s1">function getDb() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (db) return db;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (window.firebase &amp;&amp; window.__FIREBASE_CONFIG__ &amp;&amp; window.__FIREBASE_CONFIG__.apiKey) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!window.firebase.apps.length) window.firebase.initializeApp(window.__FIREBASE_CONFIG__);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>db = window.firebase.database();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return db;</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">function dbSet(path, value) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const d = getDb();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (!d) return Promise.resolve();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return d.ref("pes/" + path).set(value === undefined ? null : value).catch((e) =&gt; console.error("firebase set failed", path, e));</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">function dbSubscribe(path, cb) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const d = getDb();</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (!d) { cb(null); return () =&gt; {}; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const ref = d.ref("pes/" + path);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const handler = (snap) =&gt; cb(snap.val());</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>ref.on("value", handler);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return () =&gt; ref.off("value", handler);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">// personal, per-browser (not shared) — just remembers which profile this device picked</span></p>
+<p class="p1"><span class="s1">function localGet(key) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; }</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">function localSet(key, value) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* ignore */ }</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">const btnPrimary = {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>background: "linear-gradient(180deg,#E8C766,#D4AF37)",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>color: "#12241C",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>fontWeight: 700,</span></p>
+<p class="p1"><span class="s1">};</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function App() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [loading, setLoading] = useState(true);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [teams, setTeams] = useState([]);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [tournaments, setTournaments] = useState([]);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [transfers, setTransfers] = useState([]);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [meta, setMeta] = useState({ currentTournamentId: null, seasonCounter: 1 });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [tab, setTab] = useState("home");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [profiles, setProfiles] = useState([]);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [myProfile, setMyProfile] = useState(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [profileReady, setProfileReady] = useState(false);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [newProfileName, setNewProfileName] = useState("");</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// modal / UI states</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [teamModal, setTeamModal] = useState(false);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [teamForm, setTeamForm] = useState({ name: "", color: TEAM_COLORS[0] });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [activeTeamId, setActiveTeamId] = useState(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [playerModal, setPlayerModal] = useState(null); // {teamId, player|null}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [newTourModal, setNewTourModal] = useState(false);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [tourForm, setTourForm] = useState({ name: "", format: "liga", teamIds: [], numGroups: 2 });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [matchModal, setMatchModal] = useState(null); // match object</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [scoreDraft, setScoreDraft] = useState({ home: "", away: "", scorers: [], penaltyWinner: null });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [transferPick, setTransferPick] = useState(null); // player being transferred</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [historyOpen, setHistoryOpen] = useState(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [groupTab, setGroupTab] = useState(0);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [firebaseMissing, setFirebaseMissing] = useState(false);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>useEffect(() =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!getDb()) { setFirebaseMissing(true); setLoading(false); return; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setMyProfile(localGet("pes-my-profile"));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setProfileReady(true);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const offTeams = dbSubscribe("teams", (v) =&gt; { setTeams(v || []); setLoading(false); });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const offTours = dbSubscribe("tournaments", (v) =&gt; setTournaments(v || []));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const offTransfers = dbSubscribe("transfers", (v) =&gt; setTransfers(v || []));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const offMeta = dbSubscribe("meta", (v) =&gt; setMeta(v || { currentTournamentId: null, seasonCounter: 1 }));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const offProfiles = dbSubscribe("profiles", (v) =&gt; setProfiles(v || []));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return () =&gt; { offTeams(); offTours(); offTransfers(); offMeta(); offProfiles(); };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}, []);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function pickProfile(name) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setMyProfile(name);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>localSet("pes-my-profile", name);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!profiles.includes(name)) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const next = [...profiles, name];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>setProfiles(next);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>dbSet("profiles", next);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function switchProfile() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setMyProfile(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>localSet("pes-my-profile", null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const persistTeams = useCallback((next) =&gt; { setTeams(next); dbSet("teams", next); }, []);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const persistTournaments = useCallback((next) =&gt; { setTournaments(next); dbSet("tournaments", next); }, []);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const persistTransfers = useCallback((next) =&gt; { setTransfers(next); dbSet("transfers", next); }, []);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const persistMeta = useCallback((next) =&gt; { setMeta(next); dbSet("meta", next); }, []);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const currentTournament = useMemo(</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>() =&gt; tournaments.find((t) =&gt; t.id === meta.currentTournamentId) || null,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>[tournaments, meta.currentTournamentId]</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const teamById = useCallback((id) =&gt; teams.find((t) =&gt; t.id === id), [teams]);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// ---------- TEAM MANAGEMENT ----------</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function openNewTeam() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setTeamForm({ name: "", color: TEAM_COLORS[teams.length % TEAM_COLORS.length] });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setTeamModal(true);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function saveNewTeam() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!teamForm.name.trim()) return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const newTeam = { id: uid(), name: teamForm.name.trim(), color: teamForm.color, players: [] };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTeams([...teams, newTeam]);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setTeamModal(false);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function deleteTeam(id) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTeams(teams.filter((t) =&gt; t.id !== id));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (activeTeamId === id) setActiveTeamId(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function savePlayer(teamId, player) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const next = teams.map((t) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (t.id !== teamId) return t;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const exists = t.players.some((p) =&gt; p.id === player.id);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const players = exists</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>? t.players.map((p) =&gt; (p.id === player.id ? player : p))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>: [...t.players, player];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>return { ...t, players };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTeams(next);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setPlayerModal(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function deletePlayer(teamId, playerId) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const next = teams.map((t) =&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>t.id === teamId ? { ...t, players: t.players.filter((p) =&gt; p.id !== playerId) } : t</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTeams(next);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// ---------- TOURNAMENT CREATION ----------</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function openNewTournament() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setTourForm({ name: `Temporada ${meta.seasonCounter}`, format: "liga", teamIds: [], numGroups: 2 });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setNewTourModal(true);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function toggleTourTeam(id) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setTourForm((f) =&gt; ({</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>...f,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>teamIds: f.teamIds.includes(id) ? f.teamIds.filter((x) =&gt; x !== id) : [...f.teamIds, id],</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function createTournament() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const { name, format, teamIds, numGroups } = tourForm;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!name.trim() || teamIds.length &lt; 2) return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>let matches = [];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>let groups = null;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (format === "liga") {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const rounds = generateRoundRobin(teamIds);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>rounds.forEach((round, ri) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>round.forEach((m) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>matches.push({ id: uid(), stage: "league", round: ri + 1, homeId: m.home, awayId: m.away, homeScore: 0, awayScore: 0, played: false, bye: false, scorers: [] });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>} else if (format === "mata-mata") {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const r1 = generateKnockoutRound(teamIds);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>matches = r1.map((m) =&gt; ({ id: uid(), stage: "knockout", round: 1, homeId: m.home, awayId: m.away, homeScore: 0, awayScore: 0, played: m.bye, bye: m.bye, scorers: [] }));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>} else if (format === "grupos") {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const ng = teamIds.length &gt;= 8 ? numGroups : 2;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const gArr = splitGroups(teamIds, ng);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>groups = gArr.map((ids, i) =&gt; ({ name: `Grupo ${String.fromCharCode(65 + i)}`, teamIds: ids }));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>groups.forEach((g) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const rounds = generateRoundRobin(g.teamIds);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>rounds.forEach((round, ri) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>round.forEach((m) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>matches.push({ id: uid(), stage: "group", groupName: g.name, round: ri + 1, homeId: m.home, awayId: m.away, homeScore: 0, awayScore: 0, played: false, bye: false, scorers: [] });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const tour = {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>id: uid(), name: name.trim(), format, season: meta.seasonCounter,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>teamIds, groups, matches, status: "ongoing", champion: null, createdAt: Date.now(),</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTournaments([...tournaments, tour]);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistMeta({ ...meta, currentTournamentId: tour.id });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setNewTourModal(false);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setTab("tournament");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// ---------- MATCH RESULT ----------</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function openMatch(m) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setMatchModal(m);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setScoreDraft({</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>home: m.played ? String(m.homeScore) : "",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>away: m.played ? String(m.awayScore) : "",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>scorers: m.scorers || [],</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>penaltyWinner: m.penaltyWinner || null,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function addScorer(teamId, playerId, playerName) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setScoreDraft((d) =&gt; ({ ...d, scorers: [...d.scorers, { teamId, playerId, playerName }] }));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function removeScorer(idx) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setScoreDraft((d) =&gt; ({ ...d, scorers: d.scorers.filter((_, i) =&gt; i !== idx) }));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function saveMatchResult() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!matchModal) return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const hs = parseInt(scoreDraft.home, 10);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const as = parseInt(scoreDraft.away, 10);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (isNaN(hs) || isNaN(as)) return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (hs === as &amp;&amp; matchModal.stage === "knockout" &amp;&amp; !scoreDraft.penaltyWinner) return;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>// revert previous goal counts if editing an already played match</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>let nextTeams = teams;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (matchModal.played &amp;&amp; matchModal.scorers &amp;&amp; matchModal.scorers.length) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>nextTeams = nextTeams.map((t) =&gt; ({</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>...t,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>players: t.players.map((p) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const count = matchModal.scorers.filter((s) =&gt; s.playerId === p.id).length;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>return count ? { ...p, goals: Math.max(0, (p.goals || 0) - count) } : p;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}),</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>// apply new goal counts</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>nextTeams = nextTeams.map((t) =&gt; ({</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>...t,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>players: t.players.map((p) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const count = scoreDraft.scorers.filter((s) =&gt; s.playerId === p.id).length;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return count ? { ...p, goals: (p.goals || 0) + count } : p;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}),</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}));</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const updatedMatch = {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>...matchModal, played: true, homeScore: hs, awayScore: as,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>scorers: scoreDraft.scorers, penaltyWinner: scoreDraft.penaltyWinner,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const nextMatches = currentTournament.matches.map((m) =&gt; (m.id === matchModal.id ? updatedMatch : m));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const nextTour = { ...currentTournament, matches: nextMatches };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTeams(nextTeams);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTournaments(tournaments.map((t) =&gt; (t.id === nextTour.id ? nextTour : t)));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setMatchModal(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// ---------- ADVANCE STAGE ----------</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function stageComplete(matches, filterFn) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const relevant = matches.filter(filterFn);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return relevant.length &gt; 0 &amp;&amp; relevant.every((m) =&gt; m.played);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function advanceKnockout() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const t = currentTournament;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const maxRound = Math.max(...t.matches.filter((m) =&gt; m.stage === "knockout").map((m) =&gt; m.round));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const roundMatches = t.matches.filter((m) =&gt; m.stage === "knockout" &amp;&amp; m.round === maxRound);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const winners = roundMatches.map(matchWinner);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (winners.length === 1) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>finishTournament(winners[0]);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const nextRound = generateKnockoutRound(winners);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const newMatches = nextRound.map((m) =&gt; ({</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>id: uid(), stage: "knockout", round: maxRound + 1, homeId: m.home, awayId: m.away,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>homeScore: 0, awayScore: 0, played: m.bye, bye: m.bye, scorers: [],</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const nextTour = { ...t, matches: [...t.matches, ...newMatches] };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTournaments(tournaments.map((x) =&gt; (x.id === t.id ? nextTour : x)));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function advanceFromGroups() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const t = currentTournament;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const qualifiers = [];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>t.groups.forEach((g) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const groupMatches = t.matches.filter((m) =&gt; m.stage === "group" &amp;&amp; m.groupName === g.name);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>const standings = computeStandings(g.teamIds, groupMatches);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>qualifiers.push(...standings.slice(0, 2).map((s) =&gt; s.id));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const shuffled = shuffle(qualifiers);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const round1 = generateKnockoutRound(shuffled);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const newMatches = round1.map((m) =&gt; ({</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>id: uid(), stage: "knockout", round: 1, homeId: m.home, awayId: m.away,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>homeScore: 0, awayScore: 0, played: m.bye, bye: m.bye, scorers: [],</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const nextTour = { ...t, matches: [...t.matches, ...newMatches] };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTournaments(tournaments.map((x) =&gt; (x.id === t.id ? nextTour : x)));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function finishTournament(championId) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const t = { ...currentTournament, status: "finished", champion: championId };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTournaments(tournaments.map((x) =&gt; (x.id === t.id ? t : x)));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function archiveSeason() {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistMeta({ currentTournamentId: null, seasonCounter: meta.seasonCounter + 1 });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setTab("home");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// ---------- TRANSFERS ----------</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>function executeTransfer(player, fromTeamId, toTeamId) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (fromTeamId === toTeamId) return;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const from = teamById(fromTeamId), to = teamById(toTeamId);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const nextTeams = teams.map((t) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (t.id === fromTeamId) return { ...t, players: t.players.filter((p) =&gt; p.id !== player.id) };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>if (t.id === toTeamId) return { ...t, players: [...t.players, player] };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>return t;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>});</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const log = { id: uid(), playerId: player.id, playerName: player.name, fromTeamId, toTeamId, fromTeamName: from?.name, toTeamName: to?.name, date: new Date().toLocaleDateString("pt-BR") };</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTeams(nextTeams);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>persistTransfers([log, ...transfers]);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>setTransferPick(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// ---------- DERIVED ----------</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const topScorers = useMemo(() =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const all = [];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>teams.forEach((t) =&gt; t.players.forEach((p) =&gt; all.push({ ...p, teamName: t.name, teamColor: t.color })));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return all.filter((p) =&gt; (p.goals || 0) &gt; 0).sort((a, b) =&gt; (b.goals || 0) - (a.goals || 0)).slice(0, 10);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}, [teams]);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const nextMatches = useMemo(() =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (!currentTournament) return [];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return currentTournament.matches.filter((m) =&gt; !m.played &amp;&amp; !m.bye).slice(0, 6);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}, [currentTournament]);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (firebaseMissing) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ background: "#0A1712", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ color: "#EDEFE7", maxWidth: 420, textAlign: "center", fontFamily: "system-ui" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 30, marginBottom: 10 }}&gt;⚠️&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontWeight: 800, fontSize: 17, marginBottom: 8 }}&gt;Configuração pendente&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 13.5, color: "#9AAA9F", lineHeight: 1.5 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>Preencha o &lt;code style={{ color: "#D4AF37" }}&gt;firebaseConfig&lt;/code&gt; no topo do arquivo &lt;code style={{ color: "#D4AF37" }}&gt;index.html&lt;/code&gt; com os dados do seu projeto Firebase para o app funcionar.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (loading) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ background: "#0A1712", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ color: "#D4AF37", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;Loader2 size={32} className="animate-spin" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;span style={{ fontFamily: "system-ui", letterSpacing: 2, fontSize: 13, textTransform: "uppercase", color: "#9AAA9F" }}&gt;Carregando temporada...&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (profileReady &amp;&amp; !myProfile) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;ProfileGate</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>profiles={profiles}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>newProfileName={newProfileName}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>setNewProfileName={setNewProfileName}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>onPick={pickProfile}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>minHeight: "100vh", background: "radial-gradient(circle at 15% 0%, #16301F 0%, #0A1712 45%), radial-gradient(circle at 90% 10%, #14281B 0%, #0A1712 40%)",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>color: "#EDEFE7", fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,sans-serif", paddingBottom: 84, maxWidth: 480, margin: "0 auto", position: "relative",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;style&gt;{`</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>* { box-sizing: border-box; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>::-webkit-scrollbar { display: none; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.scoreboard { font-variant-numeric: tabular-nums; letter-spacing: 1px; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>.tapbtn:active { transform: scale(0.97); }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>input, select { outline: none; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>input::placeholder { color: #6B7A6F; }</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>`}&lt;/style&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;Header meta={meta} currentTournament={currentTournament} myProfile={myProfile} onSwitchProfile={switchProfile} /&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ padding: "16px 16px 0" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{tab === "home" &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;HomeTab</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>teams={teams} currentTournament={currentTournament} nextMatches={nextMatches}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>topScorers={topScorers} onOpenMatch={openMatch}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>onGoTournament={() =&gt; setTab("tournament")}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{tab === "teams" &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;TeamsTab</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>teams={teams} activeTeamId={activeTeamId} setActiveTeamId={setActiveTeamId}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>onNewTeam={openNewTeam} onDeleteTeam={deleteTeam}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>onNewPlayer={(teamId) =&gt; setPlayerModal({ teamId, player: null })}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>onEditPlayer={(teamId, player) =&gt; setPlayerModal({ teamId, player })}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>onDeletePlayer={deletePlayer}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{tab === "tournament" &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;TournamentTab</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>teams={teams} teamById={teamById} tournament={currentTournament} teamsAll={teams}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>onNewTournament={openNewTournament} onOpenMatch={openMatch}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>groupTab={groupTab} setGroupTab={setGroupTab}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>advanceKnockout={advanceKnockout} advanceFromGroups={advanceFromGroups}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>archiveSeason={archiveSeason} finishTournament={finishTournament}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{tab === "market" &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;MarketTab teams={teams} transfers={transfers} onPick={(p, teamId) =&gt; setTransferPick({ player: p, fromTeamId: teamId })} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{tab === "history" &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;HistoryTab tournaments={tournaments.filter((t) =&gt; t.status === "finished")} teamById={teamById} historyOpen={historyOpen} setHistoryOpen={setHistoryOpen} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;BottomNav tab={tab} setTab={setTab} /&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{teamModal &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;Modal title="Novo time" onClose={() =&gt; setTeamModal(false)}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;label style={lbl}&gt;Nome do time&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;input style={inputStyle} value={teamForm.name} onChange={(e) =&gt; setTeamForm({ ...teamForm, name: e.target.value })} placeholder="Ex: Furacão FC" autoFocus /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;label style={{ ...lbl, marginTop: 14 }}&gt;Cor&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>{TEAM_COLORS.map((c) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;button key={c} onClick={() =&gt; setTeamForm({ ...teamForm, color: c })} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>width: 32, height: 32, borderRadius: 8, background: c, border: teamForm.color === c ? "2px solid #EDEFE7" : "2px solid transparent", cursor: "pointer",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>}} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button className="tapbtn" style={{ ...bigBtn, ...btnPrimary }} onClick={saveNewTeam}&gt;Criar time&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/Modal&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{playerModal &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;PlayerModal</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>data={playerModal}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>onClose={() =&gt; setPlayerModal(null)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>onSave={savePlayer}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{newTourModal &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;NewTournamentModal</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>teams={teams} tourForm={tourForm} setTourForm={setTourForm}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>onClose={() =&gt; setNewTourModal(false)} onToggleTeam={toggleTourTeam} onCreate={createTournament}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{matchModal &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;MatchModal</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>match={matchModal} teamById={teamById} scoreDraft={scoreDraft} setScoreDraft={setScoreDraft}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>onClose={() =&gt; setMatchModal(null)} onSave={saveMatchResult}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>addScorer={addScorer} removeScorer={removeScorer}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{transferPick &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;TransferModal</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>pick={transferPick} teams={teams} onClose={() =&gt; setTransferPick(null)} onConfirm={executeTransfer}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ SHARED STYLES ============</span></p>
+<p class="p1"><span class="s1">const lbl = { display: "block", fontSize: 12, textTransform: "uppercase", letterSpacing: 1, color: "#9AAA9F", marginBottom: 6 };</span></p>
+<p class="p1"><span class="s1">const inputStyle = { width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #24402F", background: "#0F201700", backgroundColor: "#0E1E16", color: "#EDEFE7", fontSize: 15 };</span></p>
+<p class="p1"><span class="s1">const bigBtn = { width: "100%", padding: "13px 16px", borderRadius: 12, border: "none", fontSize: 15, cursor: "pointer", marginTop: 4 };</span></p>
+<p class="p1"><span class="s1">const panelStyle = { background: "#12241C", border: "1px solid #1E3528", borderRadius: 14, padding: 14, marginBottom: 12 };</span></p>
+<p class="p1"><span class="s1">const chip = (active) =&gt; ({</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>padding: "6px 12px", borderRadius: 20, fontSize: 12.5, fontWeight: 600, cursor: "pointer",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>background: active ? "#D4AF37" : "#1A2F24", color: active ? "#12241C" : "#9AAA9F", border: active ? "none" : "1px solid #24402F",</span></p>
+<p class="p1"><span class="s1">});</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ PROFILE GATE ============</span></p>
+<p class="p1"><span class="s1">function ProfileGate({ profiles, newProfileName, setNewProfileName, onPick }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>minHeight: "100vh", background: "radial-gradient(circle at 15% 0%, #16301F 0%, #0A1712 45%), radial-gradient(circle at 90% 10%, #14281B 0%, #0A1712 40%)",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>color: "#EDEFE7", fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,sans-serif", display: "flex", flexDirection: "column",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>justifyContent: "center", padding: 24, maxWidth: 480, margin: "0 auto",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ textAlign: "center", marginBottom: 28 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;Trophy size={34} color="#D4AF37" style={{ marginBottom: 10 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontSize: 22, fontWeight: 900, letterSpacing: 1 }}&gt;PES &lt;span style={{ color: "#D4AF37" }}&gt;MANAGER&lt;/span&gt;&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontSize: 13, color: "#9AAA9F", marginTop: 6 }}&gt;Quem é você? Escolha seu perfil pra entrar na liga.&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{profiles.length &gt; 0 &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{profiles.map((p) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;button key={p} className="tapbtn" onClick={() =&gt; onPick(p)} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>...panelStyle, marginBottom: 0, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", width: "100%", textAlign: "left",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;span style={{ fontWeight: 700, fontSize: 15 }}&gt;{p}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;ChevronRight size={18} color="#6B7A6F" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;label style={lbl}&gt;Ou entre com um nome novo&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", gap: 8 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;input</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>style={{ ...inputStyle, flex: 1 }}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>placeholder="Seu nome"</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>value={newProfileName}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>onChange={(e) =&gt; setNewProfileName(e.target.value)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>onKeyDown={(e) =&gt; { if (e.key === "Enter" &amp;&amp; newProfileName.trim()) onPick(newProfileName.trim()); }}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>className="tapbtn"</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>disabled={!newProfileName.trim()}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>onClick={() =&gt; onPick(newProfileName.trim())}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>style={{ ...btnPrimary, border: "none", borderRadius: 10, padding: "0 18px", fontSize: 14, cursor: "pointer", opacity: newProfileName.trim() ? 1 : 0.5 }}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>Entrar</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ fontSize: 11.5, color: "#6B7A6F", marginTop: 14, textAlign: "center" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>Sem senha, sem conta — é só pra identificar quem é quem na liga. Todo mundo mexe no mesmo campeonato.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ HEADER ============</span></p>
+<p class="p1"><span class="s1">function Header({ meta, currentTournament, myProfile, onSwitchProfile }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>padding: "22px 16px 16px", position: "sticky", top: 0, zIndex: 5,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>background: "linear-gradient(180deg,#0A1712 60%, rgba(10,23,18,0))",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 22, fontWeight: 900, letterSpacing: 1.5, color: "#EDEFE7" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>PES &lt;span style={{ color: "#D4AF37" }}&gt;MANAGER&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 11, letterSpacing: 2, color: "#6B7A6F", textTransform: "uppercase", marginTop: 2 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>Temporada {meta.seasonCounter}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 8 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{currentTournament &amp;&amp; currentTournament.status === "ongoing" &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 6, background: "#1A2F24", padding: "6px 10px", borderRadius: 20, border: "1px solid #2F7A4D" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;span style={{ width: 7, height: 7, borderRadius: 99, background: "#2F7A4D", boxShadow: "0 0 6px #2F7A4D", display: "inline-block" }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;span style={{ fontSize: 11, color: "#8FD6A8", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}&gt;Em andamento&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{myProfile &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;button onClick={onSwitchProfile} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>background: "#1A2F24", border: "1px solid #24402F", color: "#EDEFE7", borderRadius: 20, padding: "6px 10px",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>fontSize: 11.5, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 5,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}} title="Trocar perfil"&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;Users size={12} color="#D4AF37" /&gt; {myProfile}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ SCOREBOARD ============</span></p>
+<p class="p1"><span class="s1">function ScoreBox({ value }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;span className="scoreboard" style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>background: "#0A1712", border: "1px solid #2F4A38", borderRadius: 6, padding: "3px 9px",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>color: "#F2D77A", fontWeight: 800, fontSize: 17, minWidth: 30, textAlign: "center", display: "inline-block",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}}&gt;{value}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function MatchRow({ match, teamById, onOpen }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const home = teamById(match.homeId), away = teamById(match.awayId);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (match.bye) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ ...panelStyle, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.75 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;span style={{ fontSize: 13.5, color: "#9AAA9F" }}&gt;&lt;b style={{ color: "#EDEFE7" }}&gt;{home?.name}&lt;/b&gt; avançou de bye&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;Flag size={14} color="#6B7A6F" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;button className="tapbtn" onClick={() =&gt; onOpen(match)} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>...panelStyle, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>width: "100%", cursor: "pointer", textAlign: "left", border: match.played ? "1px solid #1E3528" : "1px solid #3A5540",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;TeamLine team={home} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;TeamLine team={away} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{match.played ? (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;ScoreBox value={match.homeScore} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;ScoreBox value={match.awayScore} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>) : (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 4, color: "#D4AF37", fontSize: 12.5, fontWeight: 700 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>JOGAR &lt;ChevronRight size={16} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">function TeamLine({ team }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 8 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;span style={{ width: 9, height: 9, borderRadius: 3, background: team?.color || "#555", display: "inline-block", flexShrink: 0 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;span style={{ fontSize: 14, fontWeight: 600 }}&gt;{team?.name || "?"}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ HOME TAB ============</span></p>
+<p class="p1"><span class="s1">function HomeTab({ teams, currentTournament, nextMatches, topScorers, onGoTournament }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{!currentTournament ? (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ ...panelStyle, textAlign: "center", padding: 26 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;Trophy size={30} color="#D4AF37" style={{ marginBottom: 10 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}&gt;Nenhum campeonato ativo&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 13, color: "#9AAA9F", marginBottom: 16 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>Crie times no elenco e depois inicie um campeonato na aba Campeonato.</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>) : (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ ...panelStyle, background: "linear-gradient(135deg,#16301F,#12241C)" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 11, color: "#8FD6A8", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>{currentTournament.format === "liga" ? "Liga" : currentTournament.format === "mata-mata" ? "Mata-mata" : "Grupos + Mata-mata"}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 18, fontWeight: 800 }}&gt;{currentTournament.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;button className="tapbtn" onClick={onGoTournament} style={{ background: "#1A2F24", border: "1px solid #2F7A4D", color: "#8FD6A8", borderRadius: 10, padding: "8px 12px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>Ver &lt;ChevronRight size={13} style={{ verticalAlign: -2 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;SectionTitle icon={&lt;Calendar size={15} /&gt;} text="Próximas partidas" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{nextMatches.length === 0 ? (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize: 13, color: "#6B7A6F", marginBottom: 12 }}&gt;Nenhuma partida pendente. Confira a aba Campeonato.&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>) : (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>nextMatches.map((m) =&gt; &lt;MatchRow key={m.id} match={m} teamById={(id) =&gt; teams.find((t) =&gt; t.id === id)} onOpen={onGoTournament} /&gt;)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{topScorers.length &gt; 0 &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;SectionTitle icon={&lt;Target size={15} /&gt;} text="Artilheiros" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={panelStyle}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>{topScorers.slice(0, 5).map((p, i) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: i &lt; 4 ? "1px solid #1E3528" : "none" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 8 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;span style={{ fontSize: 12, color: "#6B7A6F", width: 16 }}&gt;{i + 1}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;span style={{ width: 8, height: 8, borderRadius: 3, background: p.teamColor }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;span style={{ fontSize: 14, fontWeight: 600 }}&gt;{p.name}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;span style={{ fontSize: 11.5, color: "#6B7A6F" }}&gt;{p.teamName}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;span style={{ fontWeight: 800, color: "#D4AF37" }}&gt;{p.goals}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", gap: 12, marginTop: 6 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;StatBlock label="Times" value={teams.length} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;StatBlock label="Jogadores" value={teams.reduce((s, t) =&gt; s + t.players.length, 0)} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">function StatBlock({ label, value }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{ ...panelStyle, flex: 1, textAlign: "center" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ fontSize: 22, fontWeight: 900, color: "#D4AF37" }}&gt;{value}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ fontSize: 11, color: "#9AAA9F", textTransform: "uppercase", letterSpacing: 1 }}&gt;{label}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">function SectionTitle({ icon, text }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{ display: "flex", alignItems: "center", gap: 6, margin: "18px 0 10px", color: "#9AAA9F" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{icon}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;span style={{ fontSize: 12.5, textTransform: "uppercase", letterSpacing: 1.2, fontWeight: 700 }}&gt;{text}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ TEAMS TAB ============</span></p>
+<p class="p1"><span class="s1">function TeamsTab({ teams, activeTeamId, setActiveTeamId, onNewTeam, onDeleteTeam, onNewPlayer, onEditPlayer, onDeletePlayer }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const activeTeam = teams.find((t) =&gt; t.id === activeTeamId);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (activeTeam) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const avgOvr = activeTeam.players.length ? Math.round(activeTeam.players.reduce((s, p) =&gt; s + (p.ovr || 0), 0) / activeTeam.players.length) : 0;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button onClick={() =&gt; setActiveTeamId(null)} style={{ background: "none", border: "none", color: "#9AAA9F", fontSize: 13, marginBottom: 10, cursor: "pointer", padding: 0 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>← Voltar aos times</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ ...panelStyle, display: "flex", alignItems: "center", gap: 12 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;span style={{ width: 40, height: 40, borderRadius: 10, background: activeTeam.color, flexShrink: 0 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontWeight: 800, fontSize: 17 }}&gt;{activeTeam.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize: 12, color: "#9AAA9F" }}&gt;{activeTeam.players.length} jogadores · Média {avgOvr} OVR&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button onClick={() =&gt; onDeleteTeam(activeTeam.id)} style={{ background: "none", border: "none", color: "#C1443D", cursor: "pointer" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;Trash2 size={18} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button className="tapbtn" onClick={() =&gt; onNewPlayer(activeTeam.id)} style={{ ...bigBtn, ...btnPrimary, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;Plus size={16} /&gt; Adicionar jogador</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/button&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ marginTop: 12 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{activeTeam.players.length === 0 &amp;&amp; &lt;div style={{ color: "#6B7A6F", fontSize: 13, textAlign: "center", padding: 20 }}&gt;Elenco vazio. Adicione jogadores.&lt;/div&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{activeTeam.players</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>.slice()</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>.sort((a, b) =&gt; (b.ovr || 0) - (a.ovr || 0))</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>.map((p) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div key={p.id} style={{ ...panelStyle, display: "flex", alignItems: "center", gap: 10, padding: 12 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;span style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>fontSize: 10.5, fontWeight: 800, background: "#1A2F24", color: "#8FD6A8", padding: "3px 6px", borderRadius: 6, border: "1px solid #2F7A4D", minWidth: 34, textAlign: "center",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>}}&gt;{p.pos}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;div style={{ fontWeight: 700, fontSize: 14.5 }}&gt;{p.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;div style={{ fontSize: 11.5, color: "#6B7A6F" }}&gt;{p.age} anos · {p.goals || 0} gols&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;span style={{ fontWeight: 800, color: "#D4AF37", fontSize: 15 }}&gt;{p.ovr}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;button onClick={() =&gt; onEditPlayer(activeTeam.id, p)} style={{ background: "none", border: "none", color: "#9AAA9F", cursor: "pointer" }}&gt;&lt;Edit2 size={15} /&gt;&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;button onClick={() =&gt; onDeletePlayer(activeTeam.id, p.id)} style={{ background: "none", border: "none", color: "#C1443D", cursor: "pointer" }}&gt;&lt;Trash2 size={15} /&gt;&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;button className="tapbtn" onClick={onNewTeam} style={{ ...bigBtn, ...btnPrimary, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 14 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;Plus size={16} /&gt; Criar novo time</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{teams.length === 0 &amp;&amp; &lt;div style={{ color: "#6B7A6F", fontSize: 13, textAlign: "center", padding: 30 }}&gt;Nenhum time cadastrado ainda.&lt;/div&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{teams.map((t) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button key={t.id} className="tapbtn" onClick={() =&gt; setActiveTeamId(t.id)} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>...panelStyle, width: "100%", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;span style={{ width: 34, height: 34, borderRadius: 9, background: t.color, flexShrink: 0 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontWeight: 700, fontSize: 15 }}&gt;{t.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize: 11.5, color: "#6B7A6F" }}&gt;{t.players.length} jogadores&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;ChevronRight size={18} color="#6B7A6F" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ TOURNAMENT TAB ============</span></p>
+<p class="p1"><span class="s1">function TournamentTab({ tournament, teamById, onNewTournament, onOpenMatch, groupTab, setGroupTab, advanceKnockout, advanceFromGroups, archiveSeason, finishTournament }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (!tournament) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ textAlign: "center", padding: "10px 0" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ ...panelStyle, padding: 24 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;Trophy size={28} color="#D4AF37" style={{ marginBottom: 8 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontWeight: 700, marginBottom: 4 }}&gt;Sem campeonato ativo&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 13, color: "#9AAA9F", marginBottom: 16 }}&gt;Escolha o formato e os times participantes.&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button className="tapbtn" onClick={onNewTournament} style={{ ...bigBtn, ...btnPrimary }}&gt;Criar campeonato&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (tournament.status === "finished") {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const champ = teamById(tournament.champion);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ ...panelStyle, textAlign: "center", padding: 28, background: "linear-gradient(160deg,#20351F,#12241C)" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;Crown size={34} color="#D4AF37" style={{ marginBottom: 10 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 12, color: "#8FD6A8", textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 700 }}&gt;Campeão&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 22, fontWeight: 900, marginTop: 4 }}&gt;{champ?.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 12.5, color: "#9AAA9F", marginTop: 4 }}&gt;{tournament.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button className="tapbtn" onClick={archiveSeason} style={{ ...bigBtn, ...btnPrimary }}&gt;Encerrar temporada e começar outra&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button className="tapbtn" onClick={onNewTournament} style={{ ...bigBtn, background: "#1A2F24", color: "#EDEFE7", border: "1px solid #2F7A4D" }}&gt;Novo campeonato agora&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (tournament.format === "liga") {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const standings = computeStandings(tournament.teamIds, tournament.matches);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const rounds = [...new Set(tournament.matches.map((m) =&gt; m.round))].sort((a, b) =&gt; a - b);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const allPlayed = tournament.matches.every((m) =&gt; m.played);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;StandingsTable standings={standings} teamById={teamById} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{allPlayed &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button className="tapbtn" onClick={() =&gt; finishTournament(standings[0].id)} style={{ ...bigBtn, ...btnPrimary, marginBottom: 14 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>🏆 Encerrar liga ({teamById(standings[0].id)?.name} campeão)</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;SectionTitle icon={&lt;Calendar size={15} /&gt;} text="Rodadas" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{rounds.map((r) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div key={r} style={{ marginBottom: 14 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize: 12, color: "#6B7A6F", marginBottom: 6, fontWeight: 700 }}&gt;RODADA {r}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>{tournament.matches.filter((m) =&gt; m.round === r).map((m) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;MatchRow key={m.id} match={m} teamById={teamById} onOpen={onOpenMatch} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (tournament.format === "mata-mata") {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return &lt;KnockoutView tournament={tournament} teamById={teamById} onOpenMatch={onOpenMatch} advanceKnockout={advanceKnockout} /&gt;;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>// grupos + mata-mata</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const groups = tournament.groups;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const hasKnockout = tournament.matches.some((m) =&gt; m.stage === "knockout");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const groupsComplete = groups.every((g) =&gt; tournament.matches.filter((m) =&gt; m.stage === "group" &amp;&amp; m.groupName === g.name).every((m) =&gt; m.played));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{groups.map((g, i) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;span key={g.name} onClick={() =&gt; setGroupTab(i)} style={chip(groupTab === i)}&gt;{g.name}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{hasKnockout &amp;&amp; &lt;span onClick={() =&gt; setGroupTab(-1)} style={chip(groupTab === -1)}&gt;Mata-mata&lt;/span&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{groupTab === -1 ? (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;KnockoutView tournament={tournament} teamById={teamById} onOpenMatch={onOpenMatch} advanceKnockout={advanceKnockout} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>) : (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{groups[groupTab] &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;StandingsTable standings={computeStandings(groups[groupTab].teamIds, tournament.matches.filter((m) =&gt; m.groupName === groups[groupTab].name))} teamById={teamById} highlightTop={2} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>{[...new Set(tournament.matches.filter((m) =&gt; m.groupName === groups[groupTab].name).map((m) =&gt; m.round))].sort((a, b) =&gt; a - b).map((r) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div key={r} style={{ marginBottom: 14 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;div style={{ fontSize: 12, color: "#6B7A6F", marginBottom: 6, fontWeight: 700 }}&gt;RODADA {r}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>{tournament.matches.filter((m) =&gt; m.groupName === groups[groupTab].name &amp;&amp; m.round === r).map((m) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                    </span>&lt;MatchRow key={m.id} match={m} teamById={teamById} onOpen={onOpenMatch} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{groupsComplete &amp;&amp; !hasKnockout &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;button className="tapbtn" onClick={advanceFromGroups} style={{ ...bigBtn, ...btnPrimary }}&gt;Gerar fase eliminatória (top 2 de cada grupo)&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function KnockoutView({ tournament, teamById, onOpenMatch, advanceKnockout }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const knockoutMatches = tournament.matches.filter((m) =&gt; m.stage === "knockout");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const rounds = [...new Set(knockoutMatches.map((m) =&gt; m.round))].sort((a, b) =&gt; a - b);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const maxRound = Math.max(...rounds);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const roundLabel = (r, total) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const remaining = total - r + 1;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>const teamsInRound = knockoutMatches.filter((m) =&gt; m.round === r).length * 2;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (teamsInRound &lt;= 2) return "FINAL";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (teamsInRound &lt;= 4) return "SEMIFINAL";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>if (teamsInRound &lt;= 8) return "QUARTAS DE FINAL";</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return `FASE DE ${teamsInRound}`;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>};</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const currentRoundMatches = knockoutMatches.filter((m) =&gt; m.round === maxRound);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const currentComplete = currentRoundMatches.every((m) =&gt; m.played);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const winnersCount = currentComplete ? currentRoundMatches.length : null;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{rounds.map((r) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div key={r} style={{ marginBottom: 16 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontSize: 12, color: "#6B7A6F", marginBottom: 6, fontWeight: 700, letterSpacing: 1 }}&gt;{roundLabel(r, maxRound)}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{knockoutMatches.filter((m) =&gt; m.round === r).map((m) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div key={m.id}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;MatchRow match={m} teamById={teamById} onOpen={onOpenMatch} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>{m.played &amp;&amp; !m.bye &amp;&amp; m.homeScore === m.awayScore &amp;&amp; m.penaltyWinner &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 11.5, color: "#9AAA9F", marginTop: -4, marginBottom: 8, paddingLeft: 4 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>Pênaltis: {teamById(m.penaltyWinner)?.name} venceu</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{currentComplete &amp;&amp; winnersCount &gt; 1 &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button className="tapbtn" onClick={advanceKnockout} style={{ ...bigBtn, ...btnPrimary }}&gt;Gerar próxima fase&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{currentComplete &amp;&amp; winnersCount === 1 &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;button className="tapbtn" onClick={advanceKnockout} style={{ ...bigBtn, ...btnPrimary }}&gt;🏆 Coroar campeão&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function StandingsTable({ standings, teamById, highlightTop }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{ ...panelStyle, padding: 10, marginBottom: 16, overflowX: "auto" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;thead&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;tr style={{ color: "#6B7A6F", textTransform: "uppercase", fontSize: 10.5 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;th style={{ textAlign: "left", padding: "4px 4px" }}&gt;#&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;th style={{ textAlign: "left", padding: "4px 4px" }}&gt;Time&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;th style={thNum}&gt;PJ&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;th style={thNum}&gt;V&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;th style={thNum}&gt;E&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;th style={thNum}&gt;D&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;th style={thNum}&gt;SG&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;th style={thNum}&gt;Pts&lt;/th&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/tr&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/thead&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;tbody&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{standings.map((s, i) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;tr key={s.id} style={{ borderTop: "1px solid #1E3528", background: highlightTop &amp;&amp; i &lt; highlightTop ? "rgba(47,122,77,0.15)" : "transparent" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;td style={{ padding: "6px 4px", color: "#6B7A6F" }}&gt;{i + 1}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;td style={{ padding: "6px 4px", fontWeight: 600, whiteSpace: "nowrap" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;span style={{ width: 7, height: 7, borderRadius: 2, background: teamById(s.id)?.color, display: "inline-block", marginRight: 6 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>{teamById(s.id)?.name}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;td style={thNum}&gt;{s.pj}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;td style={thNum}&gt;{s.v}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;td style={thNum}&gt;{s.e}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;td style={thNum}&gt;{s.d}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;td style={thNum}&gt;{s.sg}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;td style={{ ...thNum, fontWeight: 800, color: "#D4AF37" }}&gt;{s.pts}&lt;/td&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/tr&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/tbody&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/table&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p1"><span class="s1">const thNum = { textAlign: "center", padding: "4px 4px" };</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ MARKET TAB ============</span></p>
+<p class="p1"><span class="s1">function MarketTab({ teams, transfers, onPick }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [filterTeam, setFilterTeam] = useState("all");</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const players = [];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>teams.forEach((t) =&gt; t.players.forEach((p) =&gt; players.push({ ...p, teamId: t.id, teamName: t.name, teamColor: t.color })));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const filtered = filterTeam === "all" ? players : players.filter((p) =&gt; p.teamId === filterTeam);</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;SectionTitle icon={&lt;ArrowLeftRight size={15} /&gt;} text="Mercado de transferências" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;span onClick={() =&gt; setFilterTeam("all")} style={chip(filterTeam === "all")}&gt;Todos&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{teams.map((t) =&gt; &lt;span key={t.id} onClick={() =&gt; setFilterTeam(t.id)} style={chip(filterTeam === t.id)}&gt;{t.name}&lt;/span&gt;)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{filtered.length === 0 &amp;&amp; &lt;div style={{ color: "#6B7A6F", fontSize: 13, textAlign: "center", padding: 20 }}&gt;Nenhum jogador encontrado.&lt;/div&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{filtered.map((p) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div key={p.id} style={{ ...panelStyle, display: "flex", alignItems: "center", gap: 10, padding: 12 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;span style={{ fontSize: 10.5, fontWeight: 800, background: "#1A2F24", color: "#8FD6A8", padding: "3px 6px", borderRadius: 6, border: "1px solid #2F7A4D", minWidth: 34, textAlign: "center" }}&gt;{p.pos}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontWeight: 700, fontSize: 14 }}&gt;{p.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize: 11.5, color: "#6B7A6F" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;span style={{ width: 7, height: 7, borderRadius: 2, background: p.teamColor, display: "inline-block", marginRight: 4 }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>{p.teamName} · OVR {p.ovr}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button className="tapbtn" onClick={() =&gt; onPick(p, p.teamId)} style={{ background: "#1A2F24", border: "1px solid #2F7A4D", color: "#8FD6A8", borderRadius: 8, padding: "7px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>Transferir</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>))}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{transfers.length &gt; 0 &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;SectionTitle icon={&lt;History size={15} /&gt;} text="Últimas transferências" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{transfers.slice(0, 12).map((tr) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div key={tr.id} style={{ ...panelStyle, padding: 10, fontSize: 12.5 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;b&gt;{tr.playerName}&lt;/b&gt;: {tr.fromTeamName} &lt;ArrowRight size={12} style={{ verticalAlign: -2, margin: "0 3px" }} /&gt; {tr.toTeamName}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div style={{ fontSize: 10.5, color: "#6B7A6F", marginTop: 2 }}&gt;{tr.date}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ HISTORY TAB ============</span></p>
+<p class="p1"><span class="s1">function HistoryTab({ tournaments, teamById, historyOpen, setHistoryOpen }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (tournaments.length === 0) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>return &lt;div style={{ color: "#6B7A6F", fontSize: 13, textAlign: "center", padding: 30 }}&gt;Nenhuma temporada encerrada ainda.&lt;/div&gt;;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;SectionTitle icon={&lt;History size={15} /&gt;} text="Histórico de temporadas" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{tournaments.slice().reverse().map((t) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const open = historyOpen === t.id;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const standings = t.format !== "mata-mata" ? computeStandings(t.format === "grupos" ? (t.groups?.[0]?.teamIds || []) : t.teamIds, t.matches) : null;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div key={t.id} style={panelStyle}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;button onClick={() =&gt; setHistoryOpen(open ? null : t.id)} style={{ background: "none", border: "none", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", padding: 0, color: "#EDEFE7" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div style={{ textAlign: "left" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 11, color: "#8FD6A8", fontWeight: 700 }}&gt;TEMPORADA {t.season}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontWeight: 800, fontSize: 15 }}&gt;{t.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 12, color: "#9AAA9F", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                  </span>&lt;Crown size={12} color="#D4AF37" /&gt; {teamById(t.champion)?.name}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;ChevronDown size={18} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} color="#6B7A6F" /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>{open &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;div style={{ marginTop: 12 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 12, color: "#6B7A6F", marginBottom: 6 }}&gt;Formato: {t.format === "liga" ? "Liga" : t.format === "mata-mata" ? "Mata-mata" : "Grupos + Mata-mata"}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">                </span>&lt;div style={{ fontSize: 12, color: "#6B7A6F" }}&gt;{t.matches.filter((m) =&gt; m.played).length} partidas disputadas&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>})}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ BOTTOM NAV ============</span></p>
+<p class="p1"><span class="s1">function BottomNav({ tab, setTab }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const items = [</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>{ key: "home", icon: Home, label: "Início" },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>{ key: "teams", icon: Shield, label: "Elenco" },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>{ key: "tournament", icon: Trophy, label: "Campeonato" },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>{ key: "market", icon: ArrowLeftRight, label: "Mercado" },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>{ key: "history", icon: History, label: "Histórico" },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>];</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>background: "#0E1E16", borderTop: "1px solid #1E3528", display: "flex", padding: "8px 4px 10px", zIndex: 10,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{items.map(({ key, icon: Icon, label }) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>const active = tab === key;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button key={key} onClick={() =&gt; setTab(key)} className="tapbtn" style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer", padding: "4px 0",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;Icon size={20} color={active ? "#D4AF37" : "#6B7A6F"} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;span style={{ fontSize: 10, color: active ? "#D4AF37" : "#6B7A6F", fontWeight: active ? 700 : 500 }}&gt;{label}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>})}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ MODAL WRAPPER ============</span></p>
+<p class="p1"><span class="s1">function Modal({ title, onClose, children }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>position: "fixed", inset: 0, background: "rgba(5,10,8,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50,</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}} onClick={onClose}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div onClick={(e) =&gt; e.stopPropagation()} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>background: "#12241C", borderTop: "1px solid #2F4A38", borderRadius: "18px 18px 0 0", padding: 20, width: "100%", maxWidth: 480, maxHeight: "85vh", overflowY: "auto",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;span style={{ fontWeight: 800, fontSize: 16 }}&gt;{title}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button onClick={onClose} style={{ background: "none", border: "none", color: "#9AAA9F", cursor: "pointer" }}&gt;&lt;X size={20} /&gt;&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{children}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ PLAYER MODAL ============</span></p>
+<p class="p1"><span class="s1">function PlayerModal({ data, onClose, onSave }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const editing = !!data.player;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [form, setForm] = useState(data.player || { id: uid(), name: "", pos: "ATA", ovr: 70, age: 22, goals: 0, assists: 0 });</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;Modal title={editing ? "Editar jogador" : "Novo jogador"} onClose={onClose}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;label style={lbl}&gt;Nome&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;input style={inputStyle} value={form.name} onChange={(e) =&gt; setForm({ ...form, name: e.target.value })} placeholder="Nome do jogador" autoFocus /&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;label style={{ ...lbl, marginTop: 14 }}&gt;Posição&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{POSITIONS.map((p) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;span key={p} onClick={() =&gt; setForm({ ...form, pos: p })} style={chip(form.pos === p)}&gt;{p}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", gap: 12, marginTop: 14 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;label style={lbl}&gt;Overall (1-99)&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;input type="number" min={1} max={99} style={inputStyle} value={form.ovr} onChange={(e) =&gt; setForm({ ...form, ovr: Math.max(1, Math.min(99, parseInt(e.target.value) || 0)) })} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;label style={lbl}&gt;Idade&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;input type="number" min={15} max={45} style={inputStyle} value={form.age} onChange={(e) =&gt; setForm({ ...form, age: parseInt(e.target.value) || 0 })} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;button className="tapbtn" style={{ ...bigBtn, ...btnPrimary, marginTop: 18 }} disabled={!form.name.trim()} onClick={() =&gt; onSave(data.teamId, form)}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{editing ? "Salvar alterações" : "Adicionar ao elenco"}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/Modal&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ NEW TOURNAMENT MODAL ============</span></p>
+<p class="p1"><span class="s1">function NewTournamentModal({ teams, tourForm, setTourForm, onClose, onToggleTeam, onCreate }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const canCreate = tourForm.name.trim() &amp;&amp; tourForm.teamIds.length &gt;= 2 &amp;&amp;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>(tourForm.format !== "grupos" || tourForm.teamIds.length &gt;= 4);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;Modal title="Novo campeonato" onClose={onClose}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;label style={lbl}&gt;Nome do campeonato&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;input style={inputStyle} value={tourForm.name} onChange={(e) =&gt; setTourForm({ ...tourForm, name: e.target.value })} placeholder="Ex: Copa Retrô 2007" autoFocus /&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;label style={{ ...lbl, marginTop: 14 }}&gt;Formato&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{[</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{ k: "liga", t: "Liga (pontos corridos)", d: "Todos contra todos, tabela de classificação." },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{ k: "mata-mata", t: "Mata-mata (eliminatória)", d: "Jogo único, perdeu está fora. Empate decide nos pênaltis." },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{ k: "grupos", t: "Grupos + Mata-mata", d: "Fase de grupos e depois eliminatórias com os classificados." },</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>].map((f) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button key={f.k} onClick={() =&gt; setTourForm({ ...tourForm, format: f.k })} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>textAlign: "left", padding: 12, borderRadius: 10, cursor: "pointer",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>background: tourForm.format === f.k ? "rgba(212,175,55,0.12)" : "#0E1E16",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>border: tourForm.format === f.k ? "1px solid #D4AF37" : "1px solid #24402F", color: "#EDEFE7",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontWeight: 700, fontSize: 14 }}&gt;{f.t}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div style={{ fontSize: 11.5, color: "#9AAA9F", marginTop: 2 }}&gt;{f.d}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{tourForm.format === "grupos" &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;label style={{ ...lbl, marginTop: 10 }}&gt;Número de grupos&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ display: "flex", gap: 8, marginBottom: 4 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>{[2, 4].map((n) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;span key={n} onClick={() =&gt; setTourForm({ ...tourForm, numGroups: n })} style={chip(tourForm.numGroups === n)}&gt;{n} grupos&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;label style={{ ...lbl, marginTop: 14 }}&gt;Times participantes ({tourForm.teamIds.length} selecionados)&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{teams.length === 0 &amp;&amp; &lt;div style={{ fontSize: 12.5, color: "#C1443D", marginBottom: 8 }}&gt;Crie times na aba Elenco primeiro.&lt;/div&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{teams.map((t) =&gt; {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>const selected = tourForm.teamIds.includes(t.id);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;button key={t.id} onClick={() =&gt; onToggleTeam(t.id)} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 10, cursor: "pointer",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>background: selected ? "rgba(47,122,77,0.15)" : "#0E1E16", border: selected ? "1px solid #2F7A4D" : "1px solid #24402F", color: "#EDEFE7",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;span style={{ width: 8, height: 8, borderRadius: 3, background: t.color }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;span style={{ flex: 1, textAlign: "left", fontSize: 14, fontWeight: 600 }}&gt;{t.name}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>{selected &amp;&amp; &lt;Check size={16} color="#8FD6A8" /&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>})}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{tourForm.format === "grupos" &amp;&amp; tourForm.teamIds.length &gt; 0 &amp;&amp; tourForm.teamIds.length &lt; 4 &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontSize: 12, color: "#C1443D", marginBottom: 10, display: "flex", gap: 6, alignItems: "center" }}&gt;&lt;AlertCircle size={14} /&gt; Selecione pelo menos 4 times para grupos.&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;button className="tapbtn" disabled={!canCreate} onClick={onCreate} style={{ ...bigBtn, ...btnPrimary, opacity: canCreate ? 1 : 0.5 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>Iniciar campeonato</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/Modal&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ MATCH MODAL ============</span></p>
+<p class="p1"><span class="s1">function MatchModal({ match, teamById, scoreDraft, setScoreDraft, onClose, onSave, addScorer, removeScorer }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const home = teamById(match.homeId), away = teamById(match.awayId);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const isDraw = scoreDraft.home !== "" &amp;&amp; scoreDraft.away !== "" &amp;&amp; parseInt(scoreDraft.home) === parseInt(scoreDraft.away);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const needsPenalties = match.stage === "knockout" &amp;&amp; isDraw;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;Modal title="Resultado da partida" onClose={onClose}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 18 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ textAlign: "center", flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}&gt;{home?.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;input type="number" min={0} style={{ ...inputStyle, textAlign: "center", fontSize: 22, fontWeight: 800, padding: "10px 0" }}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>value={scoreDraft.home} onChange={(e) =&gt; setScoreDraft({ ...scoreDraft, home: e.target.value })} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;span style={{ fontSize: 18, color: "#6B7A6F", marginTop: 20 }}&gt;×&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ textAlign: "center", flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}&gt;{away?.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;input type="number" min={0} style={{ ...inputStyle, textAlign: "center", fontSize: 22, fontWeight: 800, padding: "10px 0" }}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>value={scoreDraft.away} onChange={(e) =&gt; setScoreDraft({ ...scoreDraft, away: e.target.value })} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{needsPenalties &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ marginBottom: 16 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;label style={lbl}&gt;Empate — vencedor nos pênaltis&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;div style={{ display: "flex", gap: 8 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;span onClick={() =&gt; setScoreDraft({ ...scoreDraft, penaltyWinner: match.homeId })} style={{ ...chip(scoreDraft.penaltyWinner === match.homeId), flex: 1, textAlign: "center" }}&gt;{home?.name}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;span onClick={() =&gt; setScoreDraft({ ...scoreDraft, penaltyWinner: match.awayId })} style={{ ...chip(scoreDraft.penaltyWinner === match.awayId), flex: 1, textAlign: "center" }}&gt;{away?.name}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;label style={lbl}&gt;Gols marcados (opcional)&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", gap: 8, marginBottom: 10 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;PlayerScorerPicker team={home} onPick={(pid, pname) =&gt; addScorer(match.homeId, pid, pname)} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;PlayerScorerPicker team={away} onPick={(pid, pname) =&gt; addScorer(match.awayId, pid, pname)} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{scoreDraft.scorers.length &gt; 0 &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ marginBottom: 14 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{scoreDraft.scorers.map((s, i) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, padding: "5px 0", borderBottom: i &lt; scoreDraft.scorers.length - 1 ? "1px solid #1E3528" : "none" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;span&gt;&lt;Target size={12} style={{ verticalAlign: -1, marginRight: 5 }} color="#D4AF37" /&gt;{s.playerName}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>&lt;button onClick={() =&gt; removeScorer(i)} style={{ background: "none", border: "none", color: "#C1443D", cursor: "pointer" }}&gt;&lt;X size={14} /&gt;&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;button className="tapbtn" onClick={onSave} style={{ ...bigBtn, ...btnPrimary }}&gt;Salvar resultado&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/Modal&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">function PlayerScorerPicker({ team, onPick }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [open, setOpen] = useState(false);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>if (!team) return &lt;div style={{ flex: 1 }} /&gt;;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;div style={{ position: "relative", flex: 1 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;button onClick={() =&gt; setOpen((o) =&gt; !o)} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>width: "100%", padding: "9px 10px", borderRadius: 8, background: "#0E1E16", border: "1px solid #24402F", color: "#9AAA9F", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>+ Gol {team.name} &lt;ChevronDown size={13} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>{open &amp;&amp; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ position: "absolute", top: "105%", left: 0, right: 0, background: "#182B20", border: "1px solid #2F4A38", borderRadius: 8, zIndex: 5, maxHeight: 160, overflowY: "auto" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{team.players.length === 0 &amp;&amp; &lt;div style={{ padding: 10, fontSize: 12, color: "#6B7A6F" }}&gt;Sem jogadores&lt;/div&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>{team.players.map((p) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;div key={p.id} onClick={() =&gt; { onPick(p.id, p.name); setOpen(false); }} style={{ padding: "8px 10px", fontSize: 12.5, cursor: "pointer", borderBottom: "1px solid #1E3528" }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">              </span>{p.name}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>)}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">// ============ TRANSFER MODAL ============</span></p>
+<p class="p1"><span class="s1">function TransferModal({ pick, teams, onClose, onConfirm }) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const { player, fromTeamId } = pick;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const from = teams.find((t) =&gt; t.id === fromTeamId);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const [dest, setDest] = useState(null);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>return (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;Modal title="Transferir jogador" onClose={onClose}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ ...panelStyle, marginBottom: 16 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontWeight: 700, fontSize: 15 }}&gt;{player.name}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>&lt;div style={{ fontSize: 12, color: "#9AAA9F" }}&gt;{from?.name} · OVR {player.ovr} · {POS_LABELS[player.pos]}&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;label style={lbl}&gt;Destino&lt;/label&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{teams.filter((t) =&gt; t.id !== fromTeamId).map((t) =&gt; (</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;button key={t.id} onClick={() =&gt; setDest(t.id)} style={{</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 10, cursor: "pointer",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>background: dest === t.id ? "rgba(212,175,55,0.12)" : "#0E1E16", border: dest === t.id ? "1px solid #D4AF37" : "1px solid #24402F", color: "#EDEFE7",</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>}}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;span style={{ width: 8, height: 8, borderRadius: 3, background: t.color }} /&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>&lt;span style={{ flex: 1, textAlign: "left", fontSize: 14 }}&gt;{t.name}&lt;/span&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>{dest === t.id &amp;&amp; &lt;Check size={16} color="#D4AF37" /&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">          </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>))}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>{teams.length &lt;= 1 &amp;&amp; &lt;div style={{ fontSize: 12.5, color: "#6B7A6F" }}&gt;Crie outro time para transferir.&lt;/div&gt;}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;button className="tapbtn" disabled={!dest} onClick={() =&gt; onConfirm(player, fromTeamId, dest)} style={{ ...bigBtn, ...btnPrimary, opacity: dest ? 1 : 0.5 }}&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">        </span>Confirmar transferência</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>&lt;/button&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>&lt;/Modal&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>);</span></p>
+<p class="p1"><span class="s1">}</span></p>
+<p class="p2"><span class="s1"></span><br></p>
+<p class="p1"><span class="s1">const root = ReactDOM.createRoot(document.getElementById("root"));</span></p>
+<p class="p1"><span class="s1">root.render(&lt;App /&gt;);</span></p>
+<p class="p1"><span class="s1">&lt;/script&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/body&gt;</span></p>
+<p class="p1"><span class="s1">&lt;/html&gt;</span></p>
+</body>
+</html>
