@@ -10,35 +10,90 @@
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --green: #58cc02;
-        --green-soft: #d7ffb8;
-        --green-light: #a5ed6e;
-        --blue: #1cb0f6;
-        --ink: #000437;
-        --charcoal: #4b4b4b;
-        --gray: #777777;
-        --gray-light: #afafaf;
-        --border: #dedede;
-        --paper: #ffffff;
-        --surface: #f7f9f5;
+        color-scheme: light;
+        --canvas: #fbfaf9;
+        --surface: #ffffff;
+        --surface-soft: #f2f0ed;
+        --surface-sand: #f6f4ef;
+        --ink: #121212;
+        --heading: #343433;
+        --body: #474645;
+        --muted: #7e7e7d;
+        --border: #e9e4dd;
+        --blue: #0086fc;
+        --green: #00c978;
+        --orange: #ff3e00;
+        --yellow: #ffbb26;
+        --pink: #ff58ae;
+        --violet: #9f4fff;
+        --danger: #ff2b3a;
+        --on-dark: #fbfaf9;
+        --overlay: rgba(18,18,18,.48);
+        --shadow-inset: inset 0 0 0 1px var(--border);
+        --shadow-soft: 0 1px 6px rgba(0,0,0,.04), 0 0 24px rgba(0,0,0,.04);
       }
-      html, body { margin: 0; padding: 0; background: var(--paper); }
-      body { color: var(--charcoal); font-family: "Nunito", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --canvas: #11110f;
+        --surface: #1a1917;
+        --surface-soft: #24221f;
+        --surface-sand: #201f1c;
+        --ink: #f8f5f0;
+        --heading: #f5f1ea;
+        --body: #d2cec7;
+        --muted: #96918a;
+        --border: #34312c;
+        --blue: #64c6ff;
+        --green: #20d98a;
+        --orange: #ff6940;
+        --yellow: #ffcd6c;
+        --pink: #ff79bd;
+        --violet: #b678ff;
+        --danger: #ff5864;
+        --on-dark: #121212;
+        --overlay: rgba(0,0,0,.72);
+        --shadow-soft: 0 1px 8px rgba(0,0,0,.18);
+      }
+      html, body { margin: 0; padding: 0; background: var(--canvas); }
+      body { color: var(--body); font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; transition: background .2s ease, color .2s ease; }
       * { box-sizing: border-box; }
       ::-webkit-scrollbar { display: none; }
       button, input, select, textarea { font: inherit; }
-      button { transition: transform .12s ease, filter .12s ease; }
-      button:hover { filter: brightness(.98); }
-      button:active { transform: translateY(2px); }
-      input:focus, select:focus, textarea:focus { border-color: var(--blue) !important; box-shadow: 0 0 0 3px rgba(28,176,246,.14); }
+      button { transition: transform .12s ease, opacity .12s ease; }
+      button:hover { opacity: .88; }
+      button:active { transform: translateY(1px); }
+      input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent) !important; }
+      h1, h2, h3, h4, [data-display-heading] { color: var(--heading) !important; letter-spacing: -.02em; }
+      code { background: var(--surface-soft); color: var(--heading); padding: 2px 5px; border-radius: 4px; }
+      #root > div { background: var(--canvas) !important; color: var(--body) !important; }
+      #root input, #root select, #root textarea {
+        background: var(--surface) !important; color: var(--heading) !important;
+        border-color: var(--border) !important; border-radius: 10px !important;
+      }
+      #root input::placeholder, #root textarea::placeholder { color: var(--muted); }
+      #root table { color: var(--body); }
+      #root th { color: var(--muted) !important; }
+      #root td, #root th { border-color: var(--border) !important; }
+      .family-card { background: var(--surface) !important; color: var(--body) !important; border: 0 !important; border-radius: 10px !important; box-shadow: var(--shadow-inset) !important; }
+      .family-pill-primary { background: var(--ink) !important; color: var(--on-dark) !important; border: 0 !important; border-radius: 9999px !important; }
+      .family-pill-secondary { background: var(--surface-sand) !important; color: var(--heading) !important; border: 0 !important; border-radius: 9999px !important; box-shadow: var(--shadow-inset) !important; }
+      .settings-theme-card { cursor: pointer; padding: 18px; border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-inset); border: 0; text-align: left; color: var(--body); }
+      .settings-theme-card.is-active { box-shadow: inset 0 0 0 2px var(--ink); }
+      .theme-preview { height: 96px; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+      .theme-preview.light { background:#fbfaf9; box-shadow:inset 0 0 0 1px #e9e4dd; }
+      .theme-preview.dark { background:#11110f; box-shadow:inset 0 0 0 1px #34312c; }
+      .theme-preview span { display:block; height:10px; border-radius:999px; }
+      .theme-preview span:first-child { width:45%; }
+      .theme-preview span:nth-child(2) { width:75%; }
+      .theme-preview span:nth-child(3) { width:58%; }
+      .theme-preview.light span { background:#343433; }
+      .theme-preview.dark span { background:#f5f1ea; }
       @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       .animate-spin { animation: spin 1s linear infinite; }
-      @media (max-width: 560px) {
-        body { background: #fff; }
-      }
+      @media (max-width: 560px) { body { background: var(--canvas); } }
     </style>
 
     <!-- React via CDN (unpkg) -->
@@ -123,6 +178,7 @@
           Qt = C("\u{1F4B0}"),
           ho = C("\u{1F3F7}\uFE0F"),
           Xt = C("\u{1F50E}"),
+          SettingsIcon = C("\u2699\uFE0F"),
           it = {
             GK: "Goleiro",
             CWP: "Goleiro",
@@ -144,9 +200,9 @@
             CF: "Centroavante",
           },
           se = [
-            "#58CC02",
+            "#00C978",
             "#4A7FC1",
-            "#EA2B2B",
+            "#FF2B3A",
             "#58CC02",
             "#9B59B6",
             "#E67E22",
@@ -295,8 +351,8 @@
           } catch (l) {}
         }
         var W = {
-            background: "#58CC02",
-            color: "#FFFFFF",
+            background: "var(--green)",
+            color: "var(--surface)",
             fontWeight: 800,
           },
           P = {
@@ -304,16 +360,16 @@
             fontSize: 12,
             textTransform: "uppercase",
             letterSpacing: 1,
-            color: "#777777",
+            color: "var(--muted)",
             marginBottom: 6,
           },
           q = {
             width: "100%",
             padding: "12px 14px",
-            borderRadius: 12,
+            borderRadius: 9999,
             border: "2px solid #DEDEDE",
-            backgroundColor: "#FFFFFF",
-            color: "#4B4B4B",
+            backgroundColor: "var(--surface)",
+            color: "var(--heading)",
             fontSize: 15,
             fontWeight: 600,
           },
@@ -329,10 +385,11 @@
             letterSpacing: 0.2,
           },
           E = {
-            background: "#FFFFFF",
-            border: "2px solid #DEDEDE",
-            borderRadius: 16,
-            padding: 18,
+            background: "var(--surface)",
+            border: "none",
+            boxShadow: "inset 0 0 0 1px var(--border)",
+            borderRadius: 10,
+            padding: 24,
             marginBottom: 12,
           },
           V = (e) => ({
@@ -341,8 +398,8 @@
             fontSize: 12.5,
             fontWeight: 600,
             cursor: "pointer",
-            background: e ? "#58CC02" : "#F7F9F5",
-            color: e ? "#FFFFFF" : "#777777",
+            background: e ? "var(--green)" : "var(--surface-soft)",
+            color: e ? "var(--surface)" : "var(--muted)",
             border: e ? "none" : "1px solid #AFAFAF",
           }),
           O = { textAlign: "center", padding: "4px 4px" };
@@ -391,7 +448,15 @@
             [adminProfileName, setAdminProfileName] = b(""),
             [adminProfileColor, setAdminProfileColor] = b(se[0]),
             [adminProfileBudget, setAdminProfileBudget] = b(300),
-            [adminTournamentName, setAdminTournamentName] = b("");
+            [adminTournamentName, setAdminTournamentName] = b(""),
+            [theme, setTheme] = b(() => {
+              let saved = eo("pes-theme");
+              return saved === "dark" ? "dark" : "light";
+            });
+          He(() => {
+            document.documentElement.setAttribute("data-theme", theme);
+            localStorage.setItem("pes-theme", JSON.stringify(theme));
+          }, [theme]);
           He(() => {
             fetch("./players.json")
               .then((o) => {
@@ -981,7 +1046,7 @@
                 "div",
                 {
                   style: {
-                    background: "#FFFFFF",
+                    background: "var(--surface)",
                     minHeight: "100vh",
                     display: "flex",
                     alignItems: "center",
@@ -993,7 +1058,7 @@
                   "div",
                   {
                     style: {
-                      color: "#4B4B4B",
+                      color: "var(--heading)",
                       maxWidth: 420,
                       textAlign: "center",
                       fontFamily: "Nunito,system-ui",
@@ -1016,20 +1081,20 @@
                     {
                       style: {
                         fontSize: 13.5,
-                        color: "#777777",
+                        color: "var(--muted)",
                         lineHeight: 1.5,
                       },
                     },
                     "Preencha o ",
                     React.createElement(
                       "code",
-                      { style: { color: "#58CC02" } },
+                      { style: { color: "var(--green)" } },
                       "firebaseConfig",
                     ),
                     " no topo do ",
                     React.createElement(
                       "code",
-                      { style: { color: "#58CC02" } },
+                      { style: { color: "var(--green)" } },
                       "index.html",
                     ),
                     ".",
@@ -1041,7 +1106,7 @@
                   "div",
                   {
                     style: {
-                      background: "#FFFFFF",
+                      background: "var(--surface)",
                       minHeight: "100vh",
                       display: "flex",
                       alignItems: "center",
@@ -1052,7 +1117,7 @@
                     "div",
                     {
                       style: {
-                        color: "#58CC02",
+                        color: "var(--green)",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
@@ -1071,7 +1136,7 @@
                           letterSpacing: 2,
                           fontSize: 13,
                           textTransform: "uppercase",
-                          color: "#777777",
+                          color: "var(--muted)",
                         },
                       },
                       "Carregando temporada...",
@@ -1092,8 +1157,8 @@
                     {
                       style: {
                         minHeight: "100vh",
-                        background: "#FFFFFF",
-                        color: "#4B4B4B",
+                        background: "var(--surface)",
+                        color: "var(--heading)",
                         fontFamily:
                           "Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif",
                         paddingBottom: 84,
@@ -1135,7 +1200,7 @@
                             borderRadius: 10,
                             padding: 10,
                             fontSize: 12.5,
-                            color: "#EA2B2B",
+                            color: "var(--danger)",
                           },
                         },
                         "N\xE3o encontrei o arquivo ",
@@ -1144,7 +1209,7 @@
                       ),
                     React.createElement(
                       "div",
-                      { style: { padding: "16px 16px 0" } },
+                      { style: { padding: "20px 16px 112px" } },
                       Y === "home" &&
                         React.createElement(ao, {
                           teams: ProfileTeams,
@@ -1213,6 +1278,8 @@
                           onDeleteTournament: deleteAdminTournament, onSelectTournament: selectTournament,
                           onUpdateBudget: updateAdminBudget,
                         }),
+                      Y === "settings" &&
+                        React.createElement(SettingsArea, { theme: theme, setTheme: setTheme }),
                     ),
                     React.createElement(mo, { tab: Y, setTab: oe, isAdmin: isAdminProfile(te) }),
                     ct &&
@@ -1334,27 +1401,27 @@
             let item = typeof profile === "object" && profile ? profile : { name: String(profile) };
             return { raw: profile, name: String(item.name || "").trim(), color: item.color || se[index % se.length] };
           }).filter((profile) => profile.name && r(profile.raw, selected)) : [];
-          return React.createElement("div", { style: { minHeight: "100vh", background: "#FFFFFF", color: "#4B4B4B", fontFamily: "Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif", padding: 24, maxWidth: 760, margin: "0 auto" } },
+          return React.createElement("div", { style: { minHeight: "100vh", background: "var(--surface)", color: "var(--heading)", fontFamily: "Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif", padding: 24, maxWidth: 760, margin: "0 auto" } },
             React.createElement("div", { style: { textAlign: "center", paddingTop: 36, marginBottom: 28 } },
-              React.createElement("div", { style: { fontSize: 30, fontWeight: 900 } }, "PES ", React.createElement("span", { style: { color: "#58CC02" } }, "MANAGER")),
-              React.createElement("div", { style: { fontSize: 13, color: "#777777", marginTop: 6 } }, "Escolha o campeonato e depois seu perfil")
+              React.createElement("div", { style: { fontSize: 30, fontWeight: 900 } }, "PES ", React.createElement("span", { style: { color: "var(--green)" } }, "MANAGER")),
+              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginTop: 6 } }, "Escolha o campeonato e depois seu perfil")
             ),
             React.createElement("div", { style: { marginBottom: 30 } },
               React.createElement("div", { style: { ...P, textAlign: "center", marginBottom: 12 } }, "1. Campeonato"),
               t.length ? React.createElement("div", { style: { display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 } }, t.map((tournament) => {
                 let active = tournament.id === l;
-                return React.createElement("button", { key: tournament.id, onClick: () => a(tournament.id), style: { minWidth: 180, padding: "14px 16px", borderRadius: 14, border: active ? "2px solid #58CC02" : "2px solid #DEDEDE", background: active ? "#D7FFB8" : "#FFFFFF", color: "#4B4B4B", cursor: "pointer", textAlign: "left" } },
+                return React.createElement("button", { key: tournament.id, onClick: () => a(tournament.id), style: { minWidth: 180, padding: "14px 16px", borderRadius: 14, border: active ? "2px solid #58CC02" : "2px solid #DEDEDE", background: active ? "#D7FFB8" : "var(--surface)", color: "var(--heading)", cursor: "pointer", textAlign: "left" } },
                   React.createElement("div", { style: { fontSize: 15, fontWeight: 900 } }, tournament.name),
-                  React.createElement("div", { style: { fontSize: 12, color: "#777777", marginTop: 3 } }, (tournament.teamIds || []).length, " perfis")
+                  React.createElement("div", { style: { fontSize: 12, color: "var(--muted)", marginTop: 3 } }, (tournament.teamIds || []).length, " perfis")
                 );
-              })) : React.createElement("div", { style: { ...E, textAlign: "center", color: "#777777" } }, "Nenhum campeonato ativo foi encontrado." )
+              })) : React.createElement("div", { style: { ...E, textAlign: "center", color: "var(--muted)" } }, "Nenhum campeonato ativo foi encontrado." )
             ),
             React.createElement("div", { style: { ...P, textAlign: "center", marginBottom: 14 } }, "2. Perfil"),
-            !selected ? React.createElement("div", { style: { textAlign: "center", color: "#777777", padding: 28 } }, "Selecione um campeonato acima.") :
-            visibleProfiles.length ? React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 18 } }, visibleProfiles.map((profile) => React.createElement("button", { key: profile.name, onClick: () => n(profile.raw), className: "tapbtn", style: { background: "none", border: "none", color: "#4B4B4B", cursor: "pointer", padding: 0, textAlign: "center" } },
+            !selected ? React.createElement("div", { style: { textAlign: "center", color: "var(--muted)", padding: 28 } }, "Selecione um campeonato acima.") :
+            visibleProfiles.length ? React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 18 } }, visibleProfiles.map((profile) => React.createElement("button", { key: profile.name, onClick: () => n(profile.raw), className: "tapbtn", style: { background: "none", border: "none", color: "var(--heading)", cursor: "pointer", padding: 0, textAlign: "center" } },
               React.createElement("div", { style: { aspectRatio: "1", borderRadius: 20, background: profile.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, fontWeight: 900, border: "2px solid transparent" } }, profile.name.charAt(0).toUpperCase()),
-              React.createElement("div", { style: { fontSize: 14, marginTop: 9, color: "#777777", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name)
-            ))) : React.createElement("div", { style: { ...E, textAlign: "center", color: "#777777" } }, "Nenhum perfil pertence a este campeonato.")
+              React.createElement("div", { style: { fontSize: 14, marginTop: 9, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name)
+            ))) : React.createElement("div", { style: { ...E, textAlign: "center", color: "var(--muted)" } }, "Nenhum perfil pertence a este campeonato.")
           );
         }
         function no({
@@ -1394,13 +1461,13 @@
                       fontSize: 22,
                       fontWeight: 900,
                       letterSpacing: 1.5,
-                      color: "#4B4B4B",
+                      color: "var(--heading)",
                     },
                   },
                   "PES ",
                   React.createElement(
                     "span",
-                    { style: { color: "#58CC02" } },
+                    { style: { color: "var(--green)" } },
                     "MANAGER",
                   ),
                 ),
@@ -1410,7 +1477,7 @@
                     style: {
                       fontSize: 11,
                       letterSpacing: 2,
-                      color: "#777777",
+                      color: "var(--muted)",
                       textTransform: "uppercase",
                       marginTop: 2,
                     },
@@ -1431,7 +1498,7 @@
                         display: "flex",
                         alignItems: "center",
                         gap: 6,
-                        background: "#F7F9F5",
+                        background: "var(--surface-soft)",
                         padding: "6px 10px",
                         borderRadius: 20,
                         border: "1px solid #58CC02",
@@ -1442,7 +1509,7 @@
                         width: 7,
                         height: 7,
                         borderRadius: 99,
-                        background: "#58CC02",
+                        background: "var(--green)",
                         boxShadow: "0 0 6px #58CC02",
                         display: "inline-block",
                       },
@@ -1452,7 +1519,7 @@
                       {
                         style: {
                           fontSize: 11,
-                          color: "#58CC02",
+                          color: "var(--green)",
                           fontWeight: 700,
                           textTransform: "uppercase",
                           letterSpacing: 0.5,
@@ -1467,9 +1534,9 @@
                     {
                       onClick: a,
                       style: {
-                        background: "#F7F9F5",
+                        background: "var(--surface-soft)",
                         border: "1px solid #AFAFAF",
-                        color: "#4B4B4B",
+                        color: "var(--heading)",
                         borderRadius: 20,
                         padding: "6px 10px",
                         fontSize: 11.5,
@@ -1481,7 +1548,7 @@
                       },
                       title: "Trocar perfil",
                     },
-                    React.createElement(qt, { size: 12, color: "#58CC02" }),
+                    React.createElement(qt, { size: 12, color: "var(--green)" }),
                     " ",
                     l,
                   ),
@@ -1495,7 +1562,7 @@
             {
               className: "scoreboard",
               style: {
-                background: "#FFFFFF",
+                background: "var(--surface)",
                 border: "1px solid #D7FFB8",
                 borderRadius: 6,
                 padding: "3px 9px",
@@ -1549,15 +1616,15 @@
                 },
                 React.createElement(
                   "span",
-                  { style: { fontSize: 13.5, color: "#777777" } },
+                  { style: { fontSize: 13.5, color: "var(--muted)" } },
                   React.createElement(
                     "b",
-                    { style: { color: "#4B4B4B" } },
+                    { style: { color: "var(--heading)" } },
                     a == null ? void 0 : a.name,
                   ),
                   " avan\xE7ou de bye",
                 ),
-                React.createElement(Ut, { size: 14, color: "#777777" }),
+                React.createElement(Ut, { size: 14, color: "var(--muted)" }),
               )
             : React.createElement(
                 "button",
@@ -1612,7 +1679,7 @@
                           display: "flex",
                           alignItems: "center",
                           gap: 4,
-                          color: "#58CC02",
+                          color: "var(--green)",
                           fontSize: 12.5,
                           fontWeight: 700,
                         },
@@ -1643,7 +1710,7 @@
                     {
                       style: {
                         ...E,
-                        background: "#F7F9F5",
+                        background: "var(--surface-soft)",
                       },
                     },
                     React.createElement(
@@ -1663,7 +1730,7 @@
                           {
                             style: {
                               fontSize: 11,
-                              color: "#58CC02",
+                              color: "var(--green)",
                               textTransform: "uppercase",
                               letterSpacing: 1,
                               fontWeight: 700,
@@ -1687,9 +1754,9 @@
                           className: "tapbtn",
                           onClick: n,
                           style: {
-                            background: "#F7F9F5",
+                            background: "var(--surface-soft)",
                             border: "1px solid #58CC02",
-                            color: "#58CC02",
+                            color: "var(--green)",
                             borderRadius: 10,
                             padding: "8px 12px",
                             fontSize: 12.5,
@@ -1715,7 +1782,7 @@
                         {
                           style: {
                             fontSize: 13,
-                            color: "#777777",
+                            color: "var(--muted)",
                             marginBottom: 12,
                           },
                         },
@@ -1735,7 +1802,7 @@
                   { style: { ...E, textAlign: "center", padding: 26 } },
                   React.createElement(pe, {
                     size: 30,
-                    color: "#58CC02",
+                    color: "var(--green)",
                     style: { marginBottom: 10 },
                   }),
                   React.createElement(
@@ -1747,7 +1814,7 @@
                   ),
                   React.createElement(
                     "div",
-                    { style: { fontSize: 13, color: "#777777" } },
+                    { style: { fontSize: 13, color: "var(--muted)" } },
                     "Contrate jogadores no mercado e depois inicie um campeonato.",
                   ),
                 ),
@@ -1789,7 +1856,7 @@
                           {
                             style: {
                               fontSize: 12,
-                              color: "#777777",
+                              color: "var(--muted)",
                               width: 16,
                             },
                           },
@@ -1810,13 +1877,13 @@
                         ),
                         React.createElement(
                           "span",
-                          { style: { fontSize: 11.5, color: "#777777" } },
+                          { style: { fontSize: 11.5, color: "var(--muted)" } },
                           d.teamName,
                         ),
                       ),
                       React.createElement(
                         "span",
-                        { style: { fontWeight: 800, color: "#58CC02" } },
+                        { style: { fontWeight: 800, color: "var(--green)" } },
                         d.goals,
                       ),
                     ),
@@ -1838,7 +1905,7 @@
             { style: { ...E, flex: 1, textAlign: "center" } },
             React.createElement(
               "div",
-              { style: { fontSize: 20, fontWeight: 900, color: "#58CC02" } },
+              { style: { fontSize: 20, fontWeight: 900, color: "var(--green)" } },
               t,
             ),
             React.createElement(
@@ -1846,7 +1913,7 @@
               {
                 style: {
                   fontSize: 10.5,
-                  color: "#777777",
+                  color: "var(--muted)",
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
                 },
@@ -1864,7 +1931,7 @@
                 alignItems: "center",
                 gap: 6,
                 margin: "18px 0 10px",
-                color: "#777777",
+                color: "var(--muted)",
               },
             },
             e,
@@ -1914,7 +1981,7 @@
                   style: {
                     background: "none",
                     border: "none",
-                    color: "#777777",
+                    color: "var(--muted)",
                     fontSize: 13,
                     marginBottom: 10,
                     cursor: "pointer",
@@ -1952,7 +2019,7 @@
                   ),
                   React.createElement(
                     "div",
-                    { style: { fontSize: 12, color: "#777777" } },
+                    { style: { fontSize: 12, color: "var(--muted)" } },
                     h.length,
                     " jogadores \xB7 M\xE9dia ",
                     m,
@@ -1966,7 +2033,7 @@
                     style: {
                       background: "none",
                       border: "none",
-                      color: "#EA2B2B",
+                      color: "var(--danger)",
                       cursor: "pointer",
                     },
                   },
@@ -1988,19 +2055,19 @@
                   {
                     style: {
                       fontSize: 13,
-                      color: "#777777",
+                      color: "var(--muted)",
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
                     },
                   },
-                  React.createElement(Qt, { size: 14, color: "#58CC02" }),
+                  React.createElement(Qt, { size: 14, color: "var(--green)" }),
                   " Or\xE7amento dispon\xEDvel",
                 ),
                 React.createElement(
                   "span",
                   {
-                    style: { fontWeight: 800, color: "#58CC02", fontSize: 16 },
+                    style: { fontWeight: 800, color: "var(--green)", fontSize: 16 },
                   },
                   L(s.budget),
                 ),
@@ -2030,7 +2097,7 @@
                     "div",
                     {
                       style: {
-                        color: "#777777",
+                        color: "var(--muted)",
                         fontSize: 13,
                         textAlign: "center",
                         padding: 20,
@@ -2058,8 +2125,8 @@
                           style: {
                             fontSize: 10.5,
                             fontWeight: 800,
-                            background: "#F7F9F5",
-                            color: "#58CC02",
+                            background: "var(--surface-soft)",
+                            color: "var(--green)",
                             padding: "3px 6px",
                             borderRadius: 6,
                             border: "1px solid #58CC02",
@@ -2080,7 +2147,7 @@
                             textAlign: "left",
                             cursor: "pointer",
                             padding: 0,
-                            color: "#4B4B4B",
+                            color: "var(--heading)",
                           },
                         },
                         React.createElement(
@@ -2090,7 +2157,7 @@
                         ),
                         React.createElement(
                           "div",
-                          { style: { fontSize: 11.5, color: "#777777" } },
+                          { style: { fontSize: 11.5, color: "var(--muted)" } },
                           g.age,
                           " anos \xB7 valor ",
                           L(g.value),
@@ -2101,7 +2168,7 @@
                         {
                           style: {
                             fontWeight: 800,
-                            color: "#58CC02",
+                            color: "var(--green)",
                             fontSize: 15,
                           },
                         },
@@ -2118,9 +2185,9 @@
                               onClick: () => d(g, s.id),
                               style: {
                                 flex: 1,
-                                background: "#F7F9F5",
+                                background: "var(--surface-soft)",
                                 border: "1px solid #EA2B2B",
-                                color: "#EA2B2B",
+                                color: "var(--danger)",
                                 borderRadius: 8,
                                 padding: "7px 0",
                                 fontSize: 12,
@@ -2138,9 +2205,9 @@
                               onClick: () => f(g, s.id),
                               style: {
                                 flex: 1,
-                                background: "#F7F9F5",
+                                background: "var(--surface-soft)",
                                 border: "1px solid #58CC02",
-                                color: "#58CC02",
+                                color: "var(--green)",
                                 borderRadius: 8,
                                 padding: "7px 0",
                                 fontSize: 12,
@@ -2157,7 +2224,7 @@
                           style: {
                             background: "none",
                             border: "1px solid #AFAFAF",
-                            color: "#777777",
+                            color: "var(--muted)",
                             borderRadius: 8,
                             padding: "7px 10px",
                             fontSize: 12,
@@ -2175,7 +2242,7 @@
           return React.createElement(
             "div",
             null,
-            a && React.createElement(
+            React.createElement(
               "button",
               {
                 className: "tapbtn",
@@ -2198,7 +2265,7 @@
                 "div",
                 {
                   style: {
-                    color: "#777777",
+                    color: "var(--muted)",
                     fontSize: 13,
                     textAlign: "center",
                     padding: 30,
@@ -2243,14 +2310,14 @@
                   ),
                   React.createElement(
                     "div",
-                    { style: { fontSize: 11.5, color: "#777777" } },
+                    { style: { fontSize: 11.5, color: "var(--muted)" } },
                     m.length,
                     " jogadores \xB7 ",
                     L(h.budget),
                     " dispon\xEDvel",
                   ),
                 ),
-                React.createElement(ue, { size: 18, color: "#777777" }),
+                React.createElement(ue, { size: 18, color: "var(--muted)" }),
               );
             }),
           );
@@ -2312,7 +2379,7 @@
               React.createElement(
                 "span",
                 { style: { position: "absolute", left: 10, top: 12 } },
-                React.createElement(Xt, { size: 15, color: "#777777" }),
+                React.createElement(Xt, { size: 15, color: "var(--muted)" }),
               ),
             ),
             React.createElement(
@@ -2385,8 +2452,8 @@
                     style: {
                       fontSize: 10.5,
                       fontWeight: 800,
-                      background: "#F7F9F5",
-                      color: "#58CC02",
+                      background: "var(--surface-soft)",
+                      color: "var(--green)",
                       padding: "3px 6px",
                       borderRadius: 6,
                       border: "1px solid #58CC02",
@@ -2407,7 +2474,7 @@
                       textAlign: "left",
                       cursor: "pointer",
                       padding: 0,
-                      color: "#4B4B4B",
+                      color: "var(--heading)",
                     },
                   },
                   React.createElement(
@@ -2420,7 +2487,7 @@
                       {
                         style: {
                           fontWeight: 800,
-                          color: "#58CC02",
+                          color: "var(--green)",
                           fontSize: 12.5,
                         },
                       },
@@ -2429,7 +2496,7 @@
                   ),
                   React.createElement(
                     "div",
-                    { style: { fontSize: 11.5, color: "#777777" } },
+                    { style: { fontSize: 11.5, color: "var(--muted)" } },
                     x.kind === "free" &&
                       React.createElement(
                         React.Fragment,
@@ -2463,7 +2530,7 @@
                         {
                           style: {
                             fontWeight: 800,
-                            color: "#58CC02",
+                            color: "var(--green)",
                             fontSize: 13,
                             marginBottom: 4,
                           },
@@ -2476,9 +2543,9 @@
                           className: "tapbtn",
                           onClick: () => r(u),
                           style: {
-                            background: "#F7F9F5",
+                            background: "var(--surface-soft)",
                             border: "1px solid #58CC02",
-                            color: "#58CC02",
+                            color: "var(--green)",
                             borderRadius: 8,
                             padding: "6px 10px",
                             fontSize: 11.5,
@@ -2500,8 +2567,8 @@
                   onClick: () => g((u) => u + 30),
                   style: {
                     ...M,
-                    background: "#F7F9F5",
-                    color: "#4B4B4B",
+                    background: "var(--surface-soft)",
+                    color: "var(--heading)",
                     border: "1px solid #58CC02",
                   },
                 },
@@ -2540,7 +2607,7 @@
                       {
                         style: {
                           fontSize: 10.5,
-                          color: "#777777",
+                          color: "var(--muted)",
                           marginTop: 2,
                         },
                       },
@@ -2556,12 +2623,12 @@
         function N({ label: e, value: t }) {
           let l =
             t >= 85
-              ? "#58CC02"
+              ? "var(--green)"
               : t >= 70
-                ? "#58CC02"
+                ? "var(--green)"
                 : t >= 50
                   ? "#FF9600"
-                  : "#EA2B2B";
+                  : "var(--danger)";
           return React.createElement(
             "div",
             { style: { marginBottom: 8 } },
@@ -2572,14 +2639,14 @@
                   display: "flex",
                   justifyContent: "space-between",
                   fontSize: 11.5,
-                  color: "#777777",
+                  color: "var(--muted)",
                   marginBottom: 3,
                 },
               },
               React.createElement("span", null, e),
               React.createElement(
                 "span",
-                { style: { fontWeight: 700, color: "#4B4B4B" } },
+                { style: { fontWeight: 700, color: "var(--heading)" } },
                 t,
               ),
             ),
@@ -2588,7 +2655,7 @@
               {
                 style: {
                   height: 6,
-                  background: "#FFFFFF",
+                  background: "var(--surface)",
                   borderRadius: 4,
                   overflow: "hidden",
                 },
@@ -2645,7 +2712,7 @@
                 React.createElement(
                   "div",
                   {
-                    style: { fontSize: 24, fontWeight: 900, color: "#58CC02" },
+                    style: { fontSize: 24, fontWeight: 900, color: "var(--green)" },
                   },
                   e.overall,
                 ),
@@ -2654,7 +2721,7 @@
                   {
                     style: {
                       fontSize: 10.5,
-                      color: "#777777",
+                      color: "var(--muted)",
                       textTransform: "uppercase",
                     },
                   },
@@ -2674,7 +2741,7 @@
                 React.createElement(
                   "div",
                   {
-                    style: { fontSize: 24, fontWeight: 900, color: "#4B4B4B" },
+                    style: { fontSize: 24, fontWeight: 900, color: "var(--heading)" },
                   },
                   L(e.value),
                 ),
@@ -2683,7 +2750,7 @@
                   {
                     style: {
                       fontSize: 10.5,
-                      color: "#777777",
+                      color: "var(--muted)",
                       textTransform: "uppercase",
                     },
                   },
@@ -2737,8 +2804,8 @@
             {
               style: {
                 fontSize: 11.5,
-                color: "#777777",
-                background: "#F7F9F5",
+                color: "var(--muted)",
+                background: "var(--surface-soft)",
                 border: "1px solid #AFAFAF",
                 borderRadius: 20,
                 padding: "4px 10px",
@@ -2770,7 +2837,7 @@
               ),
               React.createElement(
                 "div",
-                { style: { fontSize: 12, color: "#777777", marginTop: 2 } },
+                { style: { fontSize: 12, color: "var(--muted)", marginTop: 2 } },
                 it[n.position] || n.position,
               ),
               React.createElement(
@@ -2778,7 +2845,7 @@
                 {
                   style: {
                     fontWeight: 800,
-                    color: "#58CC02",
+                    color: "var(--green)",
                     fontSize: 18,
                     marginTop: 8,
                   },
@@ -2815,10 +2882,10 @@
                       borderRadius: 10,
                       cursor: "pointer",
                       background:
-                        f === s.id ? "rgba(212,175,55,0.12)" : "#FFFFFF",
+                        f === s.id ? "rgba(212,175,55,0.12)" : "var(--surface)",
                       border:
                         f === s.id ? "1px solid #58CC02" : "1px solid #AFAFAF",
-                      color: "#4B4B4B",
+                      color: "var(--heading)",
                     },
                   },
                   React.createElement("span", {
@@ -2836,17 +2903,17 @@
                   ),
                   React.createElement(
                     "span",
-                    { style: { fontSize: 12, color: "#777777" } },
+                    { style: { fontSize: 12, color: "var(--muted)" } },
                     L(s.budget),
                   ),
                   f === s.id &&
-                    React.createElement(et, { size: 16, color: "#58CC02" }),
+                    React.createElement(et, { size: 16, color: "var(--green)" }),
                 ),
               ),
               F.length === 0 &&
                 React.createElement(
                   "div",
-                  { style: { fontSize: 12.5, color: "#777777" } },
+                  { style: { fontSize: 12.5, color: "var(--muted)" } },
                   "Crie outro time pra poder comprar.",
                 ),
             ),
@@ -2856,7 +2923,7 @@
                 {
                   style: {
                     fontSize: 12.5,
-                    color: "#EA2B2B",
+                    color: "var(--danger)",
                     marginBottom: 10,
                     display: "flex",
                     gap: 6,
@@ -2901,7 +2968,7 @@
               {
                 style: {
                   fontSize: 11.5,
-                  color: "#777777",
+                  color: "var(--muted)",
                   marginTop: 6,
                   marginBottom: 16,
                 },
@@ -2942,7 +3009,7 @@
                 { style: { ...E, padding: 24 } },
                 React.createElement(pe, {
                   size: 28,
-                  color: "#58CC02",
+                  color: "var(--green)",
                   style: { marginBottom: 8 },
                 }),
                 React.createElement(
@@ -2953,7 +3020,7 @@
                 React.createElement(
                   "div",
                   {
-                    style: { fontSize: 13, color: "#777777", marginBottom: 16 },
+                    style: { fontSize: 13, color: "var(--muted)", marginBottom: 16 },
                   },
                   "Escolha o formato e os times participantes.",
                 ),
@@ -2976,12 +3043,12 @@
                     ...E,
                     textAlign: "center",
                     padding: 28,
-                    background: "#F7F9F5",
+                    background: "var(--surface-soft)",
                   },
                 },
                 React.createElement(tt, {
                   size: 34,
-                  color: "#58CC02",
+                  color: "var(--green)",
                   style: { marginBottom: 10 },
                 }),
                 React.createElement(
@@ -2989,7 +3056,7 @@
                   {
                     style: {
                       fontSize: 12,
-                      color: "#58CC02",
+                      color: "var(--green)",
                       textTransform: "uppercase",
                       letterSpacing: 1.5,
                       fontWeight: 700,
@@ -3004,7 +3071,7 @@
                 ),
                 React.createElement(
                   "div",
-                  { style: { fontSize: 12.5, color: "#777777", marginTop: 4 } },
+                  { style: { fontSize: 12.5, color: "var(--muted)", marginTop: 4 } },
                   e.name,
                 ),
               ),
@@ -3020,8 +3087,8 @@
                   onClick: l,
                   style: {
                     ...M,
-                    background: "#F7F9F5",
-                    color: "#4B4B4B",
+                    background: "var(--surface-soft)",
+                    color: "var(--heading)",
                     border: "1px solid #58CC02",
                   },
                 },
@@ -3064,7 +3131,7 @@
                     {
                       style: {
                         fontSize: 12,
-                        color: "#777777",
+                        color: "var(--muted)",
                         marginBottom: 6,
                         fontWeight: 700,
                       },
@@ -3166,7 +3233,7 @@
                               {
                                 style: {
                                   fontSize: 12,
-                                  color: "#777777",
+                                  color: "var(--muted)",
                                   marginBottom: 6,
                                   fontWeight: 700,
                                 },
@@ -3238,7 +3305,7 @@
                   {
                     style: {
                       fontSize: 12,
-                      color: "#777777",
+                      color: "var(--muted)",
                       marginBottom: 6,
                       fontWeight: 700,
                       letterSpacing: 1,
@@ -3267,7 +3334,7 @@
                           {
                             style: {
                               fontSize: 11.5,
-                              color: "#777777",
+                              color: "var(--muted)",
                               marginTop: -4,
                               marginBottom: 8,
                               paddingLeft: 4,
@@ -3319,7 +3386,7 @@
                   "tr",
                   {
                     style: {
-                      color: "#777777",
+                      color: "var(--muted)",
                       textTransform: "uppercase",
                       fontSize: 10.5,
                     },
@@ -3359,7 +3426,7 @@
                     },
                     React.createElement(
                       "td",
-                      { style: { padding: "6px 4px", color: "#777777" } },
+                      { style: { padding: "6px 4px", color: "var(--muted)" } },
                       n + 1,
                     ),
                     React.createElement(
@@ -3390,13 +3457,49 @@
                     React.createElement("td", { style: O }, a.sg),
                     React.createElement(
                       "td",
-                      { style: { ...O, fontWeight: 800, color: "#58CC02" } },
+                      { style: { ...O, fontWeight: 800, color: "var(--green)" } },
                       a.pts,
                     ),
                   );
                 }),
               ),
             ),
+          );
+        }
+        function SettingsArea({ theme: e, setTheme: t }) {
+          return React.createElement(
+            "div",
+            { style: { paddingBottom: 112, maxWidth: 760, margin: "0 auto" } },
+            React.createElement(Z, { icon: React.createElement("span", null, "⚙️"), text: "Configurações" }),
+            React.createElement(
+              "div",
+              { className: "family-card", style: { padding: 24, marginBottom: 16 } },
+              React.createElement("div", { style: { fontSize: 23, lineHeight: 1.1, fontWeight: 600, color: "var(--heading)", marginBottom: 8 } }, "Aparência"),
+              React.createElement("div", { style: { fontSize: 15, lineHeight: 1.5, color: "var(--muted)", marginBottom: 20 } }, "Escolha como o app aparece neste dispositivo."),
+              React.createElement(
+                "div",
+                { style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 } },
+                [
+                  { key: "light", label: "Light mode", helper: "Fundo creme e superfícies claras." },
+                  { key: "dark", label: "Dark mode", helper: "Contraste confortável para ambientes escuros." },
+                ].map((o) => React.createElement(
+                  "button",
+                  { key: o.key, onClick: () => t(o.key), className: "settings-theme-card" + (e === o.key ? " is-active" : "") },
+                  React.createElement("div", { className: "theme-preview " + o.key }, React.createElement("span"), React.createElement("span"), React.createElement("span")),
+                  React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } },
+                    React.createElement("strong", { style: { color: "var(--heading)", fontSize: 15 } }, o.label),
+                    e === o.key && React.createElement("span", { style: { color: "var(--green)", fontWeight: 700 } }, "✓")
+                  ),
+                  React.createElement("div", { style: { marginTop: 6, color: "var(--muted)", fontSize: 12, lineHeight: 1.45 } }, o.helper)
+                ))
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "family-card", style: { padding: 24 } },
+              React.createElement("div", { style: { fontSize: 19, fontWeight: 600, color: "var(--heading)", marginBottom: 8 } }, "Sobre o tema"),
+              React.createElement("div", { style: { fontSize: 14, color: "var(--muted)", lineHeight: 1.55 } }, "A preferência fica salva somente neste navegador e não altera a visualização dos outros participantes.")
+            )
           );
         }
         function AdminArea({ currentTournament, tournaments, teams, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget }) {
@@ -3409,29 +3512,29 @@
             ),
             React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 900, marginBottom: 14 } }, "Campeonatos"),
-              tournaments.length ? tournaments.map((tournament) => React.createElement("div", { key: tournament.id, style: { display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderBottom: "1px solid #DEDEDE" } },
-                React.createElement("button", { onClick: () => onSelectTournament(tournament.id), style: { flex: 1, background: tournament.id === (currentTournament && currentTournament.id) ? "#D7FFB8" : "#F7F9F5", border: "2px solid #DEDEDE", borderRadius: 12, padding: 10, textAlign: "left", fontWeight: 800, cursor: "pointer" } }, tournament.name),
-                React.createElement("button", { onClick: () => onDeleteTournament(tournament.id), style: { background: "#FFF", color: "#EA2B2B", border: "2px solid #EA2B2B", borderRadius: 12, padding: "9px 12px", cursor: "pointer" } }, "Excluir")
-              )) : React.createElement("div", { style: { color: "#777777" } }, "Nenhum campeonato criado.")
+              tournaments.length ? tournaments.map((tournament) => React.createElement("div", { key: tournament.id, style: { display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderBottom: "1px solid var(--border)" } },
+                React.createElement("button", { onClick: () => onSelectTournament(tournament.id), style: { flex: 1, background: tournament.id === (currentTournament && currentTournament.id) ? "var(--surface-sand)" : "var(--surface)", border: tournament.id === (currentTournament && currentTournament.id) ? "2px solid var(--ink)" : "1px solid var(--border)", borderRadius: 10, padding: 10, textAlign: "left", fontWeight: 800, cursor: "pointer" } }, tournament.name),
+                React.createElement("button", { onClick: () => onDeleteTournament(tournament.id), style: { background: "var(--surface)", color: "var(--danger)", border: "1px solid var(--danger)", borderRadius: 9999, padding: "9px 12px", cursor: "pointer" } }, "Excluir")
+              )) : React.createElement("div", { style: { color: "var(--muted)" } }, "Nenhum campeonato criado.")
             ),
             currentTournament && React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 900, marginBottom: 4 } }, "Criar perfil"),
-              React.createElement("div", { style: { fontSize: 13, color: "#777777", marginBottom: 14 } }, "O perfil será criado dentro de ", currentTournament.name, "."),
+              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginBottom: 14 } }, "O perfil será criado dentro de ", currentTournament.name, "."),
               React.createElement("label", { style: P }, "Nome"),
               React.createElement("input", { style: q, value: profileName, onChange: (event) => setProfileName(event.target.value), placeholder: "Nome do jogador" }),
               React.createElement("label", { style: { ...P, marginTop: 14 } }, "Cor"),
-              React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 } }, se.map((color) => React.createElement("button", { key: color, onClick: () => setProfileColor(color), style: { width: 32, height: 32, borderRadius: 8, background: color, border: profileColor === color ? "3px solid #4B4B4B" : "2px solid transparent", cursor: "pointer" } }))),
+              React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 } }, se.map((color) => React.createElement("button", { key: color, onClick: () => setProfileColor(color), style: { width: 32, height: 32, borderRadius: 8, background: color, border: profileColor === color ? "3px solid var(--ink)" : "2px solid transparent", cursor: "pointer" } }))),
               React.createElement("label", { style: P }, "Moedas iniciais"),
               React.createElement("input", { type: "number", min: 0, style: q, value: profileBudget, onChange: (event) => setProfileBudget(event.target.value) }),
               React.createElement("button", { style: { ...M, ...W }, disabled: !profileName.trim(), onClick: onCreateProfile }, "Criar perfil")
             ),
             currentTournament && React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 900, marginBottom: 4 } }, "Moedas dos jogadores"),
-              React.createElement("div", { style: { fontSize: 13, color: "#777777", marginBottom: 14 } }, currentTournament.name),
+              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginBottom: 14 } }, currentTournament.name),
               teams.length ? teams.map((team) => React.createElement("div", { key: team.id, style: { display: "grid", gridTemplateColumns: "1fr 120px", gap: 10, alignItems: "center", marginBottom: 10 } },
                 React.createElement("div", { style: { fontWeight: 800 } }, team.name),
                 React.createElement("input", { type: "number", min: 0, style: { ...q, padding: "9px 10px" }, value: team.budget, onChange: (event) => onUpdateBudget(team.id, event.target.value) })
-              )) : React.createElement("div", { style: { color: "#777777" } }, "Nenhum perfil neste campeonato.")
+              )) : React.createElement("div", { style: { color: "var(--muted)" } }, "Nenhum perfil neste campeonato.")
             )
           );
         }
@@ -3446,7 +3549,7 @@
                 "div",
                 {
                   style: {
-                    color: "#777777",
+                    color: "var(--muted)",
                     fontSize: 13,
                     textAlign: "center",
                     padding: 30,
@@ -3483,7 +3586,7 @@
                             justifyContent: "space-between",
                             cursor: "pointer",
                             padding: 0,
-                            color: "#4B4B4B",
+                            color: "var(--heading)",
                           },
                         },
                         React.createElement(
@@ -3494,7 +3597,7 @@
                             {
                               style: {
                                 fontSize: 11,
-                                color: "#58CC02",
+                                color: "var(--green)",
                                 fontWeight: 700,
                               },
                             },
@@ -3511,7 +3614,7 @@
                             {
                               style: {
                                 fontSize: 12,
-                                color: "#777777",
+                                color: "var(--muted)",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 4,
@@ -3520,7 +3623,7 @@
                             },
                             React.createElement(tt, {
                               size: 12,
-                              color: "#58CC02",
+                              color: "var(--green)",
                             }),
                             " ",
                             (f = t(n.champion)) == null ? void 0 : f.name,
@@ -3532,7 +3635,7 @@
                             transform: r ? "rotate(180deg)" : "none",
                             transition: "transform 0.15s",
                           },
-                          color: "#777777",
+                          color: "var(--muted)",
                         }),
                       ),
                       r &&
@@ -3544,7 +3647,7 @@
                             {
                               style: {
                                 fontSize: 12,
-                                color: "#777777",
+                                color: "var(--muted)",
                                 marginBottom: 6,
                               },
                             },
@@ -3557,7 +3660,7 @@
                           ),
                           React.createElement(
                             "div",
-                            { style: { fontSize: 12, color: "#777777" } },
+                            { style: { fontSize: 12, color: "var(--muted)" } },
                             n.matches.filter((d) => d.played).length,
                             " partidas disputadas",
                           ),
@@ -3577,8 +3680,8 @@
                 transform: "translateX(-50%)",
                 width: "100%",
                 maxWidth: 760,
-                background: "#FFFFFF",
-                borderTop: "1px solid #DEDEDE",
+                background: "var(--surface)",
+                borderTop: "1px solid var(--border)",
                 display: "flex",
                 padding: "8px 4px 10px",
                 zIndex: 10,
@@ -3589,8 +3692,8 @@
               { key: "teams", icon: Vt, label: "Elenco" },
               { key: "tournament", icon: pe, label: "Campeonato" },
               { key: "market", icon: Xe, label: "Mercado" },
-              { key: "history", icon: ze, label: "Histórico" },
-              ...(l ? [{ key: "admin", icon: qt, label: "Admin" }] : []),
+              { key: "history", icon: ze, label: "Hist\xF3rico" },
+              { key: "settings", icon: SettingsIcon, label: "Ajustes" },
             ].map(({ key: a, icon: n, label: r }) => {
               let f = e === a;
               return React.createElement(
@@ -3613,14 +3716,14 @@
                 },
                 React.createElement(n, {
                   size: 20,
-                  color: f ? "#58CC02" : "#777777",
+                  color: f ? "var(--ink)" : "var(--muted)",
                 }),
                 React.createElement(
                   "span",
                   {
                     style: {
                       fontSize: 10,
-                      color: f ? "#58CC02" : "#777777",
+                      color: f ? "var(--ink)" : "var(--muted)",
                       fontWeight: f ? 700 : 500,
                     },
                   },
@@ -3650,7 +3753,7 @@
               {
                 onClick: (a) => a.stopPropagation(),
                 style: {
-                  background: "#FFFFFF",
+                  background: "var(--surface)",
                   borderTop: "1px solid #D7FFB8",
                   borderRadius: "18px 18px 0 0",
                   padding: 20,
@@ -3682,7 +3785,7 @@
                     style: {
                       background: "none",
                       border: "none",
-                      color: "#777777",
+                      color: "var(--muted)",
                       cursor: "pointer",
                     },
                   },
@@ -3759,12 +3862,12 @@
                       borderRadius: 10,
                       cursor: "pointer",
                       background:
-                        t.format === d.k ? "rgba(212,175,55,0.12)" : "#FFFFFF",
+                        t.format === d.k ? "rgba(212,175,55,0.12)" : "var(--surface)",
                       border:
                         t.format === d.k
                           ? "1px solid #58CC02"
                           : "1px solid #AFAFAF",
-                      color: "#4B4B4B",
+                      color: "var(--heading)",
                     },
                   },
                   React.createElement(
@@ -3775,7 +3878,7 @@
                   React.createElement(
                     "div",
                     {
-                      style: { fontSize: 11.5, color: "#777777", marginTop: 2 },
+                      style: { fontSize: 11.5, color: "var(--muted)", marginTop: 2 },
                     },
                     d.d,
                   ),
@@ -3819,7 +3922,7 @@
               React.createElement(
                 "div",
                 {
-                  style: { fontSize: 12.5, color: "#EA2B2B", marginBottom: 8 },
+                  style: { fontSize: 12.5, color: "var(--danger)", marginBottom: 8 },
                 },
                 "Crie times na aba Elenco primeiro.",
               ),
@@ -3847,9 +3950,9 @@
                       padding: 10,
                       borderRadius: 10,
                       cursor: "pointer",
-                      background: p ? "rgba(47,122,77,0.15)" : "#FFFFFF",
+                      background: p ? "rgba(47,122,77,0.15)" : "var(--surface)",
                       border: p ? "1px solid #58CC02" : "1px solid #AFAFAF",
-                      color: "#4B4B4B",
+                      color: "var(--heading)",
                     },
                   },
                   React.createElement("span", {
@@ -3872,7 +3975,7 @@
                     },
                     d.name,
                   ),
-                  p && React.createElement(et, { size: 16, color: "#58CC02" }),
+                  p && React.createElement(et, { size: 16, color: "var(--green)" }),
                 );
               }),
             ),
@@ -3884,7 +3987,7 @@
                 {
                   style: {
                     fontSize: 12,
-                    color: "#EA2B2B",
+                    color: "var(--danger)",
                     marginBottom: 10,
                     display: "flex",
                     gap: 6,
@@ -3967,7 +4070,7 @@
               ),
               React.createElement(
                 "span",
-                { style: { fontSize: 18, color: "#777777", marginTop: 20 } },
+                { style: { fontSize: 18, color: "var(--muted)", marginTop: 20 } },
                 "\xD7",
               ),
               React.createElement(
@@ -4080,7 +4183,7 @@
                       React.createElement(nt, {
                         size: 12,
                         style: { verticalAlign: -1, marginRight: 5 },
-                        color: "#58CC02",
+                        color: "var(--green)",
                       }),
                       B ? B.name : "?",
                     ),
@@ -4091,7 +4194,7 @@
                         style: {
                           background: "none",
                           border: "none",
-                          color: "#EA2B2B",
+                          color: "var(--danger)",
                           cursor: "pointer",
                         },
                       },
@@ -4121,9 +4224,9 @@
                       width: "100%",
                       padding: "9px 10px",
                       borderRadius: 8,
-                      background: "#FFFFFF",
+                      background: "var(--surface)",
                       border: "1px solid #AFAFAF",
-                      color: "#777777",
+                      color: "var(--muted)",
                       fontSize: 12,
                       cursor: "pointer",
                       display: "flex",
@@ -4145,7 +4248,7 @@
                         top: "105%",
                         left: 0,
                         right: 0,
-                        background: "#FFFFFF",
+                        background: "var(--surface)",
                         border: "1px solid #D7FFB8",
                         borderRadius: 8,
                         zIndex: 5,
@@ -4160,7 +4263,7 @@
                           style: {
                             padding: 10,
                             fontSize: 12,
-                            color: "#777777",
+                            color: "var(--muted)",
                           },
                         },
                         "Sem jogadores no elenco",
@@ -4177,7 +4280,7 @@
                             padding: "8px 10px",
                             fontSize: 12.5,
                             cursor: "pointer",
-                            borderBottom: "1px solid #DEDEDE",
+                            borderBottom: "1px solid var(--border)",
                           },
                         },
                         r.name,
