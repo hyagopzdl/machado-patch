@@ -646,7 +646,23 @@
           }),
           O = { textAlign: "center", padding: "4px 4px" };
         function L(e) {
-          return e + "M";
+          let value = Number(e);
+          return `${Number.isFinite(value) ? value : 0}M`;
+        }
+        function economySettingsOf(tournament) {
+          return {
+            winReward: Math.max(0, Number(tournament && tournament.economySettings && tournament.economySettings.winReward != null ? tournament.economySettings.winReward : 2) || 0),
+            drawReward: Math.max(0, Number(tournament && tournament.economySettings && tournament.economySettings.drawReward != null ? tournament.economySettings.drawReward : 1) || 0),
+          };
+        }
+        function prizeSettingsOf(tournament) {
+          return {
+            firstPlacePrize: Math.max(0, Number(tournament && tournament.finalPrizeSettings && tournament.finalPrizeSettings.firstPlacePrize != null ? tournament.finalPrizeSettings.firstPlacePrize : 20) || 0),
+            lastPlacePercentage: Math.min(100, Math.max(0, Number(tournament && tournament.finalPrizeSettings && tournament.finalPrizeSettings.lastPlacePercentage != null ? tournament.finalPrizeSettings.lastPlacePercentage : 50) || 0)),
+          };
+        }
+        function financeEntry(type, teamId, amount, label, referenceId, balanceBefore, createdAt = Date.now()) {
+          return { id: _(), type, teamId, amount: Number(amount) || 0, label, referenceId: referenceId || null, balanceBefore: Number(balanceBefore) || 0, balanceAfter: (Number(balanceBefore) || 0) + (Number(amount) || 0), createdAt };
         }
         const POSITION_COLORS = {
           GK: "#d6a600", CWP: "#377dff", CB: "#377dff", CBT: "#377dff", SB: "#2f8ee5", WB: "#20a9d6",
@@ -713,6 +729,8 @@
             [Re, Ae] = b(null),
             [offerModal, setOfferModal] = b(null),
             [saleModal, setSaleModal] = b(null),
+            [balanceHistoryOpen, setBalanceHistoryOpen] = b(false),
+            [rulesOpen, setRulesOpen] = b(false),
             [matchWizard, setMatchWizard] = b(null),
             [adminProfileName, setAdminProfileName] = b(""),
             [adminProfileColor, setAdminProfileColor] = b(se[0]),
@@ -927,7 +945,11 @@
                   participants: [],
                   teamIds: [],
                   createdAt: Date.now(),
-                  context: { teams: [], ownership: {}, playerStats: {}, transfers: [], tradeOffers: {}, matches: [] },
+                  marketSettings: { depreciationPct: 10 },
+                  rosterSettings: { minPlayers: 23, maxPlayers: 30 },
+                  economySettings: { winReward: 2, drawReward: 1 },
+                  finalPrizeSettings: { firstPlacePrize: 20, lastPlacePercentage: 50 },
+                  context: { teams: [], ownership: {}, playerStats: {}, transfers: [], tradeOffers: {}, financialTransactions: [], matches: [] },
                 };
                 ae([...m, tournament]);
                 targetTournamentId = tournament.id;
@@ -1188,8 +1210,11 @@
                 let item = offers[id];
                 if (item.playerId === offer.playerId && isOfferOpen(item)) offers[id] = { ...item, status: id === offerId ? "accepted" : "invalid", updatedAt: now };
               });
-              let transfers = [{ id: _(), playerId: offer.playerId, playerName: offer.playerName, fromTeamId: seller.id, toTeamId: buyer.id, price: offer.currentAmount, date: new Date().toLocaleDateString("pt-BR"), offerId }, ...(Array.isArray(context.transfers) ? context.transfers : [])];
-              list[index] = { ...tournament, context: { ...context, teams, ownership, tradeOffers: offers, transfers } };
+              let transfers = [{ id: _(), playerId: offer.playerId, playerName: offer.playerName, fromTeamId: seller.id, toTeamId: buyer.id, price: offer.currentAmount, type: "user_transfer", createdAt: now, date: new Date().toLocaleDateString("pt-BR"), offerId }, ...(Array.isArray(context.transfers) ? context.transfers : [])];
+              let financialTransactions = Array.isArray(context.financialTransactions) ? [...context.financialTransactions] : [];
+              financialTransactions.unshift(financeEntry("player_purchase", buyer.id, -offer.currentAmount, `Compra de ${offer.playerName}`, offer.id, (Number(buyer.budget)||0) + offer.currentAmount, now));
+              financialTransactions.unshift(financeEntry("player_sale", seller.id, offer.currentAmount, `Venda de ${offer.playerName}`, offer.id, (Number(seller.budget)||0) - offer.currentAmount, now));
+              list[index] = { ...tournament, context: { ...context, teams, ownership, tradeOffers: offers, transfers, financialTransactions } };
               return list;
             }, (error, committed) => {
               if (error) window.alert("Não foi possível concluir a transferência. Tente novamente.");
@@ -1211,6 +1236,12 @@
                     : z,
               ),
               w = { ...c, [o.id]: { teamId: y, forSale: !1, price: null } };
+            let financialTransactions = Array.isArray(R && R.context && R.context.financialTransactions) ? [...R.context.financialTransactions] : [];
+            financialTransactions.unshift(financeEntry("market_purchase", y, -S, `Compra de ${o.name}`, o.id, Number(D.budget) || 0));
+            if (i.kind === "listed" && i.teamId) {
+              let seller = $(i.teamId);
+              financialTransactions.unshift(financeEntry("player_sale", i.teamId, S, `Venda de ${o.name}`, o.id, Number(seller && seller.budget) || 0));
+            }
             (Se(A),
               ne(w),
               vt([
@@ -1221,10 +1252,13 @@
                   fromTeamId: i.kind === "listed" ? i.teamId : null,
                   toTeamId: y,
                   price: S,
+                  type: i.kind === "listed" ? "user_transfer" : "market_purchase",
+                  createdAt: Date.now(),
                   date: new Date().toLocaleDateString("pt-BR"),
                 },
                 ...k,
               ]),
+              saveContextField("financialTransactions", financialTransactions),
               he(null));
           }
           function Ct(o, i) {
@@ -1272,7 +1306,10 @@
                 }
               });
               let transfers = [{ id: _(), playerId: o.id, playerName: o.name, fromTeamId: teamId, toTeamId: null, price: amount, marketValue: o.value, depreciationPct, type: "market_sale", date: new Date().toLocaleDateString("pt-BR"), createdAt: now }, ...(Array.isArray(context.transfers) ? context.transfers : [])];
-              return { ...tournament, context: { ...context, teams, ownership, tradeOffers, transfers } };
+              let financialTransactions = Array.isArray(context.financialTransactions) ? [...context.financialTransactions] : [];
+              let currentTeam = (Array.isArray(context.teams) ? context.teams : []).find((team) => team.id === teamId);
+              financialTransactions.unshift(financeEntry("market_sale", teamId, amount, `Venda de ${o.name} ao mercado`, o.id, Number(currentTeam && currentTeam.budget) || 0, now));
+              return { ...tournament, context: { ...context, teams, ownership, tradeOffers, transfers, financialTransactions } };
             };
             let db = Ee();
             if (!db) {
@@ -1356,7 +1393,9 @@
               champion: null, createdAt: Date.now(),
               marketSettings: { depreciationPct: 10 },
               rosterSettings: { minPlayers: 23, maxPlayers: 30 },
-              context: { teams: [], ownership: {}, playerStats: {}, transfers: [], tradeOffers: {} },
+              economySettings: { winReward: 2, drawReward: 1 },
+              finalPrizeSettings: { firstPlacePrize: 20, lastPlacePercentage: 50 },
+              context: { teams: [], ownership: {}, playerStats: {}, transfers: [], tradeOffers: {}, financialTransactions: [] },
             };
             ae([...m, tournament]);
             setAdminTournamentName("");
@@ -1474,7 +1513,7 @@
               teamIds: teams.filter((team) => team.active !== false && (!Array.isArray(R.participants) || R.participants.includes(team.profileId))).map((team) => team.id),
               resetAt: Date.now(),
               resetByProfileId: te && typeof te === "object" ? te.id : null,
-              context: { ...context, teams, ownership: {}, playerStats: {}, transfers: [], tradeOffers: {} },
+              context: { ...context, teams, ownership: {}, playerStats: {}, transfers: [], tradeOffers: {}, financialTransactions: [] },
             };
             ae(m.map((item) => item.id === R.id ? resetTournament : item));
             he(null); Ae(null); ve(null); setMatchWizard(null);
@@ -1487,7 +1526,38 @@
           }
           function updateAdminBudget(teamId, value) {
             let amount = Math.max(0, Number(value) || 0);
+            let current = p.find((team) => team.id === teamId);
+            let before = Number(current && current.budget) || 0;
             Se(p.map((team) => team.id === teamId ? { ...team, budget: amount } : team));
+            if (amount !== before) {
+              let transactions = Array.isArray(R && R.context && R.context.financialTransactions) ? [...R.context.financialTransactions] : [];
+              transactions.unshift(financeEntry("admin_adjustment", teamId, amount - before, "Ajuste manual do administrador", null, before));
+              saveContextField("financialTransactions", transactions);
+            }
+          }
+          function updateEconomyRules(winReward, drawReward, firstPlacePrize, lastPlacePercentage) {
+            if (!R) return;
+            let economySettings = { winReward: Math.max(0, Number(winReward)||0), drawReward: Math.max(0, Number(drawReward)||0) };
+            let finalPrizeSettings = { firstPlacePrize: Math.max(0, Number(firstPlacePrize)||0), lastPlacePercentage: Math.min(100, Math.max(0, Number(lastPlacePercentage)||0)) };
+            ae(m.map((item)=>item.id===R.id ? { ...item, economySettings, finalPrizeSettings } : item));
+          }
+          function finishCurrentTournament() {
+            if (!R || R.status === "finished") return;
+            let activeTeams = p.filter((team)=>team && team.active !== false);
+            let played = (Array.isArray(R.matches)?R.matches:[]).filter((match)=>match && match.played && match.status !== "voided" && !match.bye);
+            let missing = activeTeams.filter((team)=>!played.some((match)=>match.homeId===team.id || match.awayId===team.id));
+            if (missing.length && !window.confirm(`${missing.length} participante(s) ainda não jogaram. Encerrar mesmo assim?`)) return;
+            let rows = buildStandings(R, activeTeams);
+            if (!rows.length) return;
+            let prize = prizeSettingsOf(R), lastPrize = prize.firstPlacePrize * prize.lastPlacePercentage / 100;
+            let awards = rows.map((row,index)=>{ let ratio = rows.length<=1?0:index/(rows.length-1); return { teamId: row.id, position:index+1, amount: Math.round((prize.firstPlacePrize - (prize.firstPlacePrize-lastPrize)*ratio)*100)/100 }; });
+            let preview = awards.map((award)=>`${award.position}º ${($(award.teamId)||{}).name || "Time"}: ${L(award.amount)}`).join("\n");
+            if (!window.confirm(`Encerrar ${R.name} e distribuir a premiação?\n\n${preview}`)) return;
+            let now=Date.now();
+            let teams = p.map((team)=>{ let award=awards.find((item)=>item.teamId===team.id); return award?{...team,budget:(Number(team.budget)||0)+award.amount}:team; });
+            let transactions = Array.isArray(R.context && R.context.financialTransactions)?[...R.context.financialTransactions]:[];
+            awards.forEach((award)=>{ let team=p.find((item)=>item.id===award.teamId); transactions.unshift(financeEntry("final_prize",award.teamId,award.amount,`${award.position}º lugar em ${R.name}`,R.id,Number(team&&team.budget)||0,now)); });
+            ae(m.map((item)=>item.id===R.id?{...item,status:"finished",champion:rows[0].id,finishedAt:now,finalAwards:awards,context:{...(item.context||{}),teams,financialTransactions:transactions}}:item));
           }
           function updateMarketDepreciation(value) {
             if (!R) return;
@@ -1521,19 +1591,15 @@
             let left = p.find((team) => team.id === data.leftTeamId), right = p.find((team) => team.id === data.rightTeamId);
             if (!left || !right || left.id === right.id) return;
             let leftScore = Math.max(0, Number(data.leftScore) || 0), rightScore = Math.max(0, Number(data.rightScore) || 0);
-            let scorers = [];
-            let match = {
-              id: _(), stage: "league", round: 0, manual: true, played: true, bye: false,
-              homeId: left.id, awayId: right.id, homeScore: leftScore, awayScore: rightScore,
-              homeTeamNameSnapshot: left.name, awayTeamNameSnapshot: right.name,
-              homeProfileId: left.profileId || null, awayProfileId: right.profileId || null,
-              scorers, playedAt: data.playedAt || Date.now(), createdAt: Date.now(),
-              createdByProfileId: te && typeof te === "object" ? te.id : null,
-              status: "confirmed"
-            };
-            let nextStats = { ...s };
-            scorers.forEach((item) => { nextStats[item.playerId] = { goals: ((nextStats[item.playerId] && nextStats[item.playerId].goals) || 0) + 1 }; });
-            ae(m.map((item) => item.id === R.id ? { ...item, matches: [...(Array.isArray(item.matches) ? item.matches : []), match], context: { ...(item.context || {}), playerStats: nextStats } } : item));
+            let now = Date.now(), matchId = _(), rewards = economySettingsOf(R);
+            let rewardLeft = leftScore > rightScore ? rewards.winReward : leftScore === rightScore ? rewards.drawReward : 0;
+            let rewardRight = rightScore > leftScore ? rewards.winReward : leftScore === rightScore ? rewards.drawReward : 0;
+            let match = { id: matchId, stage:"league", round:0, manual:true, played:true, bye:false, homeId:left.id, awayId:right.id, homeScore:leftScore, awayScore:rightScore, homeTeamNameSnapshot:left.name, awayTeamNameSnapshot:right.name, homeProfileId:left.profileId||null, awayProfileId:right.profileId||null, scorers:[], playedAt:data.playedAt||now, createdAt:now, createdByProfileId:te&&typeof te==="object"?te.id:null, status:"confirmed", economyRewards:{ [left.id]:rewardLeft, [right.id]:rewardRight } };
+            let context = R.context || {}, teams = p.map((team)=>team.id===left.id?{...team,budget:(Number(team.budget)||0)+rewardLeft}:team.id===right.id?{...team,budget:(Number(team.budget)||0)+rewardRight}:team);
+            let transactions = Array.isArray(context.financialTransactions)?[...context.financialTransactions]:[];
+            if(rewardLeft) transactions.unshift(financeEntry(leftScore>rightScore?"match_win_reward":"match_draw_reward",left.id,rewardLeft,leftScore>rightScore?`Vitória contra ${right.name}`:`Empate contra ${right.name}`,matchId,Number(left.budget)||0,now));
+            if(rewardRight) transactions.unshift(financeEntry(rightScore>leftScore?"match_win_reward":"match_draw_reward",right.id,rewardRight,rightScore>leftScore?`Vitória contra ${left.name}`:`Empate contra ${left.name}`,matchId,Number(right.budget)||0,now));
+            ae(m.map((item)=>item.id===R.id?{...item,matches:[...(Array.isArray(item.matches)?item.matches:[]),match],context:{...(item.context||{}),teams,financialTransactions:transactions}}:item));
             setMatchWizard(null);
           }
           function deleteQuickMatch(match) {
@@ -1547,10 +1613,13 @@
               if (!item || !item.playerId) return;
               nextStats[item.playerId] = { goals: Math.max(0, ((nextStats[item.playerId] && nextStats[item.playerId].goals) || 0) - 1) };
             });
+            let context = R.context || {}, rewards = match.economyRewards || {}, teams = p.map((team)=>{ let amount=Number(rewards[team.id])||0; return amount?{...team,budget:Math.max(0,(Number(team.budget)||0)-amount)}:team; });
+            let transactions = Array.isArray(context.financialTransactions)?[...context.financialTransactions]:[];
+            Object.entries(rewards).forEach(([teamId,amount])=>{ if(Number(amount)>0){ let team=p.find((item)=>item.id===teamId); transactions.unshift(financeEntry("match_reward_reversal",teamId,-Number(amount),`Estorno de partida anulada`,match.id,Number(team&&team.budget)||0)); }});
             ae(m.map((item) => item.id === R.id ? {
               ...item,
               matches: (Array.isArray(item.matches) ? item.matches : []).map((entry) => entry.id === match.id ? { ...entry, status: "voided", voidedAt: Date.now(), voidedByProfileId: currentProfileId } : entry),
-              context: { ...(item.context || {}), playerStats: nextStats }
+              context: { ...(item.context || {}), playerStats: nextStats, teams, financialTransactions: transactions }
             } : item));
           }
           function Et() {
@@ -2008,6 +2077,7 @@
                           tournament: R, tournaments: m.filter((item) => item.status !== "finished"), teams: p,
                           teamById: $, profiles: x, onSelectTournament: viewTournament, onDeleteMatch: deleteQuickMatch, currentProfile: te, isAdmin: isAdminProfile(te),
                           onOpenTeam: (teamId) => setViewedTeamId(teamId),
+                          onOpenRules: () => setRulesOpen(true),
                         }),
                       Y === "teams" &&
                         React.createElement(io, {
@@ -2055,6 +2125,8 @@
                           onDeleteProfile: deleteGlobalProfile, onResetTournament: resetCurrentTournament,
                           onUpdateMarketDepreciation: updateMarketDepreciation,
                           onUpdateRosterRules: updateRosterRules,
+                          onUpdateEconomyRules: updateEconomyRules,
+                          onFinishTournament: finishCurrentTournament,
                           catalog: n, onImportRosters: importRosterPlan,
                         }),
                       Y === "profile" &&
@@ -2063,6 +2135,7 @@
                           stats: s, matches: R && Array.isArray(R.matches) ? R.matches : [], transfers: k,
                           theme: theme, setTheme: setTheme, onUpdateProfile: updateGlobalProfile,
                           onUpdateTeamName: updateCurrentTeamName, onSwitchProfile: ht,
+                          onOpenBalanceHistory: () => setBalanceHistoryOpen(true),
                         }),
                     ),
                     R && R.status !== "finished" && (ProfileTeam || isAdminProfile(te)) && p.filter((team) => team && team.active !== false).length >= 2 &&
@@ -2194,6 +2267,8 @@
                         onClose: () => setOfferModal(null),
                         onConfirm: sendTradeOffer,
                       }),
+                    balanceHistoryOpen && ProfileTeam && React.createElement(BalanceHistoryModal, { team: ProfileTeam, transactions: R && R.context && Array.isArray(R.context.financialTransactions) ? R.context.financialTransactions : [], onClose:()=>setBalanceHistoryOpen(false) }),
+                    rulesOpen && R && React.createElement(ChampionshipRulesModal, { tournament:R, onClose:()=>setRulesOpen(false) }),
                     saleModal &&
                       React.createElement(MarketSaleModal, {
                         data: saleModal,
@@ -3007,7 +3082,7 @@
           function playerAction(player, status, activeOffer) {
             if (!(status.kind === "free" || (status.teamId && (!activeTeam || status.teamId !== activeTeam.id)))) return null;
             let price = status.kind === "free" ? player.value : status.kind === "listed" && status.price ? status.price : player.value;
-            let insufficient = status.kind === "free" && (!activeTeam || Number(activeTeam.budget || 0) < Number(price || 0));
+            let insufficient = status.kind === "free" && activeTeam && Number(activeTeam.budget || 0) < Number(price || 0);
             return React.createElement(
               "button",
               {
@@ -3111,7 +3186,7 @@
               ),
             ),
             marketSection === "negotiations"
-              ? React.createElement(TradeOffersArea, { offers, catalog: catalogMap, teamById: l, activeTeam, onAccept: onAcceptOffer, onUpdate: onUpdateOffer, onOpenDetail: f, onExplorePlayers: () => setMarketSection("all") })
+              ? React.createElement(TradeOffersArea, { offers, catalog: catalogMap, teamById: l, activeTeam, transfers: d, onAccept: onAcceptOffer, onUpdate: onUpdateOffer, onOpenDetail: f, onExplorePlayers: () => setMarketSection("all") })
               : marketSection === "recommended"
                 ? React.createElement(
                     React.Fragment,
@@ -3491,6 +3566,19 @@
           );
         }
 
+        function EconomyAdminForm({ tournament, onSave }) {
+          let economy=economySettingsOf(tournament), prize=prizeSettingsOf(tournament);
+          let [win,setWin]=b(economy.winReward), [draw,setDraw]=b(economy.drawReward), [first,setFirst]=b(prize.firstPlacePrize), [last,setLast]=b(prize.lastPlacePercentage);
+          return React.createElement("div", null, React.createElement("div", { style:{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10 } }, [["Vitória",win,setWin],["Empate",draw,setDraw],["Prêmio do 1º",first,setFirst],["Último (% do 1º)",last,setLast]].map(([label,value,setter])=>React.createElement("label", { key:label,style:{ fontSize:11,color:"var(--muted)" } }, label, React.createElement("input", { type:"number",min:0,max:label.includes("%")?100:999,value,onChange:(e)=>setter(e.target.value),style:{ ...q,marginTop:6 } })))), React.createElement("button", { onClick:()=>onSave(win,draw,first,last),style:{ ...M,marginTop:12 } }, "Salvar regras"));
+        }
+        function BalanceHistoryModal({ team, transactions, onClose }) {
+          let items=(Array.isArray(transactions)?transactions:[]).filter((item)=>item&&item.teamId===team.id).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+          return ReactDOM.createPortal(React.createElement("div", { className:"sports-modal-overlay",onClick:onClose,style:{ position:"fixed",inset:0,zIndex:1200,display:"grid",placeItems:"center",padding:16,background:"rgba(0,0,0,.72)",backdropFilter:"blur(12px)" } }, React.createElement("div", { onClick:(e)=>e.stopPropagation(),style:{ width:"min(560px,100%)",maxHeight:"82vh",overflow:"auto",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:24,padding:20 } }, React.createElement("div", { style:{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 } }, React.createElement("div", null, React.createElement("div", { style:{ fontSize:12,color:"var(--muted)" } }, "Saldo atual"), React.createElement("strong", { style:{ fontSize:28,color:"var(--green)" } }, L(team.budget||0))), React.createElement("button", { onClick:onClose,style:{ width:34,height:34,borderRadius:"50%",border:"1px solid var(--border)",background:"var(--surface-soft)",color:"var(--heading)" } }, "×")), items.map((item)=>React.createElement("div", { key:item.id,style:{ display:"grid",gridTemplateColumns:"1fr auto",gap:12,padding:"12px 0",borderBottom:"1px solid var(--border)" } }, React.createElement("div", null, React.createElement("div", { style:{ fontWeight:750,fontSize:13.5 } }, item.label||"Movimentação"), React.createElement("div", { style:{ fontSize:10.5,color:"var(--muted)",marginTop:3 } }, new Date(item.createdAt||Date.now()).toLocaleString("pt-BR"))), React.createElement("strong", { style:{ color:Number(item.amount)>=0?"var(--green)":"var(--danger)" } }, `${Number(item.amount)>=0?"+ ":"− "}${L(Math.abs(Number(item.amount)||0))}`))), !items.length&&React.createElement("div", { style:{ color:"var(--muted)",textAlign:"center",padding:24 } }, "Nenhuma movimentação registrada ainda."))), document.body);
+        }
+        function ChampionshipRulesModal({ tournament, onClose }) {
+          let economy=economySettingsOf(tournament), prize=prizeSettingsOf(tournament), roster=tournament.rosterSettings||{minPlayers:23,maxPlayers:30}, depreciation=tournament.marketSettings&&tournament.marketSettings.depreciationPct!=null?tournament.marketSettings.depreciationPct:10;
+          return React.createElement(ee, { title:"Regras do campeonato",onClose }, [["Vitória",`3 pontos · ${L(economy.winReward)}`],["Empate",`1 ponto · ${L(economy.drawReward)}`],["Derrota","0 pontos · 0M"],["Premiação final",`${L(prize.firstPlacePrize)} no 1º · último recebe ${prize.lastPlacePercentage}%`],["Elenco",`${roster.minPlayers} a ${roster.maxPlayers} jogadores`],["Venda ao mercado",`${depreciation}% de depreciação`]].map(([label,value])=>React.createElement("div", { key:label,style:{ display:"flex",justifyContent:"space-between",gap:14,padding:"12px 0",borderBottom:"1px solid var(--border)",fontSize:13 } }, React.createElement("span", { style:{ color:"var(--muted)" } }, label), React.createElement("strong", { style:{ textAlign:"right" } }, value))));
+        }
         function MarketSaleModal({ data, onClose, onConfirm }) {
           let player = data && data.player;
           if (!player) return null;
@@ -3598,7 +3686,7 @@
           );
         }
 
-        function TradeOffersArea({ offers, catalog, teamById, activeTeam, onAccept, onUpdate, onOpenDetail, onExplorePlayers }) {
+        function TradeOffersArea({ offers, catalog, teamById, activeTeam, transfers, onAccept, onUpdate, onOpenDetail, onExplorePlayers }) {
           let [section, setSection] = b("received"), [counterId, setCounterId] = b(null), [counterValue, setCounterValue] = b(0);
           if (!activeTeam) return React.createElement("div", { style: { ...E, padding: 24, textAlign: "center", color: "var(--muted)" } }, "Este perfil não possui um time neste campeonato.");
           let now = Date.now();
@@ -3644,7 +3732,18 @@
                   React.createElement("button", { style: { ...M, color: "var(--danger)", flex: 1 }, onClick: () => onUpdate(offer.id, isSeller ? "decline" : "cancel") }, isSeller ? "Recusar" : "Cancelar oferta")
                 )
               );
-            })
+            }),
+            React.createElement("section", { style:{ marginTop:26 } },
+              React.createElement("h3", { style:{ margin:"0 0 12px",fontSize:17 } }, "Histórico de transferências"),
+              (Array.isArray(transfers)?transfers:[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,30).map((transfer)=>{
+                let buyer=transfer.toTeamId?teamById(transfer.toTeamId):null, seller=transfer.fromTeamId?teamById(transfer.fromTeamId):null;
+                return React.createElement("div", { key:transfer.id, style:{ ...E,padding:14,display:"grid",gridTemplateColumns:"1fr auto",gap:10,alignItems:"center" } },
+                  React.createElement("div", null, React.createElement("strong", { style:{ display:"block",fontSize:14 } }, transfer.playerName || "Jogador"), React.createElement("span", { style:{ fontSize:11.5,color:"var(--muted)" } }, transfer.type==="market_sale"?`${seller?seller.name:"Um time"} vendeu ao mercado`:seller?`${buyer?buyer.name:"Um time"} comprou de ${seller.name}`:`${buyer?buyer.name:"Um time"} comprou do mercado`)),
+                  React.createElement("strong", { style:{ color:"var(--green)" } }, L(transfer.price||0))
+                );
+              }),
+              !(Array.isArray(transfers)&&transfers.length) && React.createElement("div", { style:{ color:"var(--muted)",fontSize:12 } }, "Nenhuma transferência realizada ainda.")
+            )
           );
         }
 
@@ -4169,7 +4268,7 @@
             ),
           );
         }
-        function ProfileArea({ profile, team, tournament, squad, stats, matches, transfers, theme, setTheme, onUpdateProfile, onUpdateTeamName, onSwitchProfile }) {
+        function ProfileArea({ profile, team, tournament, squad, stats, matches, transfers, theme, setTheme, onUpdateProfile, onUpdateTeamName, onSwitchProfile, onOpenBalanceHistory }) {
           let item = typeof profile === "object" && profile ? profile : { name: String(profile || "") };
           let [name, setName] = b(item.name || ""), [teamName, setTeamName] = b(team ? team.name : ""), [editing, setEditing] = b(false);
           He(() => { setName(item.name || ""); setTeamName(team ? team.name : ""); }, [item.id, item.name, team && team.id, team && team.name]);
@@ -4202,7 +4301,8 @@
               tournament && React.createElement("div", { style:{ color:"var(--green)", fontSize:12, fontWeight:700, marginTop:8 } }, tournament.name)
             ),
             team && React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10, marginBottom: 16 } },
-              [["Saldo", `${team.budget || 0} moedas`], ["Elenco", `${squad.length} jogadores`], ["Partidas", played.length], ["Campanha", `${wins}V · ${draws}E · ${losses}D`], ["Gols marcados", goalsFor], ["Artilharia do elenco", goals]].map(([label,value]) => React.createElement("div", { key: label, className: "family-card", style: { padding: 18 } }, React.createElement("div", { style: { fontSize: 12, color: "var(--muted)", marginBottom: 6 } }, label), React.createElement("strong", { style: { fontSize: 18, color: "var(--heading)" } }, value)))
+              [["Saldo", L(team.budget || 0)], ["Elenco", `${squad.length} jogadores`], ["Partidas", played.length], ["Campanha", `${wins}V · ${draws}E · ${losses}D`], ["Gols marcados", goalsFor], ["Artilharia do elenco", goals]].map(([label,value]) => React.createElement("button", { key: label, onClick:label==="Saldo"?onOpenBalanceHistory:undefined, className: "family-card", style: { padding: 18, textAlign:"left", color:"inherit", cursor:label==="Saldo"?"pointer":"default", width:"100%" } }, React.createElement("div", { style: { fontSize: 12, color: "var(--muted)", marginBottom: 6 } }, label), React.createElement("strong", { style: { fontSize: 18, color: "var(--heading)" } }, value))),
+              React.createElement("div", { className:"family-card", style:{ padding:18, gridColumn:"1 / -1" } }, React.createElement("div", { style:{ fontSize:12,color:"var(--muted)",marginBottom:10 } }, "Últimas partidas"), React.createElement("div", { style:{ display:"flex",gap:8,alignItems:"center" } }, played.slice().sort((a,b)=>(a.playedAt||a.createdAt||0)-(b.playedAt||b.createdAt||0)).slice(-6).map((match)=>{ let isHome=match.homeId===team.id, mine=isHome?Number(match.homeScore)||0:Number(match.awayScore)||0, other=isHome?Number(match.awayScore)||0:Number(match.homeScore)||0, result=mine>other?"V":mine<other?"D":"E"; return React.createElement("span", { key:match.id, style:{ width:30,height:30,borderRadius:9,display:"grid",placeItems:"center",fontWeight:850,background:result==="V"?"rgba(0,201,120,.18)":result==="D"?"rgba(255,43,58,.18)":"rgba(255,187,38,.18)",color:result==="V"?"#00c978":result==="D"?"#ff2b3a":"#ffbb26" } }, result); })))
             ),
             editing && React.createElement("div", { className: "family-card", style: { padding: 24, marginBottom: 16 } },
               React.createElement("div", { style: { fontSize: 19, fontWeight: 600, marginBottom: 16 } }, "Editar perfil"),
@@ -4282,7 +4382,7 @@
           return { owners, entries, total: entries.length };
         }
 
-        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onUpdateMarketDepreciation, onUpdateRosterRules, catalog, onImportRosters }) {
+        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onUpdateMarketDepreciation, onUpdateRosterRules, onUpdateEconomyRules, onFinishTournament, catalog, onImportRosters }) {
           let globalProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.active !== false);
           let participants = currentTournament && Array.isArray(currentTournament.participants) ? currentTournament.participants : [];
           let [importText, setImportText] = b("");
@@ -4409,6 +4509,12 @@
                 })),
                 React.createElement("button", { disabled: importErrors.length > 0, onClick: () => { if (!window.confirm(`Importar ${importPreview.entries.length} jogadores para ${currentTournament.name}?`)) return; onImportRosters({ entries: importPreview.entries.map((entry) => ({ playerId: entry.playerId, teamId: entry.teamId, squadRole: entry.squadRole })) }, importMode); }, style: { ...M, ...W, opacity: importErrors.length ? 0.45 : 1 } }, importErrors.length ? "Resolva as pendências" : "Confirmar importação")
               )
+            ),
+            currentTournament && React.createElement("section", { style:{ ...E,padding:20,marginTop:18 } },
+              React.createElement("h3", { style:{ margin:"0 0 6px" } }, "Economia e premiação"),
+              React.createElement("div", { style:{ fontSize:12,color:"var(--muted)",marginBottom:14,lineHeight:1.5 } }, "Defina recompensas por resultado e a faixa de premiação final."),
+              React.createElement(EconomyAdminForm, { tournament:currentTournament, onSave:onUpdateEconomyRules }),
+              React.createElement("button", { onClick:onFinishTournament, disabled:currentTournament.status==="finished", style:{ ...M,marginTop:14,background:currentTournament.status==="finished"?"var(--surface-soft)":"var(--ink)",color:currentTournament.status==="finished"?"var(--muted)":"var(--surface)",cursor:currentTournament.status==="finished"?"not-allowed":"pointer" } }, currentTournament.status==="finished"?"Campeonato encerrado":"Encerrar campeonato")
             ),
             currentTournament && React.createElement("div", { style: { ...E, border: "1px solid color-mix(in srgb, var(--danger) 40%, var(--border))" } },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--danger)", marginBottom: 4 } }, "Zona de perigo"),
@@ -4570,7 +4676,18 @@
           );
         }
 
-        function TableArea({ tournament, tournaments, teams, teamById, profiles, onSelectTournament, onDeleteMatch, currentProfile, isAdmin, onOpenTeam }) {
+        function buildStandings(tournament, teams) {
+          let rows = (teams || []).filter((team)=>team && team.active !== false).map((team)=>({ id:team.id, name:team.name, team, played:0,wins:0,draws:0,losses:0,gf:0,ga:0,gd:0,pts:0 }));
+          let byId = Object.fromEntries(rows.map((row)=>[row.id,row]));
+          (Array.isArray(tournament && tournament.matches)?tournament.matches:[]).filter((match)=>match && match.played && match.status !== "voided" && !match.bye).forEach((match)=>{
+            let home=byId[match.homeId], away=byId[match.awayId]; if(!home||!away)return;
+            let hs=Number(match.homeScore)||0, as=Number(match.awayScore)||0; home.played++;away.played++;home.gf+=hs;home.ga+=as;away.gf+=as;away.ga+=hs;
+            if(hs>as){home.wins++;away.losses++;home.pts+=3}else if(as>hs){away.wins++;home.losses++;away.pts+=3}else{home.draws++;away.draws++;home.pts++;away.pts++;}
+          });
+          rows.forEach((row)=>row.gd=row.gf-row.ga);
+          return rows.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||String(a.name).localeCompare(String(b.name)));
+        }
+        function TableArea({ tournament, tournaments, teams, teamById, profiles, onSelectTournament, onDeleteMatch, currentProfile, isAdmin, onOpenTeam, onOpenRules }) {
           let [visibleCount, setVisibleCount] = b(20), sentinel = React.useRef(null);
           He(() => { setVisibleCount(20); }, [tournament && tournament.id]);
           let allMatches = tournament && Array.isArray(tournament.matches) ? tournament.matches.filter((match) => match && match.played && !match.bye && match.status !== "voided") : [];
@@ -4612,7 +4729,7 @@
           history.slice(0,visibleCount).forEach((match) => { let label=dayLabel(match.playedAt || match.createdAt); (groups[label] ||= []).push(match); });
           return React.createElement("div", null,
             React.createElement("div", { style:E },
-              React.createElement("div", { style:{ fontSize:21, fontWeight:750, marginBottom:16, letterSpacing:"-.025em" } }, tournament.name),
+              React.createElement("div", { style:{ display:"flex",alignItems:"center",gap:8,marginBottom:16 } }, React.createElement("div", { style:{ fontSize:21, fontWeight:750, letterSpacing:"-.025em" } }, tournament.name), React.createElement("button", { onClick:onOpenRules, title:"Regras do campeonato", style:{ width:26,height:26,borderRadius:"50%",border:"1px solid var(--border)",background:"var(--surface-soft)",color:"var(--muted)",cursor:"pointer",fontWeight:850 } }, "i")),
               standings.length ? React.createElement("div", { style:{ overflowX:"auto" } }, React.createElement("table", { style:{ width:"100%", borderCollapse:"collapse", minWidth:460 } },
                 React.createElement("thead", null, React.createElement("tr", null, ["#","Time","J","V","E","D","SG","PTS"].map((label)=>React.createElement("th", { key:label, style:{ textAlign: label==="Time"?"left":"center", fontSize:11, color:"var(--muted)", padding:"8px 10px", borderBottom:"1px solid var(--border)", ...(label==="PTS"?{position:"sticky",right:0,zIndex:4,background:"var(--surface)",boxShadow:"-10px 0 18px rgba(0,0,0,.12)"}:{}) } }, label)))),
                 React.createElement("tbody", null, standings.map((row,index)=>{ let team=teamById(row.id); return React.createElement("tr", { key:row.id }, React.createElement("td", { style:{ padding:"12px 6px", fontWeight:700, textAlign:"center" } }, index+1), React.createElement("td", { style:{ padding:"12px 6px", fontWeight:650 } }, React.createElement("button", { onClick:()=>team&&onOpenTeam&&onOpenTeam(team.id), disabled:!team, style:{ display:"flex", alignItems:"center", gap:9, background:"none", border:0, padding:0, color:"var(--heading)", font:"inherit", cursor:team?"pointer":"default", textAlign:"left" } }, avatarForTeam(team,30), React.createElement("span", { style:{ textDecoration:team?"underline":"none", textDecorationColor:"color-mix(in srgb, var(--green) 50%, transparent)", textUnderlineOffset:4 } }, team ? team.name : "Time removido"))), [row.pj,row.v,row.e,row.d,row.sg,row.pts].map((value,i)=>React.createElement("td", { key:i, style:{ padding:"12px 10px", textAlign:"center", fontWeight:i===5?850:500, ...(i===5?{position:"sticky",right:0,zIndex:3,background:"var(--surface)",boxShadow:"-10px 0 18px rgba(0,0,0,.12)"}:{}) } }, value))); }))
