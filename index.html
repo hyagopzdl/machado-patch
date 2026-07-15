@@ -3677,18 +3677,48 @@
         function MarketSaleModal({ data, onClose, onConfirm }) {
           let player = data && data.player;
           if (!player) return null;
-          return React.createElement(
+          let modal = React.createElement(
             "div",
-            { className: "modal-backdrop", onClick: onClose },
+            {
+              className: "sports-modal-overlay",
+              onClick: onClose,
+              style: {
+                position: "fixed",
+                inset: 0,
+                zIndex: 1000,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "flex-end",
+                padding: 0,
+                background: "var(--overlay)",
+              },
+            },
             React.createElement(
               "div",
-              { className: "modal-card", onClick: (event) => event.stopPropagation(), style: { maxWidth: 480 } },
+              {
+                className: "sports-modal",
+                role: "dialog",
+                "aria-modal": "true",
+                "aria-labelledby": "market-sale-modal-title",
+                onClick: (event) => event.stopPropagation(),
+                style: {
+                  width: "100%",
+                  maxWidth: 480,
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  background: "var(--surface)",
+                  borderRadius: "26px 26px 0 0",
+                  padding: 20,
+                },
+              },
               React.createElement(
                 "div",
                 { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 22 } },
-                React.createElement("div", null,
+                React.createElement(
+                  "div",
+                  null,
                   React.createElement("div", { style: { fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 750, marginBottom: 7 } }, "Venda imediata"),
-                  React.createElement("h2", { style: { margin: 0, color: "var(--heading)", fontSize: 24, lineHeight: 1.15 } }, "Vender ao mercado?"),
+                  React.createElement("h2", { id: "market-sale-modal-title", style: { margin: 0, color: "var(--heading)", fontSize: 24, lineHeight: 1.15 } }, "Vender ao mercado?"),
                   React.createElement("p", { style: { margin: "8px 0 0", color: "var(--muted)", fontSize: 13.5, lineHeight: 1.5 } }, player.name, " voltará a ficar disponível para contratação."),
                 ),
                 React.createElement("button", { onClick: onClose, "aria-label": "Fechar", style: { width: 38, height: 38, borderRadius: 999, border: "1px solid var(--border)", background: "var(--surface-soft)", color: "var(--heading)", fontSize: 20, cursor: "pointer", flexShrink: 0 } }, "×"),
@@ -3710,12 +3740,15 @@
                 ),
               ),
               React.createElement("div", { style: { padding: "12px 14px", borderRadius: 14, background: "color-mix(in srgb, var(--danger) 9%, transparent)", color: "var(--muted)", fontSize: 12.5, lineHeight: 1.45, marginBottom: 20 } }, "A venda é imediata e não pode ser desfeita. Propostas abertas por este jogador serão encerradas."),
-              React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
+              React.createElement(
+                "div",
+                { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
                 React.createElement("button", { className: "tapbtn", onClick: onClose, style: { ...M, margin: 0, background: "var(--surface-soft)", border: "1px solid var(--border)", color: "var(--heading)" } }, "Cancelar"),
                 React.createElement("button", { className: "tapbtn", onClick: onConfirm, style: { ...M, ...W, margin: 0 } }, "Confirmar venda"),
               ),
             ),
           );
+          return ReactDOM.createPortal(modal, document.body);
         }
 
         function TradeOfferModal({ data, activeTeam, sellerTeam, onClose, onConfirm }) {
