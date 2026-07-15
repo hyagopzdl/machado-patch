@@ -450,6 +450,7 @@
             [baseTransfers, setBaseTransfers] = b([]),
             [B, u] = b({ currentTournamentId: null, seasonCounter: 1 }),
             [x, T] = b([]),
+            [profilesLoaded, setProfilesLoaded] = b(!1),
             [te, me] = b(null),
             [selectedTournamentId, setSelectedTournamentId] = b(eo("pes-selected-tournament")),
             [lt, rt] = b(!1),
@@ -483,6 +484,9 @@
             [adminProfileColor, setAdminProfileColor] = b(se[0]),
             [adminProfileBudget, setAdminProfileBudget] = b(300),
             [adminTournamentName, setAdminTournamentName] = b(""),
+            [setupAdminName, setSetupAdminName] = b("Admin"),
+            [setupTournamentName, setSetupTournamentName] = b("Campeonato 1"),
+            [setupSubmitting, setSetupSubmitting] = b(!1),
             [theme, setTheme] = b(() => {
               let saved = eo("pes-theme");
               return saved === "dark" ? "dark" : "light";
@@ -521,7 +525,7 @@
               Q("meta", (i) =>
                 u(i || { currentTournamentId: null, seasonCounter: 1 }),
               ),
-              Q("profiles", (i) => T(i || [])),
+              Q("profiles", (i) => { T(i || []); setProfilesLoaded(!0); }),
             ];
             return () => o.forEach((i) => i());
           }, []);
@@ -647,6 +651,60 @@
           let Ne = H((o) => {
             (u(o), U("meta", o));
           }, []);
+
+          async function completeInitialSetup() {
+            if (setupSubmitting) return;
+            let adminName = String(setupAdminName || "").trim();
+            let tournamentName = String(setupTournamentName || "").trim();
+            if (!adminName) {
+              window.alert("Informe o nome do perfil administrador.");
+              return;
+            }
+            setSetupSubmitting(!0);
+            try {
+              let adminProfile = {
+                id: _(),
+                name: adminName,
+                color: se[0],
+                role: "admin",
+                active: true,
+                avatar: null,
+                createdAt: Date.now(),
+              };
+              let nextProfiles = [adminProfile];
+              T(nextProfiles);
+              U("profiles", nextProfiles);
+
+              let targetTournamentId = m[0] && m[0].id ? m[0].id : null;
+              if (!targetTournamentId && tournamentName) {
+                let tournament = {
+                  id: _(),
+                  name: tournamentName,
+                  format: "liga",
+                  status: "active",
+                  participants: [],
+                  teamIds: [],
+                  createdAt: Date.now(),
+                  context: { teams: [], ownership: {}, playerStats: {}, transfers: [], tradeOffers: {}, matches: [] },
+                };
+                ae([...m, tournament]);
+                targetTournamentId = tournament.id;
+              }
+
+              me(adminProfile);
+              qe("pes-my-profile", adminProfile);
+              setSelectedTournamentId(targetTournamentId);
+              qe("pes-selected-tournament", targetTournamentId);
+              De(null);
+              oe("admin");
+            } catch (error) {
+              console.error("initial setup failed", error);
+              window.alert("Não foi possível concluir a configuração inicial. Tente novamente.");
+            } finally {
+              setSetupSubmitting(!1);
+            }
+          }
+
           function isAdminProfile(profile) {
             let item = typeof profile === "object" && profile ? profile : { name: String(profile || "") };
             return item.role === "admin" || String(item.name || "").trim().toLowerCase() === "admin";
@@ -1452,7 +1510,7 @@
                   ),
                 ),
               )
-            : e
+            : (e || (lt && !profilesLoaded))
               ? React.createElement(
                   "div",
                   {
@@ -1495,14 +1553,24 @@
                   ),
                 )
               : lt && !te
-                ? React.createElement(oo, {
+                ? (x.length === 0
+                  ? React.createElement(InitialSetup, {
+                      adminName: setupAdminName,
+                      setAdminName: setSetupAdminName,
+                      tournamentName: setupTournamentName,
+                      setTournamentName: setSetupTournamentName,
+                      hasTournaments: m.length > 0,
+                      submitting: setupSubmitting,
+                      onSubmit: completeInitialSetup,
+                    })
+                  : React.createElement(oo, {
                     profiles: x,
                     tournaments: m.filter((item) => item.status !== "finished"),
                     selectedTournamentId,
                     onSelectTournament: selectTournament,
                     onPick: bt,
                     belongsToTournament: profileBelongsToTournament,
-                  })
+                  }))
                 : React.createElement(
                     "div",
                     {
@@ -1744,6 +1812,27 @@
                       }),
                   );
         }
+
+        function InitialSetup({ adminName, setAdminName, tournamentName, setTournamentName, hasTournaments, submitting, onSubmit }) {
+          return React.createElement("div", { style: { minHeight: "100vh", background: "var(--surface)", color: "var(--heading)", fontFamily: "Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif", padding: 24, display: "flex", alignItems: "center", justifyContent: "center" } },
+            React.createElement("div", { style: { width: "100%", maxWidth: 520, background: "var(--card)", borderRadius: 20, padding: 28, boxShadow: "inset 0 0 0 1px var(--border)" } },
+              React.createElement("div", { style: { width: 52, height: 52, borderRadius: 18, background: "var(--green)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 800, marginBottom: 20 } }, "+"),
+              React.createElement("h1", { style: { margin: 0, fontSize: 28, lineHeight: 1.15 } }, "Vamos configurar o app"),
+              React.createElement("p", { style: { color: "var(--muted)", lineHeight: 1.5, margin: "10px 0 24px" } }, "Nenhum perfil global foi encontrado. Crie um administrador para recuperar o acesso e continuar gerenciando campeonatos e participantes."),
+              React.createElement("label", { style: P }, "Nome do administrador"),
+              React.createElement("input", { style: { ...q, width: "100%", boxSizing: "border-box", marginBottom: 18 }, value: adminName, maxLength: 30, placeholder: "Ex.: Hyago", onChange: (event) => setAdminName(event.target.value) }),
+              !hasTournaments && React.createElement(React.Fragment, null,
+                React.createElement("label", { style: P }, "Primeiro campeonato (opcional)"),
+                React.createElement("input", { style: { ...q, width: "100%", boxSizing: "border-box" }, value: tournamentName, maxLength: 50, placeholder: "Ex.: Campeonato 1", onChange: (event) => setTournamentName(event.target.value) }),
+                React.createElement("div", { style: { color: "var(--muted)", fontSize: 12, lineHeight: 1.4, marginTop: 8 } }, "Você poderá criar ou editar campeonatos depois no painel admin.")
+              ),
+              hasTournaments && React.createElement("div", { style: { padding: 14, borderRadius: 12, background: "var(--surface-2)", color: "var(--muted)", fontSize: 13, lineHeight: 1.45 } }, "Seus campeonatos existentes serão preservados. Apenas um novo perfil administrador será criado."),
+              React.createElement("button", { onClick: onSubmit, disabled: submitting || !String(adminName || "").trim(), style: { ...M, ...W, width: "100%", marginTop: 22, opacity: submitting ? .65 : 1 } }, submitting ? "Configurando..." : "Criar administrador e continuar"),
+              React.createElement("div", { style: { color: "var(--muted)", fontSize: 12, textAlign: "center", marginTop: 14, lineHeight: 1.4 } }, "Este fluxo aparece somente quando não existe nenhum perfil global.")
+            )
+          );
+        }
+
         function oo({ profiles: e, tournaments: t, selectedTournamentId: l, onSelectTournament: a, onPick: n, belongsToTournament: r }) {
           let selected = t.find((item) => item.id === l) || null;
           let visibleProfiles = selected ? e.map((profile, index) => {
