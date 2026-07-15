@@ -4156,7 +4156,7 @@
             if (parts.length < 5 || !parts[0] || !/^\d+$/.test(parts[3])) continue;
             rawEntries.push({ ownerName, squadRole, txtName: parts[0], position: parts[1], club: parts[2], overall: Number(parts[3]), value: Number(parts[4]) || 0 });
           }
-          let activeProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.role !== "admin" && profile.active !== false);
+          let activeProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.active !== false);
           let owners = [...new Set(rawEntries.map((entry) => entry.ownerName))].map((name) => {
             let normalized = normalizeImportText(name);
             let profileMatches = activeProfiles.filter((profile) => normalizeImportText(profile.name) === normalized);
@@ -4196,7 +4196,7 @@
         }
 
         function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, catalog, onImportRosters }) {
-          let globalProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.role !== "admin" && String(profile.name || "").trim().toLowerCase() !== "admin");
+          let globalProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.active !== false);
           let participants = currentTournament && Array.isArray(currentTournament.participants) ? currentTournament.participants : [];
           let [importText, setImportText] = b("");
           let [importMode, setImportMode] = b("replace");
@@ -4236,7 +4236,7 @@
               React.createElement("label", { style: { ...P, marginTop: 14 } }, "Cor"),
               React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 } }, se.map((color) => React.createElement("button", { key: color, onClick: () => setProfileColor(color), style: { width: 32, height: 32, borderRadius: 999, background: color, border: profileColor === color ? "3px solid var(--heading)" : "2px solid transparent", cursor: "pointer" } }))),
               React.createElement("button", { style: { ...M, ...W }, disabled: !profileName.trim(), onClick: onCreateProfile }, "Criar perfil global"),
-              globalProfiles.length ? React.createElement("div", { style: { marginTop: 18, display: "grid", gap: 8 } }, globalProfiles.map((profile) => React.createElement("div", { key: profile.id, style: { display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 10, background: "var(--surface-soft)" } }, React.createElement("div", { style: { width: 34, height: 34, borderRadius: 999, background: profile.color, overflow: "hidden", display: "grid", placeItems: "center", fontWeight: 700 } }, profile.avatar ? React.createElement("img", { src: profile.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } }) : profile.name.charAt(0).toUpperCase()), React.createElement("strong", { style: { flex: 1 } }, profile.name), React.createElement("button", { onClick: () => onDeleteProfile(profile.id), style: { background: "transparent", color: "var(--danger)", border: "1px solid var(--danger)", borderRadius: 999, padding: "7px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700 } }, "Excluir")))) : null
+              globalProfiles.length ? React.createElement("div", { style: { marginTop: 18, display: "grid", gap: 8 } }, globalProfiles.map((profile) => React.createElement("div", { key: profile.id, style: { display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 10, background: "var(--surface-soft)" } }, React.createElement("div", { style: { width: 34, height: 34, borderRadius: 999, background: profile.color, overflow: "hidden", display: "grid", placeItems: "center", fontWeight: 700 } }, profile.avatar ? React.createElement("img", { src: profile.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } }) : profile.name.charAt(0).toUpperCase()), React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0 } }, React.createElement("strong", { style: { overflow: "hidden", textOverflow: "ellipsis" } }, profile.name), profile.role === "admin" ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "var(--green)", border: "1px solid color-mix(in srgb, var(--green) 45%, transparent)", background: "color-mix(in srgb, var(--green) 10%, transparent)", borderRadius: 999, padding: "4px 7px", textTransform: "uppercase", letterSpacing: ".05em" } }, "Admin") : null), profile.role !== "admin" ? React.createElement("button", { onClick: () => onDeleteProfile(profile.id), style: { background: "transparent", color: "var(--danger)", border: "1px solid var(--danger)", borderRadius: 999, padding: "7px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700 } }, "Excluir") : null))) : null
             ),
             React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 14 } }, "Criar campeonato"),
