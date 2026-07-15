@@ -454,7 +454,7 @@
             [selectedTournamentId, setSelectedTournamentId] = b(eo("pes-selected-tournament")),
             [lt, rt] = b(!1),
             [st, dt] = b(""),
-            [Y, oe] = b("home"),
+            [Y, oe] = b("table"),
             [ct, ge] = b(!1),
             [j, le] = b({ name: "", color: se[0], budget: 300 }),
             [Be, De] = b(null),
@@ -478,6 +478,7 @@
             [We, he] = b(null),
             [Re, Ae] = b(null),
             [offerModal, setOfferModal] = b(null),
+            [matchWizard, setMatchWizard] = b(null),
             [adminProfileName, setAdminProfileName] = b(""),
             [adminProfileColor, setAdminProfileColor] = b(se[0]),
             [adminProfileBudget, setAdminProfileBudget] = b(300),
@@ -596,7 +597,7 @@
             } else {
               me(null);
               qe("pes-my-profile", null);
-              oe("home");
+              oe("table");
             }
           }
           function profileBelongsToTournament(profile, tournament) {
@@ -643,10 +644,10 @@
                     .toLowerCase() === y.toLowerCase(),
               ),
               z = w >= 0 ? x.map((S, J) => (J === w ? A : S)) : [...x, A];
-            (T(z), U("profiles", z), oe("home"), De(D.id));
+            (T(z), U("profiles", z), oe("table"), De(D.id));
           }
           function ht() {
-            (me(null), qe("pes-my-profile", null), De(null), oe("home"));
+            (me(null), qe("pes-my-profile", null), De(null), oe("table"));
           }
           let $ = H((o) => p.find((i) => i.id === o), [p]),
             Oe = H(
@@ -939,6 +940,53 @@
             let amount = Math.max(0, Number(value) || 0);
             Se(p.map((team) => team.id === teamId ? { ...team, budget: amount } : team));
           }
+          function viewTournament(tournamentId) {
+            setSelectedTournamentId(tournamentId || null);
+            qe("pes-selected-tournament", tournamentId || null);
+            setMatchWizard(null);
+            oe("table");
+          }
+          function openMatchWizard() {
+            if (!R || R.status === "finished") return;
+            let availableTeams = p.filter((team) => team && team.active !== false && (!Array.isArray(R.participants) || !team.profileId || R.participants.includes(team.profileId)));
+            if (availableTeams.length < 2) {
+              window.alert("Adicione pelo menos dois participantes ao campeonato antes de registrar uma partida.");
+              return;
+            }
+            setMatchWizard({ step: 1, leftTeamId: null, rightTeamId: null, leftScore: 0, rightScore: 0, scorers: {}, playedAt: Date.now() });
+          }
+          function saveQuickMatch(data) {
+            if (!R || !data) return;
+            let left = p.find((team) => team.id === data.leftTeamId), right = p.find((team) => team.id === data.rightTeamId);
+            if (!left || !right || left.id === right.id) return;
+            let leftScore = Math.max(0, Number(data.leftScore) || 0), rightScore = Math.max(0, Number(data.rightScore) || 0);
+            let scorerEntries = Object.entries(data.scorers || {}).filter(([, qty]) => Number(qty) > 0);
+            let leftScorerTotal = scorerEntries.filter(([key]) => key.startsWith(left.id + ":")).reduce((sum,[,qty]) => sum + Number(qty), 0);
+            let rightScorerTotal = scorerEntries.filter(([key]) => key.startsWith(right.id + ":")).reduce((sum,[,qty]) => sum + Number(qty), 0);
+            if ((leftScorerTotal > 0 && leftScorerTotal !== leftScore) || (rightScorerTotal > 0 && rightScorerTotal !== rightScore)) {
+              window.alert("Quando os autores forem informados, a soma precisa ser igual ao placar do time.");
+              return;
+            }
+            let scorers = [];
+            scorerEntries.forEach(([key, qty]) => {
+              let [teamId, playerId] = key.split(":");
+              let player = xe.get(playerId);
+              for (let i = 0; i < Number(qty); i++) scorers.push({ teamId, playerId, playerNameSnapshot: player ? player.name : "Autor desconhecido" });
+            });
+            let match = {
+              id: _(), stage: "league", round: 0, manual: true, played: true, bye: false,
+              homeId: left.id, awayId: right.id, homeScore: leftScore, awayScore: rightScore,
+              homeTeamNameSnapshot: left.name, awayTeamNameSnapshot: right.name,
+              homeProfileId: left.profileId || null, awayProfileId: right.profileId || null,
+              scorers, playedAt: data.playedAt || Date.now(), createdAt: Date.now(),
+              createdByProfileId: te && typeof te === "object" ? te.id : null,
+              status: "confirmed"
+            };
+            let nextStats = { ...s };
+            scorers.forEach((item) => { nextStats[item.playerId] = { goals: ((nextStats[item.playerId] && nextStats[item.playerId].goals) || 0) + 1 }; });
+            ae(m.map((item) => item.id === R.id ? { ...item, matches: [...(Array.isArray(item.matches) ? item.matches : []), match], context: { ...(item.context || {}), playerStats: nextStats } } : item));
+            setMatchWizard(null);
+          }
           function Et() {
             (ye({
               name: `Temporada ${B.seasonCounter}`,
@@ -1192,7 +1240,7 @@
               currentTournamentId: null,
               seasonCounter: B.seasonCounter + 1,
             }),
-              oe("home"));
+              oe("table"));
           }
           let jt = X(() => {
               let o = [];
@@ -1390,15 +1438,10 @@
                     React.createElement(
                       "div",
                       { style: { padding: "20px 16px 112px" } },
-                      Y === "home" &&
-                        React.createElement(ao, {
-                          teams: ProfileTeams,
-                          currentTournament: R,
-                          nextMatches: Gt,
-                          topScorers: jt,
-                          onGoTournament: () => oe("tournament"),
-                          squadCount: Lt,
-                          catalogCount: n.length,
+                      Y === "table" &&
+                        React.createElement(TableArea, {
+                          tournament: R, tournaments: m.filter((item) => item.status !== "finished"), teams: p,
+                          teamById: $, onSelectTournament: viewTournament, onOpenMatch: Tt,
                         }),
                       Y === "teams" &&
                         React.createElement(io, {
@@ -1415,20 +1458,7 @@
                           onOpenDetail: be,
                           onGoMarket: () => oe("market"),
                         }),
-                      Y === "tournament" &&
-                        React.createElement(po, {
-                          teams: p,
-                          teamById: $,
-                          tournament: R,
-                          onNewTournament: Et,
-                          onOpenMatch: Tt,
-                          groupTab: gt,
-                          setGroupTab: ft,
-                          advanceKnockout: Nt,
-                          advanceFromGroups: Ot,
-                          archiveSeason: Pt,
-                          finishTournament: je,
-                        }),
+
                       Y === "market" &&
                         React.createElement(lo, {
                           catalog: n,
@@ -1474,7 +1504,10 @@
                           onUpdateTeamName: updateCurrentTeamName, onSwitchProfile: ht,
                         }),
                     ),
+                    R && R.status !== "finished" && (ProfileTeam || isAdminProfile(te)) && p.filter((team) => team && team.active !== false).length >= 2 &&
+                      React.createElement("button", { onClick: openMatchWizard, className: "tapbtn", title: "Adicionar partida", "aria-label": "Adicionar partida", style: { position: "fixed", left: "50%", bottom: 62, transform: "translateX(-50%)", width: 58, height: 58, borderRadius: "50%", border: "5px solid var(--surface)", background: "var(--green)", color: "white", fontSize: 32, lineHeight: 1, display: "grid", placeItems: "center", cursor: "pointer", zIndex: 20, boxShadow: "0 8px 20px rgba(0,0,0,.18)" } }, "+"),
                     React.createElement(mo, { tab: Y, setTab: oe, isAdmin: isAdminProfile(te), unreadOffers: unreadOfferCount }),
+                    matchWizard && React.createElement(MatchWizard, { data: matchWizard, setData: setMatchWizard, teams: p.filter((team) => team && team.active !== false), profiles: x, squadOf: Oe, catalog: xe, onClose: () => setMatchWizard(null), onSave: saveQuickMatch }),
                     ct &&
                       React.createElement(
                         ee,
@@ -4031,11 +4064,194 @@
                   }),
               );
         }
+        function TableArea({ tournament, tournaments, teams, teamById, onSelectTournament, onOpenMatch }) {
+          let [visibleCount, setVisibleCount] = b(20), sentinel = React.useRef(null);
+          He(() => { setVisibleCount(20); }, [tournament && tournament.id]);
+          let allMatches = tournament && Array.isArray(tournament.matches) ? tournament.matches.filter((match) => match && match.played && !match.bye && match.status !== "voided") : [];
+          let history = [...allMatches].sort((a,b) => (b.playedAt || b.createdAt || 0) - (a.playedAt || a.createdAt || 0));
+          He(() => {
+            let node = sentinel.current;
+            if (!node || visibleCount >= history.length || !window.IntersectionObserver) return;
+            let observer = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) setVisibleCount((value) => Math.min(value + 20, history.length)); }, { rootMargin: "200px" });
+            observer.observe(node); return () => observer.disconnect();
+          }, [visibleCount, history.length, tournament && tournament.id]);
+          if (!tournament) return React.createElement("div", { style: E }, React.createElement("div", { style: { fontWeight: 700, marginBottom: 6 } }, "Nenhum campeonato selecionado"), React.createElement("div", { style: { color: "var(--muted)", fontSize: 14 } }, "Selecione um campeonato para visualizar a tabela."));
+          let activeIds = Array.isArray(tournament.teamIds) && tournament.teamIds.length ? tournament.teamIds : teams.filter((team) => team.active !== false).map((team) => team.id);
+          let standings = we(activeIds, allMatches);
+          function dayLabel(timestamp) {
+            let date = new Date(timestamp || Date.now()), now = new Date(), yesterday = new Date(); yesterday.setDate(now.getDate()-1);
+            let key = date.toDateString();
+            if (key === now.toDateString()) return "Hoje";
+            if (key === yesterday.toDateString()) return "Ontem";
+            return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}) });
+          }
+          let groups = {};
+          history.slice(0,visibleCount).forEach((match) => { let label=dayLabel(match.playedAt || match.createdAt); (groups[label] ||= []).push(match); });
+          return React.createElement("div", null,
+            React.createElement("div", { style: { display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:18 } },
+              React.createElement("div", null, React.createElement("div", { style:{ fontSize:12, color:"var(--muted)", marginBottom:4 } }, "Campeonato"), React.createElement("h1", { style:{ margin:0, fontSize:28, letterSpacing:"-.03em" } }, tournament.name)),
+              React.createElement("select", { value:tournament.id, onChange:(e)=>onSelectTournament(e.target.value), style:{ ...q, width:"auto", maxWidth:210, padding:"10px 34px 10px 14px" } }, tournaments.map((item)=>React.createElement("option", { key:item.id, value:item.id }, item.name)))
+            ),
+            React.createElement("div", { style:E },
+              React.createElement("div", { style:{ fontSize:19, fontWeight:700, marginBottom:16 } }, "Classificação"),
+              standings.length ? React.createElement("div", { style:{ overflowX:"auto" } }, React.createElement("table", { style:{ width:"100%", borderCollapse:"collapse", minWidth:460 } },
+                React.createElement("thead", null, React.createElement("tr", null, ["#","Time","J","V","E","D","SG","PTS"].map((label)=>React.createElement("th", { key:label, style:{ textAlign: label==="Time"?"left":"center", fontSize:11, color:"var(--muted)", padding:"8px 6px", borderBottom:"1px solid var(--border)" } }, label)))),
+                React.createElement("tbody", null, standings.map((row,index)=>{ let team=teamById(row.id); return React.createElement("tr", { key:row.id }, React.createElement("td", { style:{ padding:"12px 6px", fontWeight:700, textAlign:"center" } }, index+1), React.createElement("td", { style:{ padding:"12px 6px", fontWeight:650 } }, team ? team.name : "Time removido"), [row.pj,row.v,row.e,row.d,row.sg,row.pts].map((value,i)=>React.createElement("td", { key:i, style:{ padding:"12px 6px", textAlign:"center", fontWeight:i===5?800:500 } }, value))); }))
+              )) : React.createElement("div", { style:{ color:"var(--muted)", fontSize:14 } }, "A classificação aparecerá quando houver participantes.")
+            ),
+            React.createElement("div", { style:{ marginTop:28, marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"end" } }, React.createElement("div", null, React.createElement("div", { style:{ fontSize:12, color:"var(--muted)" } }, "Resultados"), React.createElement("div", { style:{ fontSize:21, fontWeight:750 } }, "Histórico de partidas")), React.createElement("div", { style:{ fontSize:12, color:"var(--muted)" } }, history.length + " partidas")),
+            history.length === 0 ? React.createElement("div", { style:{ ...E, textAlign:"center", color:"var(--muted)" } }, "Nenhuma partida registrada ainda. Use o botão + para adicionar a primeira.") : Object.entries(groups).map(([label,matches])=>React.createElement("section", { key:label, style:{ marginBottom:22 } }, React.createElement("div", { style:{ fontSize:13, fontWeight:700, marginBottom:8, color:"var(--muted)" } }, label), matches.map((match)=>React.createElement(HistoryMatchCard, { key:match.id, match, teamById, onOpen:onOpenMatch })) )),
+            visibleCount < history.length && React.createElement("div", { ref:sentinel, style:{ textAlign:"center", color:"var(--muted)", padding:20, fontSize:13 } }, "Carregando mais partidas...")
+          );
+        }
+        function HistoryMatchCard({ match, teamById, onOpen }) {
+          let home = teamById(match.homeId), away = teamById(match.awayId);
+          let homeName = match.homeTeamNameSnapshot || (home && home.name) || "Time removido", awayName = match.awayTeamNameSnapshot || (away && away.name) || "Time removido";
+          let leftName=homeName,rightName=awayName,leftScore=match.homeScore,rightScore=match.awayScore,leftId=match.homeId,rightId=match.awayId;
+          if (match.awayScore > match.homeScore) { [leftName,rightName]=[rightName,leftName]; [leftScore,rightScore]=[rightScore,leftScore]; [leftId,rightId]=[rightId,leftId]; }
+          let scorers = Array.isArray(match.scorers) ? match.scorers : [];
+          function scorerText(teamId) { let counts={}; scorers.filter((item)=>item.teamId===teamId).forEach((item)=>{ let name=item.playerNameSnapshot || item.playerName || "Autor desconhecido"; counts[name]=(counts[name]||0)+1; }); return Object.entries(counts).map(([name,qty])=>name+(qty>1?` ${qty}`:"")).join(", "); }
+          return React.createElement("button", { onClick:()=>onOpen && onOpen(match), className:"tapbtn", style:{ ...E, width:"100%", textAlign:"left", cursor:onOpen?"pointer":"default", display:"grid", gridTemplateColumns:"1fr auto 1fr", alignItems:"center", gap:12, padding:18 } },
+            React.createElement("div", null, React.createElement("div", { style:{ fontWeight:750 } }, leftName), scorerText(leftId) && React.createElement("div", { style:{ fontSize:11.5, color:"var(--muted)", marginTop:4 } }, scorerText(leftId))),
+            React.createElement("div", { className:"scoreboard", style:{ fontSize:23, fontWeight:850, whiteSpace:"nowrap" } }, leftScore, " × ", rightScore),
+            React.createElement("div", { style:{ textAlign:"right" } }, React.createElement("div", { style:{ fontWeight:650, color:leftScore>rightScore?"var(--muted)":"var(--heading)" } }, rightName), scorerText(rightId) && React.createElement("div", { style:{ fontSize:11.5, color:"var(--muted)", marginTop:4 } }, scorerText(rightId)))
+          );
+        }
+        function MatchWizard({ data, setData, teams, profiles, squadOf, catalog, onClose, onSave }) {
+          let left = teams.find((team) => team.id === data.leftTeamId);
+          let right = teams.find((team) => team.id === data.rightTeamId);
+          function profileName(team) {
+            let profile = profiles.find((item) => item && typeof item === "object" && item.id === team.profileId);
+            return profile ? profile.name : team.name;
+          }
+          function choose(side, id) {
+            setData({ ...data, [side + "TeamId"]: id });
+          }
+          function score(side, delta) {
+            let key = side + "Score";
+            setData({ ...data, [key]: Math.max(0, Math.min(30, (Number(data[key]) || 0) + delta)) });
+          }
+          function setScorer(teamId, playerId, delta) {
+            let key = teamId + ":" + playerId;
+            let next = { ...(data.scorers || {}) };
+            let value = Math.max(0, (Number(next[key]) || 0) + delta);
+            if (value) next[key] = value;
+            else delete next[key];
+            setData({ ...data, scorers: next });
+          }
+          let title = data.step === 1 ? "Quem jogou?" : data.step === 2 ? "Qual foi o resultado?" : data.step === 3 ? "Quem marcou?" : "Revisar partida";
+          let stepOne = data.step === 1 && React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { color: "var(--muted)", fontSize: 13, marginBottom: 16 } }, "Selecione dois participantes diferentes deste campeonato."),
+            React.createElement(
+              "div",
+              { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+              ["left", "right"].map((side) => React.createElement(
+                "div",
+                { key: side },
+                React.createElement("div", { style: { fontSize: 12, fontWeight: 700, marginBottom: 8 } }, side === "left" ? "Jogador 1" : "Jogador 2"),
+                teams.map((team) => {
+                  let disabled = (side === "left" ? data.rightTeamId : data.leftTeamId) === team.id;
+                  let selected = data[side + "TeamId"] === team.id;
+                  return React.createElement(
+                    "button",
+                    {
+                      key: team.id,
+                      disabled,
+                      onClick: () => choose(side, team.id),
+                      style: {
+                        width: "100%",
+                        marginBottom: 8,
+                        padding: 12,
+                        borderRadius: 10,
+                        border: selected ? "2px solid var(--green)" : "1px solid var(--border)",
+                        background: selected ? "var(--surface-soft)" : "var(--surface)",
+                        opacity: disabled ? 0.35 : 1,
+                        textAlign: "left",
+                        cursor: disabled ? "not-allowed" : "pointer"
+                      }
+                    },
+                    React.createElement("div", { style: { fontWeight: 700 } }, profileName(team)),
+                    React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 3 } }, team.name)
+                  );
+                })
+              ))
+            ),
+            React.createElement("button", { disabled: !left || !right, onClick: () => setData({ ...data, step: 2 }), style: { ...M, ...W, opacity: left && right ? 1 : 0.45 } }, "Continuar")
+          );
+          let scoreColumn = (team, side) => React.createElement(
+            "div",
+            { style: { textAlign: "center" } },
+            React.createElement("div", { style: { fontWeight: 700, minHeight: 42 } }, team.name),
+            React.createElement("button", { onClick: () => score(side, 1), style: { border: 0, background: "none", fontSize: 24, cursor: "pointer" } }, "⌃"),
+            React.createElement("div", { style: { fontSize: 48, fontWeight: 850, lineHeight: 1 } }, side === "left" ? data.leftScore : data.rightScore),
+            React.createElement("button", { onClick: () => score(side, -1), style: { border: 0, background: "none", fontSize: 24, cursor: "pointer" } }, "⌄")
+          );
+          let stepTwo = data.step === 2 && React.createElement(
+            "div",
+            null,
+            React.createElement(
+              "div",
+              { style: { display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12, margin: "14px 0 24px" } },
+              scoreColumn(left, "left"),
+              React.createElement("div", { style: { fontWeight: 800, color: "var(--muted)" } }, "×"),
+              scoreColumn(right, "right")
+            ),
+            React.createElement("div", { style: { display: "flex", gap: 8 } },
+              React.createElement("button", { onClick: () => setData({ ...data, step: 1 }), style: { ...M, background: "var(--surface-soft)", color: "var(--heading)" } }, "Voltar"),
+              React.createElement("button", { onClick: () => setData({ ...data, step: 3 }), style: { ...M, ...W } }, "Continuar")
+            )
+          );
+          let scorerTeam = (team, scoreValue) => React.createElement(
+            "div",
+            { key: team.id, style: { ...E, padding: 16 } },
+            React.createElement("div", { style: { fontWeight: 750, marginBottom: 10 } }, team.name, " — ", scoreValue, " gols"),
+            squadOf(team.id).length === 0 && React.createElement("div", { style: { color: "var(--muted)", fontSize: 13 } }, "Este time ainda não possui jogadores no elenco."),
+            squadOf(team.id).map((player) => {
+              let key = team.id + ":" + player.id;
+              let qty = (data.scorers && data.scorers[key]) || 0;
+              return React.createElement(
+                "div",
+                { key: player.id, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" } },
+                React.createElement("span", { style: { fontSize: 13.5 } }, player.name),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+                  React.createElement("button", { onClick: () => setScorer(team.id, player.id, -1), style: { width: 28, height: 28, borderRadius: 99, border: "1px solid var(--border)", background: "var(--surface)" } }, "−"),
+                  React.createElement("strong", null, qty),
+                  React.createElement("button", { onClick: () => setScorer(team.id, player.id, 1), style: { width: 28, height: 28, borderRadius: 99, border: "1px solid var(--border)", background: "var(--surface)" } }, "+")
+                )
+              );
+            })
+          );
+          let stepThree = data.step === 3 && React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginBottom: 16 } }, "Opcional. Se informar autores, a soma deve fechar com o placar de cada time."),
+            scorerTeam(left, data.leftScore),
+            scorerTeam(right, data.rightScore),
+            React.createElement("div", { style: { display: "flex", gap: 8 } },
+              React.createElement("button", { onClick: () => setData({ ...data, step: 2 }), style: { ...M, background: "var(--surface-soft)", color: "var(--heading)" } }, "Voltar"),
+              React.createElement("button", { onClick: () => setData({ ...data, step: 4 }), style: { ...M, ...W } }, "Revisar")
+            )
+          );
+          let stepFour = data.step === 4 && React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { ...E, textAlign: "center", padding: 24 } },
+              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginBottom: 8 } }, "Resultado final"),
+              React.createElement("div", { style: { fontSize: 19, fontWeight: 700 } }, left.name, " ", React.createElement("strong", { style: { fontSize: 30, margin: "0 10px" } }, data.leftScore, " × ", data.rightScore), " ", right.name)
+            ),
+            React.createElement("div", { style: { display: "flex", gap: 8 } },
+              React.createElement("button", { onClick: () => setData({ ...data, step: 3 }), style: { ...M, background: "var(--surface-soft)", color: "var(--heading)" } }, "Voltar e editar"),
+              React.createElement("button", { onClick: () => onSave(data), style: { ...M, ...W } }, "Salvar partida")
+            )
+          );
+          return React.createElement(ee, { title, onClose }, stepOne, stepTwo, stepThree, stepFour);
+        }
         function mo({ tab: e, setTab: t, isAdmin: l, unreadOffers }) {
           let items = [
-            { key: "home", icon: _t, label: "Início" },
+            { key: "table", icon: pe, label: "Tabela" },
             { key: "teams", icon: Vt, label: "Elenco" },
-            { key: "tournament", icon: pe, label: "Campeonato" },
             { key: "market", icon: Xe, label: "Mercado" },
             { key: "offers", icon: OfferIcon, label: "Propostas", badge: unreadOffers },
             { key: "history", icon: ze, label: "Histórico" },
