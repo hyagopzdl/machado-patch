@@ -594,6 +594,7 @@
             [We, he] = b(null),
             [Re, Ae] = b(null),
             [offerModal, setOfferModal] = b(null),
+            [saleModal, setSaleModal] = b(null),
             [matchWizard, setMatchWizard] = b(null),
             [adminProfileName, setAdminProfileName] = b(""),
             [adminProfileColor, setAdminProfileColor] = b(se[0]),
@@ -1089,8 +1090,55 @@
             ne({ ...c, [o.id]: { teamId: i, forSale: !1, price: null } });
           }
           function It(o) {
-            let i = { ...c };
-            (delete i[o.id], ne(i));
+            if (!R || !ProfileTeam || !o) return;
+            let depreciationPct = Math.min(100, Math.max(0, Number(R.marketSettings && R.marketSettings.depreciationPct != null ? R.marketSettings.depreciationPct : 10) || 0));
+            let amount = Math.ceil((Number(o.value) || 0) * (1 - depreciationPct / 100));
+            setSaleModal({ player: o, depreciationPct, amount });
+          }
+          function confirmMarketSale(o) {
+            if (!R || !ProfileTeam || !o) return;
+            let depreciationPct = Math.min(100, Math.max(0, Number(R.marketSettings && R.marketSettings.depreciationPct != null ? R.marketSettings.depreciationPct : 10) || 0));
+            let amount = Math.ceil((Number(o.value) || 0) * (1 - depreciationPct / 100));
+            let tournamentId = R.id, teamId = ProfileTeam.id, now = Date.now();
+            let applySale = (tournament) => {
+              let context = { ...(tournament.context || {}) };
+              let ownership = { ...(context.ownership || {}) };
+              let current = ownership[o.id];
+              if (!current || current.teamId !== teamId) return null;
+              let teams = Array.isArray(context.teams) ? context.teams.map((team) => team.id === teamId ? { ...team, budget: (Number(team.budget) || 0) + amount } : team) : [];
+              delete ownership[o.id];
+              let tradeOffers = { ...(context.tradeOffers || {}) };
+              Object.keys(tradeOffers).forEach((offerId) => {
+                let offer = tradeOffers[offerId];
+                if (offer && offer.playerId === o.id && ["pending", "countered"].includes(offer.status)) {
+                  tradeOffers[offerId] = { ...offer, status: "invalid", invalidReason: "sold_to_market", updatedAt: now };
+                }
+              });
+              let transfers = [{ id: _(), playerId: o.id, playerName: o.name, fromTeamId: teamId, toTeamId: null, price: amount, marketValue: o.value, depreciationPct, type: "market_sale", date: new Date().toLocaleDateString("pt-BR"), createdAt: now }, ...(Array.isArray(context.transfers) ? context.transfers : [])];
+              return { ...tournament, context: { ...context, teams, ownership, tradeOffers, transfers } };
+            };
+            let db = Ee();
+            if (!db) {
+              let updated = applySale(R);
+              if (!updated) { window.alert("O jogador não pertence mais ao seu elenco. Atualize a página."); return; }
+              ae(m.map((item) => item.id === tournamentId ? updated : item));
+              setSaleModal(null);
+              window.alert(`${o.name} foi vendido ao mercado por ${L(amount)}.`);
+              return;
+            }
+            db.ref("pes/tournaments").transaction((serverList) => {
+              let list = Array.isArray(serverList) ? [...serverList] : [];
+              let index = list.findIndex((item) => item && item.id === tournamentId);
+              if (index < 0) return;
+              let updated = applySale(list[index]);
+              if (!updated) return;
+              list[index] = updated;
+              return list;
+            }, (error, committed) => {
+              if (error) window.alert("Não foi possível concluir a venda. Tente novamente.");
+              else if (!committed) window.alert("A venda foi cancelada porque o jogador não pertence mais ao seu elenco.");
+              else { setSaleModal(null); window.alert(`${o.name} foi vendido ao mercado por ${L(amount)}.`); }
+            });
           }
           function importRosterPlan(plan, mode) {
             if (!R || !plan || !Array.isArray(plan.entries) || !plan.entries.length) return;
@@ -1149,6 +1197,7 @@
               id: _(), name, format: "liga", season: B.seasonCounter,
               teamIds: [], participants: [], groups: null, matches: [], status: "ongoing",
               champion: null, createdAt: Date.now(),
+              marketSettings: { depreciationPct: 10 },
               context: { teams: [], ownership: {}, playerStats: {}, transfers: [], tradeOffers: {} },
             };
             ae([...m, tournament]);
@@ -1281,6 +1330,11 @@
           function updateAdminBudget(teamId, value) {
             let amount = Math.max(0, Number(value) || 0);
             Se(p.map((team) => team.id === teamId ? { ...team, budget: amount } : team));
+          }
+          function updateMarketDepreciation(value) {
+            if (!R) return;
+            let pct = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
+            ae(m.map((item) => item.id === R.id ? { ...item, marketSettings: { ...(item.marketSettings || {}), depreciationPct: pct } } : item));
           }
           function viewTournament(tournamentId) {
             setSelectedTournamentId(tournamentId || null);
@@ -1792,9 +1846,8 @@
                           onNewTeam: null,
                           onDeleteTeam: () => {},
                           squadOf: Oe,
-                          onOpenSell: Ct,
-                          onUnlist: zt,
-                          onRelease: It,
+                          onSellToMarket: It,
+                          depreciationPct: R && R.marketSettings && R.marketSettings.depreciationPct != null ? R.marketSettings.depreciationPct : 10,
                           ownership: c,
                           onOpenDetail: be,
                           onGoMarket: () => oe("market"),
@@ -1828,6 +1881,7 @@
                           onDeleteTournament: deleteAdminTournament, onSelectTournament: selectTournament,
                           onUpdateBudget: updateAdminBudget, onToggleParticipant: toggleTournamentParticipant,
                           onDeleteProfile: deleteGlobalProfile, onResetTournament: resetCurrentTournament,
+                          onUpdateMarketDepreciation: updateMarketDepreciation,
                           catalog: n, onImportRosters: importRosterPlan,
                         }),
                       Y === "profile" &&
@@ -1954,6 +2008,12 @@
                         sellerTeam: offerModal.status && offerModal.status.teamId ? $(offerModal.status.teamId) : null,
                         onClose: () => setOfferModal(null),
                         onConfirm: sendTradeOffer,
+                      }),
+                    saleModal &&
+                      React.createElement(MarketSaleModal, {
+                        data: saleModal,
+                        onClose: () => setSaleModal(null),
+                        onConfirm: () => confirmMarketSale(saleModal.player),
                       }),
                     Re &&
                       React.createElement(co, {
@@ -2545,9 +2605,8 @@
           onNewTeam: a,
           onDeleteTeam: n,
           squadOf: r,
-          onOpenSell: f,
-          onUnlist: d,
-          onRelease: p,
+          onSellToMarket: p,
+          depreciationPct: Dp,
           ownership: F,
           onOpenDetail: c,
           onGoMarket: v,
@@ -2766,61 +2825,24 @@
                     ),
                     React.createElement(
                       "div",
-                      { style: { display: "flex", gap: 8, marginTop: 10 } },
-                      k && k.forSale
-                        ? React.createElement(
-                            "button",
-                            {
-                              onClick: () => d(g, s.id),
-                              style: {
-                                flex: 1,
-                                background: "var(--surface-soft)",
-                                border: "1px solid #EA2B2B",
-                                color: "var(--danger)",
-                                borderRadius: 8,
-                                padding: "7px 0",
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                              },
-                            },
-                            "Cancelar venda (",
-                            L(k.price),
-                            ")",
-                          )
-                        : React.createElement(
-                            "button",
-                            {
-                              onClick: () => f(g, s.id),
-                              style: {
-                                flex: 1,
-                                background: "var(--surface-soft)",
-                                border: "1px solid #58CC02",
-                                color: "var(--green)",
-                                borderRadius: 8,
-                                padding: "7px 0",
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                              },
-                            },
-                            "Colocar \xE0 venda",
-                          ),
+                      { style: { marginTop: 10 } },
                       React.createElement(
                         "button",
                         {
                           onClick: () => p(g),
                           style: {
-                            background: "none",
-                            border: "1px solid #AFAFAF",
-                            color: "var(--muted)",
-                            borderRadius: 8,
-                            padding: "7px 10px",
+                            width: "100%",
+                            background: "var(--surface-soft)",
+                            border: "1px solid var(--border)",
+                            color: "var(--heading)",
+                            borderRadius: 999,
+                            padding: "9px 12px",
                             fontSize: 12,
+                            fontWeight: 750,
                             cursor: "pointer",
                           },
                         },
-                        "Liberar",
+                        "Vender ao mercado",
                       ),
                     ),
                   );
@@ -2998,12 +3020,19 @@
               if (Number(player.overall || 0) < Number(overallMin || 0) || Number(player.overall || 0) > Number(overallMax || 99)) return false;
               if (Number(player.value || 0) < Number(valueMin || 0) || Number(player.value || 0) > Number(valueMax || 999)) return false;
               if (clubQuery.trim()) {
-                let query = clubQuery.trim().toLowerCase();
+                let normalizeSearch = (value) => String(value || "")
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "")
+                  .toLowerCase()
+                  .replace(/\s+/g, " ")
+                  .trim();
+                let query = normalizeSearch(clubQuery);
                 let status = n(player);
                 let ownerTeam = status.teamId ? l(status.teamId) : null;
-                let matchesClub = String(player.club || "").toLowerCase().includes(query);
-                let matchesOwner = String(ownerTeam && ownerTeam.name || "").toLowerCase().includes(query);
-                if (!matchesClub && !matchesOwner) return false;
+                let matchesPlayer = normalizeSearch(player.name).includes(query);
+                let matchesClub = normalizeSearch(player.club).includes(query);
+                let matchesOwner = normalizeSearch(ownerTeam && ownerTeam.name).includes(query);
+                if (!matchesPlayer && !matchesClub && !matchesOwner) return false;
               }
               return true;
             });
@@ -3231,7 +3260,7 @@
                       React.createElement(
                         "div",
                         { style: { position: "relative", flex: 1 } },
-                        React.createElement("input", { style: { ...q, paddingLeft: 34 }, placeholder: "Buscar por clube ou time...", value: clubQuery, onChange: (event) => { setClubQuery(event.target.value); setVisibleCount(36); } }),
+                        React.createElement("input", { style: { ...q, paddingLeft: 34 }, placeholder: "Buscar jogador, clube ou time...", value: clubQuery, onChange: (event) => { setClubQuery(event.target.value); setVisibleCount(36); } }),
                         React.createElement("span", { style: { position: "absolute", left: 10, top: 12 } }, React.createElement(Xt, { size: 15, color: "var(--muted)" })),
                       ),
                       React.createElement(
@@ -3645,6 +3674,50 @@
             ),
           );
         }
+        function MarketSaleModal({ data, onClose, onConfirm }) {
+          let player = data && data.player;
+          if (!player) return null;
+          return React.createElement(
+            "div",
+            { className: "modal-backdrop", onClick: onClose },
+            React.createElement(
+              "div",
+              { className: "modal-card", onClick: (event) => event.stopPropagation(), style: { maxWidth: 480 } },
+              React.createElement(
+                "div",
+                { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 22 } },
+                React.createElement("div", null,
+                  React.createElement("div", { style: { fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 750, marginBottom: 7 } }, "Venda imediata"),
+                  React.createElement("h2", { style: { margin: 0, color: "var(--heading)", fontSize: 24, lineHeight: 1.15 } }, "Vender ao mercado?"),
+                  React.createElement("p", { style: { margin: "8px 0 0", color: "var(--muted)", fontSize: 13.5, lineHeight: 1.5 } }, player.name, " voltará a ficar disponível para contratação."),
+                ),
+                React.createElement("button", { onClick: onClose, "aria-label": "Fechar", style: { width: 38, height: 38, borderRadius: 999, border: "1px solid var(--border)", background: "var(--surface-soft)", color: "var(--heading)", fontSize: 20, cursor: "pointer", flexShrink: 0 } }, "×"),
+              ),
+              React.createElement(
+                "div",
+                { style: { padding: 18, borderRadius: 18, background: "var(--surface-soft)", border: "1px solid var(--border)", marginBottom: 18 } },
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 16, paddingBottom: 12 } },
+                  React.createElement("span", { style: { color: "var(--muted)", fontSize: 13 } }, "Valor de mercado"),
+                  React.createElement("strong", { style: { color: "var(--heading)" } }, L(player.value)),
+                ),
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 16, padding: "12px 0", borderTop: "1px solid var(--border)" } },
+                  React.createElement("span", { style: { color: "var(--muted)", fontSize: 13 } }, "Depreciação"),
+                  React.createElement("strong", { style: { color: "var(--danger)" } }, "−", data.depreciationPct, "%"),
+                ),
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, paddingTop: 14, borderTop: "1px solid var(--border)" } },
+                  React.createElement("span", { style: { color: "var(--heading)", fontSize: 14, fontWeight: 750 } }, "Você recebe"),
+                  React.createElement("strong", { style: { color: "var(--green)", fontSize: 26, lineHeight: 1 } }, L(data.amount)),
+                ),
+              ),
+              React.createElement("div", { style: { padding: "12px 14px", borderRadius: 14, background: "color-mix(in srgb, var(--danger) 9%, transparent)", color: "var(--muted)", fontSize: 12.5, lineHeight: 1.45, marginBottom: 20 } }, "A venda é imediata e não pode ser desfeita. Propostas abertas por este jogador serão encerradas."),
+              React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
+                React.createElement("button", { className: "tapbtn", onClick: onClose, style: { ...M, margin: 0, background: "var(--surface-soft)", border: "1px solid var(--border)", color: "var(--heading)" } }, "Cancelar"),
+                React.createElement("button", { className: "tapbtn", onClick: onConfirm, style: { ...M, ...W, margin: 0 } }, "Confirmar venda"),
+              ),
+            ),
+          );
+        }
+
         function TradeOfferModal({ data, activeTeam, sellerTeam, onClose, onConfirm }) {
           let player = data.player,
             suggested = data.amount || player.value,
@@ -4379,7 +4452,7 @@
           return { owners, entries, total: entries.length };
         }
 
-        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, catalog, onImportRosters }) {
+        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onUpdateMarketDepreciation, catalog, onImportRosters }) {
           let globalProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.active !== false);
           let participants = currentTournament && Array.isArray(currentTournament.participants) ? currentTournament.participants : [];
           let [importText, setImportText] = b("");
@@ -4443,6 +4516,16 @@
                 let checked = participants.includes(profile.id) || (!Array.isArray(currentTournament.participants) && ((Array.isArray(profile.tournamentIds) && profile.tournamentIds.includes(currentTournament.id)) || teams.some((team) => team.profileId === profile.id || team.id === profile.teamId || String(team.name || "").trim().toLowerCase() === String(profile.name || "").trim().toLowerCase())));
                 return React.createElement("button", { key: profile.id, onClick: () => onToggleParticipant(profile.id), style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--border)", background: checked ? "var(--surface-soft)" : "var(--surface)", color: "var(--heading)", cursor: "pointer" } }, React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 10 } }, React.createElement("span", { style: { width: 30, height: 30, borderRadius: 999, background: profile.color, display: "grid", placeItems: "center", fontWeight: 700 } }, profile.name.charAt(0).toUpperCase()), React.createElement("strong", null, profile.name)), React.createElement("span", { style: { fontWeight: 700, color: checked ? "var(--green)" : "var(--muted)" } }, checked ? "Participando" : "Adicionar"));
               })) : React.createElement("div", { style: { color: "var(--muted)" } }, "Crie um perfil global primeiro.")
+            ),
+            currentTournament && React.createElement("div", { style: E },
+              React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Configurações do mercado"),
+              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 } }, "Defina quanto será descontado do valor de mercado quando um participante fizer uma venda imediata. Ofertas entre usuários não usam essa taxa."),
+              React.createElement("label", { style: P }, "Depreciação na venda ao mercado"),
+              React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" } },
+                React.createElement("input", { type: "range", min: 0, max: 100, step: 1, value: currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10, onChange: (event) => onUpdateMarketDepreciation(event.target.value), style: { width: "100%", accentColor: "var(--green)" } }),
+                React.createElement("div", { style: { minWidth: 68, textAlign: "center", padding: "9px 10px", borderRadius: 10, background: "var(--surface-soft)", fontWeight: 800 } }, (currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10), "%")
+              ),
+              React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 10 } }, "Exemplo: um jogador de 15 moedas rende ", Math.ceil(15 * (1 - (currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10) / 100)), " moedas.")
             ),
             currentTournament && React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Moedas dos participantes"),
