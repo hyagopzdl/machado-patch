@@ -537,11 +537,10 @@
 
           function saveContextField(field, value) {
             if (!R) return false;
-            let tournamentIndex = m.findIndex((item) => item.id === R.id);
-            if (tournamentIndex < 0) return false;
+            let tournamentId = R.id;
             g((current) =>
               current.map((item) =>
-                item.id === R.id
+                item.id === tournamentId
                   ? {
                       ...item,
                       context: { ...(item.context || {}), [field]: value },
@@ -549,7 +548,19 @@
                   : item,
               ),
             );
-            U(`tournaments/${tournamentIndex}/context/${field}`, value);
+            let db = Ee();
+            if (!db) return true;
+            db.ref("pes/tournaments").transaction((serverList) => {
+              let list = Array.isArray(serverList) ? [...serverList] : [];
+              let index = list.findIndex((item) => item && item.id === tournamentId);
+              if (index < 0) return serverList;
+              let tournament = list[index] || {};
+              list[index] = {
+                ...tournament,
+                context: { ...(tournament.context || {}), [field]: value },
+              };
+              return list;
+            }).catch((error) => console.error("firebase context transaction failed", field, error));
             return true;
           }
 
@@ -571,9 +582,62 @@
               U("playerStats", o);
             }
           }
-          let ae = H((o) => {
-            (g(o), U("tournaments", o));
-          }, []);
+          function isPlainObject(value) {
+            return !!value && typeof value === "object" && !Array.isArray(value);
+          }
+          function applySafeDiff(serverValue, previousValue, nextValue) {
+            if (Array.isArray(previousValue) && Array.isArray(nextValue)) {
+              let objectList = [...previousValue, ...nextValue].every(
+                (item) => !item || (typeof item === "object" && item.id != null),
+              );
+              if (!objectList) return nextValue;
+              let serverList = Array.isArray(serverValue) ? [...serverValue] : [];
+              let previousById = new Map(previousValue.filter(Boolean).map((item) => [String(item.id), item]));
+              let nextById = new Map(nextValue.filter(Boolean).map((item) => [String(item.id), item]));
+              let serverById = new Map(serverList.filter(Boolean).map((item) => [String(item.id), item]));
+              for (let id of previousById.keys()) {
+                if (!nextById.has(id)) serverById.delete(id);
+              }
+              for (let [id, nextItem] of nextById) {
+                let previousItem = previousById.get(id);
+                if (!previousItem) serverById.set(id, nextItem);
+                else if (JSON.stringify(previousItem) !== JSON.stringify(nextItem)) {
+                  serverById.set(id, applySafeDiff(serverById.get(id), previousItem, nextItem));
+                }
+              }
+              let nextOrder = nextValue.map((item) => String(item.id));
+              let ordered = nextOrder.map((id) => serverById.get(id)).filter(Boolean);
+              for (let item of serverList) {
+                if (item && serverById.has(String(item.id)) && !nextOrder.includes(String(item.id))) {
+                  ordered.push(serverById.get(String(item.id)));
+                }
+              }
+              return ordered;
+            }
+            if (isPlainObject(previousValue) && isPlainObject(nextValue)) {
+              let result = isPlainObject(serverValue) ? { ...serverValue } : {};
+              for (let key of Object.keys(previousValue)) {
+                if (!(key in nextValue)) delete result[key];
+              }
+              for (let key of Object.keys(nextValue)) {
+                if (!(key in previousValue)) result[key] = nextValue[key];
+                else if (JSON.stringify(previousValue[key]) !== JSON.stringify(nextValue[key])) {
+                  result[key] = applySafeDiff(result[key], previousValue[key], nextValue[key]);
+                }
+              }
+              return result;
+            }
+            return nextValue;
+          }
+          let ae = H((nextList) => {
+            let previousList = Array.isArray(m) ? m : [];
+            g(nextList);
+            let db = Ee();
+            if (!db) return;
+            db.ref("pes/tournaments").transaction((serverList) =>
+              applySafeDiff(Array.isArray(serverList) ? serverList : [], previousList, nextList),
+            ).catch((error) => console.error("firebase tournament transaction failed", error));
+          }, [m]);
           function vt(o) {
             if (!saveContextField("transfers", o)) {
               setBaseTransfers(o);
@@ -1521,6 +1585,7 @@
                       Y === "market" &&
                         React.createElement(lo, {
                           catalog: n,
+                          catalogMap: xe,
                           ownership: c,
                           teamById: $,
                           teams: ProfileTeams,
@@ -1530,19 +1595,9 @@
                           transfers: k,
                           activeTeam: ProfileTeam,
                           offers: tradeOffers,
-                        }),
-                      Y === "offers" &&
-                        React.createElement(TradeOffersArea, {
-                          offers: tradeOffers, catalog: xe, teamById: $, activeTeam: ProfileTeam,
-                          onAccept: acceptTradeOffer, onUpdate: updateTradeOffer,
-                          onOpenDetail: be,
-                        }),
-                      Y === "history" &&
-                        React.createElement(uo, {
-                          tournaments: m.filter((o) => o.status === "finished"),
-                          teamById: $,
-                          historyOpen: ut,
-                          setHistoryOpen: mt,
+                          unreadOffers: unreadOfferCount,
+                          onAcceptOffer: acceptTradeOffer,
+                          onUpdateOffer: updateTradeOffer,
                         }),
                       Y === "admin" && isAdminProfile(te) &&
                         React.createElement(AdminArea, {
@@ -2618,6 +2673,7 @@
         }
         function lo({
           catalog: e,
+          catalogMap: catalogMap,
           ownership: t,
           teamById: l,
           teams: a,
@@ -2627,8 +2683,12 @@
           transfers: d,
           activeTeam: activeTeam,
           offers: offers,
+          unreadOffers: unreadOffers,
+          onAcceptOffer: onAcceptOffer,
+          onUpdateOffer: onUpdateOffer,
         }) {
-          let [p, F] = b(""),
+          let [marketSection, setMarketSection] = b("players"),
+            [p, F] = b(""),
             [c, v] = b("all"),
             [s, h] = b("overall"),
             [m, g] = b(30),
@@ -2654,266 +2714,144 @@
               );
             }, [e, c, p, s]),
             B = I.slice(0, m);
+          let segmentStyle = (active) => ({
+            flex: 1,
+            border: 0,
+            borderRadius: 999,
+            padding: "10px 14px",
+            background: active ? "var(--ink)" : "transparent",
+            color: active ? "var(--surface)" : "var(--muted)",
+            fontSize: 13,
+            fontWeight: active ? 700 : 600,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 7,
+          });
           return React.createElement(
             "div",
             null,
             React.createElement(Z, {
               icon: React.createElement(Xe, { size: 15 }),
-              text: "Mercado de transfer\xEAncias",
+              text: "Mercado",
             }),
-            React.createElement(
-              "div",
-              { style: { position: "relative", marginBottom: 10 } },
-              React.createElement("input", {
-                style: { ...q, paddingLeft: 34 },
-                placeholder: "Buscar jogador...",
-                value: p,
-                onChange: (u) => {
-                  (F(u.target.value), g(30));
-                },
-              }),
-              React.createElement(
-                "span",
-                { style: { position: "absolute", left: 10, top: 12 } },
-                React.createElement(Xt, { size: 15, color: "var(--muted)" }),
-              ),
-            ),
             React.createElement(
               "div",
               {
                 style: {
                   display: "flex",
-                  gap: 6,
-                  flexWrap: "wrap",
-                  marginBottom: 10,
+                  gap: 4,
+                  padding: 4,
+                  marginBottom: 16,
+                  background: "var(--surface-soft)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 999,
                 },
               },
               React.createElement(
-                "span",
-                {
-                  onClick: () => {
-                    (v("all"), g(30));
-                  },
-                  style: V(c === "all"),
-                },
-                "Todas",
+                "button",
+                { className: "tapbtn", onClick: () => setMarketSection("players"), style: segmentStyle(marketSection === "players") },
+                React.createElement(Xe, { size: 16 }),
+                "Jogadores",
               ),
-              k.map((u) =>
-                React.createElement(
-                  "span",
-                  {
-                    key: u,
-                    onClick: () => {
-                      (v(u), g(30));
-                    },
-                    style: V(c === u),
-                  },
-                  u,
-                ),
-              ),
-            ),
-            React.createElement(
-              "div",
-              { style: { display: "flex", gap: 6, marginBottom: 14 } },
-              [
-                { k: "overall", l: "Overall" },
-                { k: "value", l: "Valor" },
-                { k: "name", l: "Nome" },
-              ].map((u) =>
-                React.createElement(
-                  "span",
-                  { key: u.k, onClick: () => h(u.k), style: V(s === u.k) },
-                  u.l,
-                ),
-              ),
-            ),
-            B.map((u) => {
-              var T, te;
-              let x = n(u);
-              return React.createElement(
-                "div",
-                {
-                  key: u.id,
-                  style: {
-                    ...E,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: 12,
-                  },
-                },
-                React.createElement(
-                  "span",
-                  {
-                    style: {
-                      fontSize: 10.5,
-                      fontWeight: 800,
-                      background: positionColor(u.position),
-                      color: "#ffffff",
-                      padding: "3px 6px",
-                      borderRadius: 6,
-                      border: "1px solid transparent",
-                      minWidth: 34,
-                      textAlign: "center",
-                    },
-                  },
-                  u.position,
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    onClick: () => f(u),
-                    style: {
-                      flex: 1,
-                      background: "none",
-                      border: "none",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      padding: 0,
-                      color: "var(--heading)",
-                    },
-                  },
-                  React.createElement(
-                    "div",
-                    { style: { fontWeight: 700, fontSize: 14 } },
-                    u.name,
-                    " ",
-                    React.createElement(
-                      "span",
-                      {
-                        style: {
-                          fontWeight: 800,
-                          color: "var(--green)",
-                          fontSize: 12.5,
-                        },
-                      },
-                      u.overall,
-                    ),
-                  ),
-                  React.createElement(
-                    "div",
-                    { style: { fontSize: 11.5, color: "var(--muted)" } },
-                    x.kind === "free" &&
-                      React.createElement(
-                        React.Fragment,
-                        null,
-                        "Livre no mercado",
-                      ),
-                    x.kind === "owned" &&
-                      React.createElement(
-                        React.Fragment,
-                        null,
-                        ((T = l(x.teamId)) == null ? void 0 : T.name) || "Time",
-                      ),
-                    x.kind === "listed" &&
-                      React.createElement(
-                        React.Fragment,
-                        null,
-                        "\xC0 venda por ",
-                        (te = l(x.teamId)) == null ? void 0 : te.name,
-                      ),
-                  ),
-                ),
-                React.createElement(
-                  "div",
-                  { style: { textAlign: "right" } },
-                  (x.kind === "free" || (x.teamId && (!activeTeam || x.teamId !== activeTeam.id))) &&
-                    React.createElement(
-                      React.Fragment,
-                      null,
-                      React.createElement(
-                        "div",
-                        {
-                          style: {
-                            fontWeight: 800,
-                            color: "var(--green)",
-                            fontSize: 13,
-                            marginBottom: 4,
-                          },
-                        },
-                        L(x.kind === "free" ? u.value : (x.kind === "listed" && x.price ? x.price : u.value)),
-                      ),
-                      React.createElement(
-                        "button",
-                        {
-                          className: "tapbtn",
-                          onClick: () => r(u),
-                          style: {
-                            background: "var(--surface-soft)",
-                            border: "1px solid #58CC02",
-                            color: "var(--green)",
-                            borderRadius: 8,
-                            padding: "6px 10px",
-                            fontSize: 11.5,
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          },
-                        },
-                        x.kind === "free" ? "Contratar" : (Object.values(offers || {}).some((offer) => isOfferOpen(offer) && offer.playerId === u.id && activeTeam && offer.buyerTeamId === activeTeam.id) ? "Em negociação" : "Fazer oferta"),
-                      ),
-                    ),
-                ),
-              );
-            }),
-            I.length > m &&
               React.createElement(
                 "button",
-                {
-                  className: "tapbtn",
-                  onClick: () => g((u) => u + 30),
-                  style: {
-                    ...M,
-                    background: "var(--surface-soft)",
-                    color: "var(--heading)",
-                    border: "1px solid #58CC02",
-                  },
-                },
-                "Mostrar mais (",
-                I.length - m,
-                " restantes)",
+                { className: "tapbtn", onClick: () => setMarketSection("negotiations"), style: segmentStyle(marketSection === "negotiations") },
+                React.createElement(OfferIcon, { size: 16 }),
+                "Negociações",
+                unreadOffers > 0 && React.createElement("span", { style: { minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999, background: marketSection === "negotiations" ? "var(--surface)" : "var(--danger)", color: marketSection === "negotiations" ? "var(--ink)" : "white", display: "grid", placeItems: "center", fontSize: 10, fontWeight: 800 } }, unreadOffers > 9 ? "9+" : unreadOffers),
               ),
-            d.length > 0 &&
-              React.createElement(
-                React.Fragment,
-                null,
-                React.createElement(Z, {
-                  icon: React.createElement(ze, { size: 15 }),
-                  text: "\xDAltimas negocia\xE7\xF5es",
-                }),
-                d.slice(0, 12).map((u) => {
-                  var x, T;
-                  return React.createElement(
+            ),
+            marketSection === "negotiations"
+              ? React.createElement(TradeOffersArea, {
+                  offers: offers,
+                  catalog: catalogMap,
+                  teamById: l,
+                  activeTeam: activeTeam,
+                  onAccept: onAcceptOffer,
+                  onUpdate: onUpdateOffer,
+                  onOpenDetail: f,
+                  onExplorePlayers: () => setMarketSection("players"),
+                })
+              : React.createElement(
+                  React.Fragment,
+                  null,
+                  React.createElement(
                     "div",
-                    { key: u.id, style: { ...E, padding: 10, fontSize: 12.5 } },
-                    React.createElement("b", null, u.playerName),
-                    ": ",
-                    u.fromTeamId
-                      ? ((x = l(u.fromTeamId)) == null ? void 0 : x.name) ||
-                          "Time"
-                      : "Mercado",
-                    " ",
-                    React.createElement(Jt, {
-                      size: 12,
-                      style: { verticalAlign: -2, margin: "0 3px" },
-                    }),
-                    " ",
-                    ((T = l(u.toTeamId)) == null ? void 0 : T.name) || "Time",
-                    React.createElement(
-                      "div",
-                      {
-                        style: {
-                          fontSize: 10.5,
-                          color: "var(--muted)",
-                          marginTop: 2,
-                        },
+                    { style: { position: "relative", marginBottom: 10 } },
+                    React.createElement("input", {
+                      style: { ...q, paddingLeft: 34 },
+                      placeholder: "Buscar jogador...",
+                      value: p,
+                      onChange: (u) => {
+                        (F(u.target.value), g(30));
                       },
-                      L(u.price),
-                      " \xB7 ",
-                      u.date,
+                    }),
+                    React.createElement(
+                      "span",
+                      { style: { position: "absolute", left: 10, top: 12 } },
+                      React.createElement(Xt, { size: 15, color: "var(--muted)" }),
                     ),
-                  );
-                }),
-              ),
+                  ),
+                  React.createElement(
+                    "div",
+                    { style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 } },
+                    React.createElement("span", { onClick: () => { (v("all"), g(30)); }, style: V(c === "all") }, "Todas"),
+                    k.map((u) => React.createElement("span", { key: u, onClick: () => { (v(u), g(30)); }, style: V(c === u) }, u)),
+                  ),
+                  React.createElement(
+                    "div",
+                    { style: { display: "flex", gap: 6, marginBottom: 14 } },
+                    [
+                      { k: "overall", l: "Overall" },
+                      { k: "value", l: "Valor" },
+                      { k: "name", l: "Nome" },
+                    ].map((u) => React.createElement("span", { key: u.k, onClick: () => h(u.k), style: V(s === u.k) }, u.l)),
+                  ),
+                  B.map((u) => {
+                    var T, te;
+                    let x = n(u);
+                    let activeOffer = Object.values(offers || {}).find((offer) => isOfferOpen(offer) && offer.playerId === u.id && activeTeam && offer.buyerTeamId === activeTeam.id);
+                    return React.createElement(
+                      "div",
+                      { key: u.id, style: { ...E, display: "flex", alignItems: "center", gap: 10, padding: 12 } },
+                      React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, background: positionColor(u.position), color: "#ffffff", padding: "3px 6px", borderRadius: 6, border: "1px solid transparent", minWidth: 34, textAlign: "center" } }, u.position),
+                      React.createElement(
+                        "button",
+                        { onClick: () => f(u), style: { flex: 1, background: "none", border: "none", textAlign: "left", cursor: "pointer", padding: 0, color: "var(--heading)" } },
+                        React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, u.name, " ", React.createElement("span", { style: { fontWeight: 800, color: overallColor(u.overall), fontSize: 12.5 } }, u.overall)),
+                        React.createElement(
+                          "div",
+                          { style: { fontSize: 11.5, color: "var(--muted)" } },
+                          x.kind === "free" && React.createElement(React.Fragment, null, "Livre no mercado"),
+                          x.kind === "owned" && React.createElement(React.Fragment, null, ((T = l(x.teamId)) == null ? void 0 : T.name) || "Time"),
+                          x.kind === "listed" && React.createElement(React.Fragment, null, "À venda por ", (te = l(x.teamId)) == null ? void 0 : te.name),
+                        ),
+                      ),
+                      React.createElement(
+                        "div",
+                        { style: { textAlign: "right" } },
+                        (x.kind === "free" || (x.teamId && (!activeTeam || x.teamId !== activeTeam.id))) &&
+                          React.createElement(
+                            React.Fragment,
+                            null,
+                            React.createElement("div", { style: { fontWeight: 800, color: "var(--green)", fontSize: 13, marginBottom: 4 } }, L(x.kind === "free" ? u.value : (x.kind === "listed" && x.price ? x.price : u.value))),
+                            React.createElement(
+                              "button",
+                              {
+                                className: "tapbtn",
+                                onClick: () => activeOffer ? setMarketSection("negotiations") : r(u),
+                                style: { background: "var(--surface-soft)", border: "1px solid #58CC02", color: "var(--green)", borderRadius: 8, padding: "6px 10px", fontSize: 11.5, fontWeight: 700, cursor: "pointer" },
+                              },
+                              x.kind === "free" ? "Contratar" : (activeOffer ? "Ver negociação" : "Fazer oferta"),
+                            ),
+                          ),
+                      ),
+                    );
+                  }),
+                  I.length > m && React.createElement("button", { className: "tapbtn", onClick: () => g((u) => u + 30), style: { ...M, background: "var(--surface-soft)", color: "var(--heading)", border: "1px solid #58CC02" } }, "Mostrar mais (", I.length - m, " restantes)"),
+                ),
           );
         }
         function N({ label: e, value: t, max: l = 99 }) {
@@ -3317,19 +3255,23 @@
           );
         }
 
-        function TradeOffersArea({ offers, catalog, teamById, activeTeam, onAccept, onUpdate, onOpenDetail }) {
+        function TradeOffersArea({ offers, catalog, teamById, activeTeam, onAccept, onUpdate, onOpenDetail, onExplorePlayers }) {
           let [section, setSection] = b("received"), [counterId, setCounterId] = b(null), [counterValue, setCounterValue] = b(0);
           if (!activeTeam) return React.createElement("div", { style: { ...E, padding: 24, textAlign: "center", color: "var(--muted)" } }, "Este perfil não possui um time neste campeonato.");
           let now = Date.now();
           let all = Object.values(offers || {}).map((offer) => offer.expiresAt && offer.expiresAt <= now && isOfferOpen(offer) ? { ...offer, status: "expired" } : offer);
           let list = all.filter((offer) => section === "received" ? offer.sellerTeamId === activeTeam.id : offer.buyerTeamId === activeTeam.id).sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
           return React.createElement("div", null,
-            React.createElement(Z, { icon: React.createElement("span", null, "💬"), text: "Propostas" }),
+            React.createElement(Z, { icon: React.createElement(OfferIcon, { size: 15 }), text: "Negociações" }),
             React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
               React.createElement("button", { style: V(section === "received"), onClick: () => setSection("received") }, "Recebidas"),
               React.createElement("button", { style: V(section === "sent"), onClick: () => setSection("sent") }, "Enviadas")
             ),
-            list.length === 0 && React.createElement("div", { style: { ...E, padding: 28, textAlign: "center", color: "var(--muted)" } }, section === "received" ? "Você ainda não recebeu propostas." : "Você ainda não enviou propostas."),
+            list.length === 0 && React.createElement("div", { style: { ...E, padding: 28, textAlign: "center", color: "var(--muted)" } },
+              React.createElement("div", { style: { fontWeight: 700, color: "var(--heading)", marginBottom: 6 } }, "Nenhuma negociação por aqui"),
+              React.createElement("div", { style: { fontSize: 12.5, marginBottom: 14 } }, section === "received" ? "As ofertas recebidas aparecerão aqui." : "As ofertas enviadas aparecerão aqui."),
+              React.createElement("button", { className: "tapbtn", onClick: onExplorePlayers, style: { ...M, ...W, width: "auto", display: "inline-flex" } }, "Explorar jogadores")
+            ),
             list.map((offer) => {
               let player = catalog.get(offer.playerId), open = isOfferOpen(offer), isSeller = offer.sellerTeamId === activeTeam.id;
               let waitingForMe = open && offer.lastActorTeamId !== activeTeam.id;
@@ -4317,9 +4259,7 @@
           let items = [
             { key: "table", icon: pe, label: "Tabela" },
             { key: "teams", icon: Vt, label: "Elenco" },
-            { key: "market", icon: Xe, label: "Mercado" },
-            { key: "offers", icon: OfferIcon, label: "Propostas", badge: unreadOffers },
-            { key: "history", icon: ze, label: "Histórico" },
+            { key: "market", icon: Xe, label: "Mercado", badge: unreadOffers },
             { key: "profile", icon: ProfileIcon, label: "Perfil" },
           ];
           if (l) items.push({ key: "admin", icon: AdminIcon, label: "Admin" });
