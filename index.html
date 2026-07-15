@@ -362,6 +362,7 @@
             [B, u] = b({ currentTournamentId: null, seasonCounter: 1 }),
             [x, T] = b([]),
             [te, me] = b(null),
+            [selectedTournamentId, setSelectedTournamentId] = b(eo("pes-selected-tournament")),
             [lt, rt] = b(!1),
             [st, dt] = b(""),
             [Y, oe] = b("home"),
@@ -386,7 +387,11 @@
             [gt, ft] = b(0),
             [Me, be] = b(null),
             [We, he] = b(null),
-            [Re, Ae] = b(null);
+            [Re, Ae] = b(null),
+            [adminProfileName, setAdminProfileName] = b(""),
+            [adminProfileColor, setAdminProfileColor] = b(se[0]),
+            [adminProfileBudget, setAdminProfileBudget] = b(300),
+            [adminTournamentName, setAdminTournamentName] = b("");
           He(() => {
             fetch("./players.json")
               .then((o) => {
@@ -422,8 +427,8 @@
             return () => o.forEach((i) => i());
           }, []);
           let R = X(
-              () => m.find((o) => o.id === B.currentTournamentId) || null,
-              [m, B.currentTournamentId],
+              () => m.find((o) => o.id === selectedTournamentId) || null,
+              [m, selectedTournamentId],
             ),
             p = (R && R.context && R.context.teams) || baseTeams,
             c = (R && R.context && R.context.ownership) || baseOwnership,
@@ -478,7 +483,31 @@
           let Ne = H((o) => {
             (u(o), U("meta", o));
           }, []);
+          function isAdminProfile(profile) {
+            let item = typeof profile === "object" && profile ? profile : { name: String(profile || "") };
+            return item.role === "admin" || String(item.name || "").trim().toLowerCase() === "admin";
+          }
+          function selectTournament(o) {
+            let keepAdmin = isAdminProfile(te);
+            setSelectedTournamentId(o || null);
+            qe("pes-selected-tournament", o || null);
+            if (!keepAdmin) {
+              me(null);
+              qe("pes-my-profile", null);
+              De(null);
+              oe("home");
+            }
+          }
+          function profileBelongsToTournament(profile, tournament) {
+            if (!tournament) return false;
+            let item = typeof profile === "object" && profile ? profile : { name: String(profile) };
+            if (isAdminProfile(item)) return true;
+            if (Array.isArray(item.tournamentIds)) return item.tournamentIds.includes(tournament.id);
+            let contextTeams = (tournament.context && tournament.context.teams) || [];
+            return !!contextTeams.find((team) => team.id === item.teamId || String(team.name || "").trim().toLowerCase() === String(item.name || "").trim().toLowerCase());
+          }
           function bt(o) {
+            if (!R || !profileBelongsToTournament(o, R)) return;
             let i = typeof o === "object" && o ? o : { name: String(o) },
               y = String(i.name || "").trim();
             if (!y) return;
@@ -499,7 +528,7 @@
               }),
                 Se([...p, D]));
             }
-            let A = { ...i, name: y, teamId: D.id, color: i.color || D.color };
+            let A = { ...i, name: y, teamId: D.id, color: i.color || D.color, tournamentIds: Array.isArray(i.tournamentIds) ? i.tournamentIds : [R.id] };
             (me(A), qe("pes-my-profile", A));
             let w = x.findIndex(
                 (S) =>
@@ -621,6 +650,50 @@
             let i = { ...c };
             (delete i[o.id], ne(i));
           }
+          function createAdminTournament() {
+            let name = adminTournamentName.trim();
+            if (!name) return;
+            let tournament = {
+              id: _(), name, format: "liga", season: B.seasonCounter,
+              teamIds: [], groups: null, matches: [], status: "ongoing",
+              champion: null, createdAt: Date.now(),
+              context: { teams: [], ownership: {}, playerStats: {}, transfers: [] },
+            };
+            ae([...m, tournament]);
+            setAdminTournamentName("");
+            setSelectedTournamentId(tournament.id);
+            qe("pes-selected-tournament", tournament.id);
+          }
+          function deleteAdminTournament(id) {
+            if (!window.confirm("Excluir este campeonato e todos os dados dele?")) return;
+            let next = m.filter((item) => item.id !== id);
+            ae(next);
+            let updatedProfiles = x.map((profile) => {
+              if (!(typeof profile === "object" && profile)) return profile;
+              return { ...profile, tournamentIds: Array.isArray(profile.tournamentIds) ? profile.tournamentIds.filter((tournamentId) => tournamentId !== id) : profile.tournamentIds };
+            });
+            T(updatedProfiles); U("profiles", updatedProfiles);
+            if (selectedTournamentId === id) {
+              let nextId = next[0] ? next[0].id : null;
+              setSelectedTournamentId(nextId); qe("pes-selected-tournament", nextId);
+            }
+          }
+          function createAdminProfile() {
+            if (!R || !adminProfileName.trim()) return;
+            let name = adminProfileName.trim();
+            let team = { id: _(), name, color: adminProfileColor, budget: Math.max(0, Number(adminProfileBudget) || 0) };
+            let contextTeams = [...((R.context && R.context.teams) || []), team];
+            let updatedTournament = { ...R, teamIds: [...(R.teamIds || []), team.id], context: { ...(R.context || {}), teams: contextTeams } };
+            ae(m.map((item) => item.id === R.id ? updatedTournament : item));
+            let profile = { id: _(), name, color: adminProfileColor, teamId: team.id, tournamentIds: [R.id] };
+            let updatedProfiles = [...x, profile];
+            T(updatedProfiles); U("profiles", updatedProfiles);
+            setAdminProfileName(""); setAdminProfileBudget(300); setAdminProfileColor(se[updatedProfiles.length % se.length]);
+          }
+          function updateAdminBudget(teamId, value) {
+            let amount = Math.max(0, Number(value) || 0);
+            Se(p.map((team) => team.id === teamId ? { ...team, budget: amount } : team));
+          }
           function Et() {
             (ye({
               name: `Temporada ${B.seasonCounter}`,
@@ -729,7 +802,8 @@
               },
             };
             (ae([...m, w]),
-              Ne({ ...B, currentTournamentId: w.id }),
+              setSelectedTournamentId(w.id),
+              qe("pes-selected-tournament", w.id),
               fe(!1),
               oe("tournament"));
           }
@@ -1007,9 +1081,11 @@
               : lt && !te
                 ? React.createElement(oo, {
                     profiles: x,
-                    newProfileName: st,
-                    setNewProfileName: dt,
+                    tournaments: m.filter((item) => item.status !== "finished"),
+                    selectedTournamentId,
+                    onSelectTournament: selectTournament,
                     onPick: bt,
+                    belongsToTournament: profileBelongsToTournament,
                   })
                 : React.createElement(
                     "div",
@@ -1084,7 +1160,7 @@
                           teams: ProfileTeams,
                           activeTeamId: ProfileTeam ? ProfileTeam.id : null,
                           setActiveTeamId: () => {},
-                          onNewTeam: At,
+                          onNewTeam: null,
                           onDeleteTeam: () => {},
                           squadOf: Oe,
                           onOpenSell: Ct,
@@ -1126,8 +1202,19 @@
                           historyOpen: ut,
                           setHistoryOpen: mt,
                         }),
+                      Y === "admin" && isAdminProfile(te) &&
+                        React.createElement(AdminArea, {
+                          currentTournament: R, tournaments: m, teams: p,
+                          profileName: adminProfileName, setProfileName: setAdminProfileName,
+                          profileColor: adminProfileColor, setProfileColor: setAdminProfileColor,
+                          profileBudget: adminProfileBudget, setProfileBudget: setAdminProfileBudget,
+                          tournamentName: adminTournamentName, setTournamentName: setAdminTournamentName,
+                          onCreateProfile: createAdminProfile, onCreateTournament: createAdminTournament,
+                          onDeleteTournament: deleteAdminTournament, onSelectTournament: selectTournament,
+                          onUpdateBudget: updateAdminBudget,
+                        }),
                     ),
-                    React.createElement(mo, { tab: Y, setTab: oe }),
+                    React.createElement(mo, { tab: Y, setTab: oe, isAdmin: isAdminProfile(te) }),
                     ct &&
                       React.createElement(
                         ee,
@@ -1241,153 +1328,33 @@
                       }),
                   );
         }
-        function oo({
-          profiles: e,
-          newProfileName: t,
-          setNewProfileName: l,
-          onPick: a,
-        }) {
-          let n = e
-            .map((r, f) => {
-              let d = typeof r === "object" && r ? r : { name: String(r) },
-                p = String(d.name || "").trim(),
-                F = d.color || se[f % se.length];
-              return { name: p, color: F, raw: r };
-            })
-            .filter((r) => r.name);
-          return React.createElement(
-            "div",
-            {
-              style: {
-                minHeight: "100vh",
-                background: "#FFFFFF",
-                color: "#4B4B4B",
-                fontFamily:
-                  "Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                padding: 24,
-                maxWidth: 760,
-                margin: "0 auto",
-              },
-            },
-            React.createElement(
-              "div",
-              { style: { textAlign: "center", marginBottom: 34 } },
-              React.createElement(
-                "div",
-                { style: { fontSize: 30, fontWeight: 900, letterSpacing: -0.6 } },
-                "PES ",
-                React.createElement(
-                  "span",
-                  { style: { color: "#58CC02" } },
-                  "MANAGER",
-                ),
-              ),
-              React.createElement(
-                "div",
-                { style: { fontSize: 32, fontWeight: 900, marginTop: 28, color: "#4B4B4B" } },
-                "Quem vai jogar?",
-              ),
+        function oo({ profiles: e, tournaments: t, selectedTournamentId: l, onSelectTournament: a, onPick: n, belongsToTournament: r }) {
+          let selected = t.find((item) => item.id === l) || null;
+          let visibleProfiles = selected ? e.map((profile, index) => {
+            let item = typeof profile === "object" && profile ? profile : { name: String(profile) };
+            return { raw: profile, name: String(item.name || "").trim(), color: item.color || se[index % se.length] };
+          }).filter((profile) => profile.name && r(profile.raw, selected)) : [];
+          return React.createElement("div", { style: { minHeight: "100vh", background: "#FFFFFF", color: "#4B4B4B", fontFamily: "Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif", padding: 24, maxWidth: 760, margin: "0 auto" } },
+            React.createElement("div", { style: { textAlign: "center", paddingTop: 36, marginBottom: 28 } },
+              React.createElement("div", { style: { fontSize: 30, fontWeight: 900 } }, "PES ", React.createElement("span", { style: { color: "#58CC02" } }, "MANAGER")),
+              React.createElement("div", { style: { fontSize: 13, color: "#777777", marginTop: 6 } }, "Escolha o campeonato e depois seu perfil")
             ),
-            n.length > 0 &&
-              React.createElement(
-                "div",
-                {
-                  style: {
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-                    gap: 18,
-                    marginBottom: 30,
-                  },
-                },
-                n.map((r) =>
-                  React.createElement(
-                    "button",
-                    {
-                      key: r.name,
-                      onClick: () => a(r.raw),
-                      className: "tapbtn",
-                      style: {
-                        background: "none",
-                        border: "none",
-                        color: "#4B4B4B",
-                        cursor: "pointer",
-                        padding: 0,
-                        textAlign: "center",
-                      },
-                    },
-                    React.createElement(
-                      "div",
-                      {
-                        style: {
-                          aspectRatio: "1",
-                          borderRadius: 20,
-                          background: r.color,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 44,
-                          fontWeight: 900,
-                          border: "2px solid transparent",
-                        },
-                      },
-                      r.name.charAt(0).toUpperCase(),
-                    ),
-                    React.createElement(
-                      "div",
-                      {
-                        style: {
-                          fontSize: 14,
-                          marginTop: 9,
-                          color: "#777777",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        },
-                      },
-                      r.name,
-                    ),
-                  ),
-                ),
-              ),
-            React.createElement(
-              "label",
-              { style: { ...P, textAlign: "center" } },
-              "Adicionar perfil",
+            React.createElement("div", { style: { marginBottom: 30 } },
+              React.createElement("div", { style: { ...P, textAlign: "center", marginBottom: 12 } }, "1. Campeonato"),
+              t.length ? React.createElement("div", { style: { display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 } }, t.map((tournament) => {
+                let active = tournament.id === l;
+                return React.createElement("button", { key: tournament.id, onClick: () => a(tournament.id), style: { minWidth: 180, padding: "14px 16px", borderRadius: 14, border: active ? "2px solid #58CC02" : "2px solid #DEDEDE", background: active ? "#D7FFB8" : "#FFFFFF", color: "#4B4B4B", cursor: "pointer", textAlign: "left" } },
+                  React.createElement("div", { style: { fontSize: 15, fontWeight: 900 } }, tournament.name),
+                  React.createElement("div", { style: { fontSize: 12, color: "#777777", marginTop: 3 } }, (tournament.teamIds || []).length, " perfis")
+                );
+              })) : React.createElement("div", { style: { ...E, textAlign: "center", color: "#777777" } }, "Nenhum campeonato ativo foi encontrado." )
             ),
-            React.createElement(
-              "div",
-              { style: { display: "flex", gap: 8 } },
-              React.createElement("input", {
-                style: { ...q, flex: 1 },
-                placeholder: "Nome do perfil",
-                value: t,
-                onChange: (r) => l(r.target.value),
-                onKeyDown: (r) => {
-                  r.key === "Enter" && t.trim() && a(t.trim());
-                },
-              }),
-              React.createElement(
-                "button",
-                {
-                  className: "tapbtn",
-                  disabled: !t.trim(),
-                  onClick: () => a(t.trim()),
-                  style: {
-                    ...W,
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "0 18px",
-                    fontSize: 14,
-                    cursor: "pointer",
-                    opacity: t.trim() ? 1 : 0.5,
-                  },
-                },
-                "Criar",
-              ),
-            ),
+            React.createElement("div", { style: { ...P, textAlign: "center", marginBottom: 14 } }, "2. Perfil"),
+            !selected ? React.createElement("div", { style: { textAlign: "center", color: "#777777", padding: 28 } }, "Selecione um campeonato acima.") :
+            visibleProfiles.length ? React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 18 } }, visibleProfiles.map((profile) => React.createElement("button", { key: profile.name, onClick: () => n(profile.raw), className: "tapbtn", style: { background: "none", border: "none", color: "#4B4B4B", cursor: "pointer", padding: 0, textAlign: "center" } },
+              React.createElement("div", { style: { aspectRatio: "1", borderRadius: 20, background: profile.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, fontWeight: 900, border: "2px solid transparent" } }, profile.name.charAt(0).toUpperCase()),
+              React.createElement("div", { style: { fontSize: 14, marginTop: 9, color: "#777777", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name)
+            ))) : React.createElement("div", { style: { ...E, textAlign: "center", color: "#777777" } }, "Nenhum perfil pertence a este campeonato.")
           );
         }
         function no({
@@ -2208,7 +2175,7 @@
           return React.createElement(
             "div",
             null,
-            React.createElement(
+            a && React.createElement(
               "button",
               {
                 className: "tapbtn",
@@ -3432,6 +3399,42 @@
             ),
           );
         }
+        function AdminArea({ currentTournament, tournaments, teams, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget }) {
+          return React.createElement("div", null,
+            React.createElement(Z, { icon: React.createElement("span", null, "⚙️"), text: "Administração" }),
+            React.createElement("div", { style: E },
+              React.createElement("div", { style: { fontSize: 18, fontWeight: 900, marginBottom: 14 } }, "Criar campeonato"),
+              React.createElement("input", { style: q, placeholder: "Nome do campeonato", value: tournamentName, onChange: (event) => setTournamentName(event.target.value) }),
+              React.createElement("button", { style: { ...M, ...W }, disabled: !tournamentName.trim(), onClick: onCreateTournament }, "Criar campeonato")
+            ),
+            React.createElement("div", { style: E },
+              React.createElement("div", { style: { fontSize: 18, fontWeight: 900, marginBottom: 14 } }, "Campeonatos"),
+              tournaments.length ? tournaments.map((tournament) => React.createElement("div", { key: tournament.id, style: { display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderBottom: "1px solid #DEDEDE" } },
+                React.createElement("button", { onClick: () => onSelectTournament(tournament.id), style: { flex: 1, background: tournament.id === (currentTournament && currentTournament.id) ? "#D7FFB8" : "#F7F9F5", border: "2px solid #DEDEDE", borderRadius: 12, padding: 10, textAlign: "left", fontWeight: 800, cursor: "pointer" } }, tournament.name),
+                React.createElement("button", { onClick: () => onDeleteTournament(tournament.id), style: { background: "#FFF", color: "#EA2B2B", border: "2px solid #EA2B2B", borderRadius: 12, padding: "9px 12px", cursor: "pointer" } }, "Excluir")
+              )) : React.createElement("div", { style: { color: "#777777" } }, "Nenhum campeonato criado.")
+            ),
+            currentTournament && React.createElement("div", { style: E },
+              React.createElement("div", { style: { fontSize: 18, fontWeight: 900, marginBottom: 4 } }, "Criar perfil"),
+              React.createElement("div", { style: { fontSize: 13, color: "#777777", marginBottom: 14 } }, "O perfil será criado dentro de ", currentTournament.name, "."),
+              React.createElement("label", { style: P }, "Nome"),
+              React.createElement("input", { style: q, value: profileName, onChange: (event) => setProfileName(event.target.value), placeholder: "Nome do jogador" }),
+              React.createElement("label", { style: { ...P, marginTop: 14 } }, "Cor"),
+              React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 } }, se.map((color) => React.createElement("button", { key: color, onClick: () => setProfileColor(color), style: { width: 32, height: 32, borderRadius: 8, background: color, border: profileColor === color ? "3px solid #4B4B4B" : "2px solid transparent", cursor: "pointer" } }))),
+              React.createElement("label", { style: P }, "Moedas iniciais"),
+              React.createElement("input", { type: "number", min: 0, style: q, value: profileBudget, onChange: (event) => setProfileBudget(event.target.value) }),
+              React.createElement("button", { style: { ...M, ...W }, disabled: !profileName.trim(), onClick: onCreateProfile }, "Criar perfil")
+            ),
+            currentTournament && React.createElement("div", { style: E },
+              React.createElement("div", { style: { fontSize: 18, fontWeight: 900, marginBottom: 4 } }, "Moedas dos jogadores"),
+              React.createElement("div", { style: { fontSize: 13, color: "#777777", marginBottom: 14 } }, currentTournament.name),
+              teams.length ? teams.map((team) => React.createElement("div", { key: team.id, style: { display: "grid", gridTemplateColumns: "1fr 120px", gap: 10, alignItems: "center", marginBottom: 10 } },
+                React.createElement("div", { style: { fontWeight: 800 } }, team.name),
+                React.createElement("input", { type: "number", min: 0, style: { ...q, padding: "9px 10px" }, value: team.budget, onChange: (event) => onUpdateBudget(team.id, event.target.value) })
+              )) : React.createElement("div", { style: { color: "#777777" } }, "Nenhum perfil neste campeonato.")
+            )
+          );
+        }
         function uo({
           tournaments: e,
           teamById: t,
@@ -3563,7 +3566,7 @@
                   }),
               );
         }
-        function mo({ tab: e, setTab: t }) {
+        function mo({ tab: e, setTab: t, isAdmin: l }) {
           return React.createElement(
             "div",
             {
@@ -3586,7 +3589,8 @@
               { key: "teams", icon: Vt, label: "Elenco" },
               { key: "tournament", icon: pe, label: "Campeonato" },
               { key: "market", icon: Xe, label: "Mercado" },
-              { key: "history", icon: ze, label: "Hist\xF3rico" },
+              { key: "history", icon: ze, label: "Histórico" },
+              ...(l ? [{ key: "admin", icon: qt, label: "Admin" }] : []),
             ].map(({ key: a, icon: n, label: r }) => {
               let f = e === a;
               return React.createElement(
