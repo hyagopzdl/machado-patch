@@ -171,7 +171,7 @@
       .sports-tab.is-active::after { content:""; position:absolute; bottom:3px; width:18px; height:3px; border-radius:99px; background:var(--green); box-shadow:0 0 14px color-mix(in srgb,var(--green) 75%,transparent); }
       .sports-tab-avatar { width:24px; height:24px; border-radius:50%; overflow:hidden; display:grid; place-items:center; font-size:10px; font-weight:800; color:#fff; background:var(--green-strong); box-shadow:0 0 0 2px color-mix(in srgb,var(--surface) 85%,transparent); }
       .sports-tab-avatar img { width:100%; height:100%; object-fit:cover; }
-      .sports-fab { position:fixed !important; left:50% !important; bottom:78px !important; transform:translateX(-50%) !important; width:62px !important; height:62px !important; border:1px solid rgba(255,255,255,.3) !important; background:linear-gradient(145deg,#29ec9b,#00b968) !important; box-shadow:0 14px 38px rgba(0,201,120,.32),0 0 32px rgba(33,228,147,.18),inset 0 1px 0 rgba(255,255,255,.45) !important; }
+      .sports-fab { position:fixed !important; z-index:140 !important; left:50% !important; bottom:78px !important; transform:translateX(-50%) !important; width:62px !important; height:62px !important; border:1px solid rgba(255,255,255,.3) !important; background:linear-gradient(145deg,#29ec9b,#00b968) !important; box-shadow:0 14px 38px rgba(0,201,120,.32),0 0 32px rgba(33,228,147,.18),inset 0 1px 0 rgba(255,255,255,.45) !important; }
       .sports-fab:hover { transform:translateX(-50%) translateY(-2px) scale(1.03) !important; }
       .sports-modal-overlay { animation: sportsFadeIn .2s ease both; backdrop-filter: blur(10px); -webkit-backdrop-filter:blur(10px); }
       .sports-modal { animation: sportsModalIn .28s cubic-bezier(.2,.9,.2,1) both; background:color-mix(in srgb,var(--surface) 94%,transparent) !important; border:1px solid var(--border) !important; box-shadow:var(--shadow-float) !important; backdrop-filter:blur(28px) saturate(145%); -webkit-backdrop-filter:blur(28px) saturate(145%); }
@@ -1940,7 +1940,7 @@
                         }),
                     ),
                     R && R.status !== "finished" && (ProfileTeam || isAdminProfile(te)) && p.filter((team) => team && team.active !== false).length >= 2 &&
-                      React.createElement("button", { onClick: openMatchWizard, className: "tapbtn sports-fab", title: "Adicionar partida", "aria-label": "Adicionar partida", style: { position: "fixed", left: "50%", bottom: 62, transform: "translateX(-50%)", width: 58, height: 58, borderRadius: "50%", border: "5px solid var(--surface)", background: "var(--green)", color: "white", fontSize: 32, lineHeight: 1, display: "grid", placeItems: "center", cursor: "pointer", zIndex: 20, boxShadow: "0 8px 20px rgba(0,0,0,.18)" } }, "+"),
+                      React.createElement("button", { onClick: openMatchWizard, className: "tapbtn sports-fab", title: "Adicionar partida", "aria-label": "Adicionar partida", style: { position: "fixed", left: "50%", bottom: 62, transform: "translateX(-50%)", width: 58, height: 58, borderRadius: "50%", border: "5px solid var(--surface)", background: "var(--green)", color: "white", fontSize: 32, lineHeight: 1, display: "grid", placeItems: "center", cursor: "pointer", zIndex: 140, boxShadow: "0 8px 20px rgba(0,0,0,.18)" } }, "+"),
                     React.createElement(mo, { tab: Y, setTab: oe, isAdmin: isAdminProfile(te), unreadOffers: unreadOfferCount, profile: te }),
                     viewedTeamId && $(viewedTeamId) && React.createElement(TeamViewer, {
                       team: $(viewedTeamId),
@@ -1949,6 +1949,7 @@
                       onOpenDetail: be,
                       profiles: x,
                       tournament: R,
+                      canOffer: !!(ProfileTeam && viewedTeamId !== ProfileTeam.id),
                       onClose: () => setViewedTeamId(null),
                     }),
                     matchWizard && React.createElement(MatchWizard, { data: matchWizard, setData: setMatchWizard, teams: p.filter((team) => team && team.active !== false), profiles: x, onClose: () => setMatchWizard(null), onSave: saveQuickMatch }),
@@ -2049,6 +2050,7 @@
                       React.createElement(ro, {
                         player: Me,
                         onClose: () => be(null),
+                        onOffer: (player) => { be(null); kt(player); },
                       }),
                     We &&
                       React.createElement(so, {
@@ -2708,9 +2710,9 @@
             return React.createElement("article", { key:player.id, className:"tapbtn", style:{ ...E, padding:16, display:"grid", gap:14, background:"linear-gradient(145deg, color-mix(in srgb, "+overallColor(player.overall)+" 8%, var(--surface)), var(--surface))" } },
               React.createElement("button", { onClick:()=>c(player), style:{ display:"grid", gridTemplateColumns:"auto 1fr auto", alignItems:"center", gap:12, width:"100%", background:"none", border:0, padding:0, textAlign:"left", color:"var(--heading)", cursor:"pointer" } },
                 React.createElement("div", { style:{ width:50, height:58, borderRadius:14, display:"grid", placeItems:"center", background:`linear-gradient(155deg, color-mix(in srgb, ${overallColor(player.overall)} 25%, var(--surface-soft)), var(--surface-soft))`, border:`1px solid color-mix(in srgb, ${overallColor(player.overall)} 45%, var(--border))` } },
-                  React.createElement("div", { style:{ textAlign:"center" } }, React.createElement("strong", { style:{ display:"block", fontSize:20, color:overallColor(player.overall) } }, player.overall), React.createElement("span", { style:{ fontSize:9.5, fontWeight:800, color:"white", background:positionColor(player.position), borderRadius:5, padding:"2px 5px" } }, player.position))
+                  React.createElement("strong", { style:{ display:"block", fontSize:22, color:overallColor(player.overall) } }, player.overall)
                 ),
-                React.createElement("div", { style:{ minWidth:0 } }, React.createElement("div", { style:{ fontWeight:800, fontSize:15.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, player.name), React.createElement("div", { style:{ fontSize:11.5, color:"var(--muted)", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, player.club || "Clube não informado"), React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", marginTop:3 } }, `${player.age || "—"} anos · ${L(player.value)}`)),
+                React.createElement("div", { style:{ minWidth:0 } }, React.createElement("span", { style:{ display:"inline-flex", fontSize:9.5, fontWeight:800, color:"white", background:positionColor(player.position), borderRadius:5, padding:"2px 6px", marginBottom:5 } }, player.position), React.createElement("div", { style:{ fontWeight:800, fontSize:15.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, player.name), React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", marginTop:3 } }, `${player.age || "—"} anos · ${L(player.value)}`)),
                 React.createElement("span", { style:{ color:"var(--muted)", fontSize:18 } }, "›")
               ),
               !readOnly && React.createElement("button", { disabled:cannotSell, onClick:()=>!cannotSell&&p(player), style:{ width:"100%", padding:"10px 12px", borderRadius:999, border:"1px solid var(--border)", background:cannotSell?"var(--surface-soft)":"transparent", color:cannotSell?"var(--muted)":"var(--heading)", fontSize:12, fontWeight:750, cursor:cannotSell?"not-allowed":"pointer", opacity:cannotSell?.65:1 } }, cannotSell ? `Mínimo de ${minPlayers} jogadores` : "Vender ao mercado")
@@ -2719,7 +2721,7 @@
           return React.createElement("div", null,
             onBack && React.createElement("button", { onClick:onBack, className:"tapbtn", style:{ marginBottom:16, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--heading)", borderRadius:999, padding:"9px 14px", fontWeight:750, cursor:"pointer" } }, "← Voltar para a tabela"),
             React.createElement("div", { style:{ textAlign:"center", marginBottom:20 } }, React.createElement("div", { style:{ fontSize:12, color:"var(--muted)", marginBottom:5 } }, readOnly ? (viewerProfile ? `Time de ${viewerProfile.name}` : "Elenco do participante") : "Meu elenco"), React.createElement("h1", { style:{ margin:0, fontSize:"clamp(28px,5vw,42px)", lineHeight:1, letterSpacing:"-.045em" } }, s.name), React.createElement("div", { style:{ color:"var(--muted)", fontSize:12.5, marginTop:8 } }, `${squad.length}/${maxPlayers} jogadores${readOnly ? "" : ` · ${L(s.budget)} disponíveis`}`)),
-            React.createElement("div", { style:{ ...E, padding:18, marginBottom:16, border:"1px solid color-mix(in srgb, var(--green) 28%, var(--border))", background:"linear-gradient(135deg, color-mix(in srgb, var(--green) 12%, var(--surface)), var(--surface) 60%, color-mix(in srgb, var(--accent) 7%, var(--surface)))" } }, React.createElement("div", { style:{ fontSize:10.5, fontWeight:800, color:"var(--green)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:6 } }, "Análise do time"), React.createElement("div", { style:{ fontSize:14, lineHeight:1.5, color:"var(--heading)" } }, tip), !readOnly && React.createElement("button", { onClick:v, style:{ marginTop:12, background:"none", border:0, color:"var(--green)", fontWeight:800, padding:0, cursor:"pointer" } }, "Ver recomendações →")),
+            !readOnly && React.createElement("div", { style:{ ...E, padding:18, marginBottom:16, border:"1px solid color-mix(in srgb, var(--green) 28%, var(--border))", background:"linear-gradient(135deg, color-mix(in srgb, var(--green) 12%, var(--surface)), var(--surface) 60%, color-mix(in srgb, var(--accent) 7%, var(--surface)))" } }, React.createElement("div", { style:{ fontSize:10.5, fontWeight:800, color:"var(--green)", textTransform:"uppercase", letterSpacing:".08em", marginBottom:6 } }, "Análise do time"), React.createElement("div", { style:{ fontSize:14, lineHeight:1.5, color:"var(--heading)" } }, tip), React.createElement("button", { onClick:v, style:{ marginTop:12, background:"none", border:0, color:"var(--green)", fontWeight:800, padding:0, cursor:"pointer" } }, "Ver recomendações →")),
             React.createElement("div", { style:{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(135px,1fr))", gap:10, marginBottom:24 } },
               statCard("Overall do elenco", overall ? overall.toFixed(1) : "—", overall?overallColor(overall):null),
               statCard("Valor do elenco", L(totalValue)),
@@ -2921,7 +2923,7 @@
                   position: "relative",
                   width: 176,
                   minWidth: 176,
-                  aspectRatio: "3 / 4.15",
+                  height: 252,
                   padding: 14,
                   borderRadius: 22,
                   cursor: "pointer",
@@ -2952,9 +2954,8 @@
               React.createElement(
                 "div",
                 { style: { position: "relative" } },
-                React.createElement("div", { style: { fontSize: 18, fontWeight: 800, lineHeight: 1.05, letterSpacing: "-.45px", marginBottom: 7 } }, player.name),
+                React.createElement("div", { style: { fontSize: 18, fontWeight: 800, lineHeight: 1.08, letterSpacing: "-.45px", marginBottom: 7, minHeight:39, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" } }, player.name),
                 React.createElement("div", { style: { fontSize: 10.5, color: "var(--muted)", lineHeight: 1.35, minHeight: 28 } }, player.club || "Clube não informado"),
-                React.createElement("div", { style: { marginTop: 10, padding: "8px 9px", borderRadius: 11, background: "rgba(0,0,0,.12)", border: "1px solid rgba(255,255,255,.06)", fontSize: 10.5, color: "var(--heading)", lineHeight: 1.3 } }, reason),
                 owner && React.createElement("div", { style: { marginTop: 7, fontSize: 9.5, color: "var(--muted)" } }, `Pertence a ${owner.name}`),
                 React.createElement("div", { style: { marginTop: 10 } }, playerAction(player, status, activeOffer)),
               ),
@@ -3089,17 +3090,20 @@
                       React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)" } }, `${filteredPlayers.length} jogadores encontrados`),
                       React.createElement("select", { value: sortBy, onChange: (event) => setSortBy(event.target.value), style: { ...q, width: "auto", minWidth: 130, padding: "8px 30px 8px 10px", fontSize: 11.5 } }, React.createElement("option", { value: "overall" }, "Maior overall"), React.createElement("option", { value: "value" }, "Maior valor"), React.createElement("option", { value: "club" }, "Clube A–Z")),
                     ),
-                    filteredPlayers.slice(0, visibleCount).map((player) => {
+                    React.createElement("div", { style:{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:10 } }, filteredPlayers.slice(0, visibleCount).map((player) => {
                       let status = n(player), owner = status.teamId ? l(status.teamId) : null;
                       let activeOffer = Object.values(offers || {}).find((offer) => isOfferOpen(offer) && offer.playerId === player.id && activeTeam && offer.buyerTeamId === activeTeam.id);
                       return React.createElement(
-                        "div",
-                        { key: player.id, style: { ...E, display: "flex", alignItems: "center", gap: 10, padding: 12 } },
-                        React.createElement("span", { style: { fontSize: 10.5, fontWeight: 800, background: positionColor(player.position), color: "#fff", padding: "3px 6px", borderRadius: 6, minWidth: 34, textAlign: "center" } }, player.position),
-                        React.createElement("button", { onClick: () => f(player), style: { flex: 1, background: "none", border: "none", textAlign: "left", cursor: "pointer", padding: 0, color: "var(--heading)" } }, React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, player.name, " ", React.createElement("span", { style: { fontWeight: 850, color: overallColor(player.overall), fontSize: 12.5 } }, player.overall)), React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)" } }, player.club || "Sem clube", " · ", status.kind === "free" ? "Livre" : owner ? owner.name : "Outro time")),
-                        React.createElement("div", { style: { width: 105, textAlign: "right" } }, playerAction(player, status, activeOffer)),
+                        "article",
+                        { key: player.id, style: { ...E, padding:16, display:"grid", gap:14, background:`linear-gradient(145deg, color-mix(in srgb, ${overallColor(player.overall)} 8%, var(--surface)), var(--surface))` } },
+                        React.createElement("button", { onClick: () => f(player), style:{ display:"grid", gridTemplateColumns:"auto 1fr auto", alignItems:"center", gap:12, width:"100%", background:"none", border:0, padding:0, textAlign:"left", color:"var(--heading)", cursor:"pointer" } },
+                          React.createElement("div", { style:{ width:50, height:58, borderRadius:14, display:"grid", placeItems:"center", background:`linear-gradient(155deg, color-mix(in srgb, ${overallColor(player.overall)} 25%, var(--surface-soft)), var(--surface-soft))`, border:`1px solid color-mix(in srgb, ${overallColor(player.overall)} 45%, var(--border))` } }, React.createElement("strong", { style:{ fontSize:22, color:overallColor(player.overall) } }, player.overall)),
+                          React.createElement("div", { style:{ minWidth:0 } }, React.createElement("span", { style:{ display:"inline-flex", fontSize:9.5, fontWeight:800, color:"white", background:positionColor(player.position), borderRadius:5, padding:"2px 6px", marginBottom:5 } }, player.position), React.createElement("div", { style:{ fontWeight:800, fontSize:15.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, player.name), React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", marginTop:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, status.kind === "free" ? (player.club || "Livre no mercado") : owner ? `Pertence a ${owner.name}` : "Outro time")),
+                          React.createElement("span", { style:{ color:"var(--muted)", fontSize:18 } }, "›")
+                        ),
+                        React.createElement("div", { style:{ width:"100%" } }, playerAction(player, status, activeOffer)),
                       );
-                    }),
+                    })),
                     filteredPlayers.length === 0 && React.createElement("div", { style: { ...E, padding: 24, textAlign: "center", color: "var(--muted)" } }, "Nenhum jogador corresponde aos filtros selecionados."),
                     filteredPlayers.length > visibleCount && React.createElement("button", { className: "tapbtn", onClick: () => setVisibleCount((count) => count + 36), style: { ...M, background: "var(--surface-soft)", color: "var(--heading)", border: "1px solid rgba(88,204,2,.35)" } }, "Mostrar mais (", filteredPlayers.length - visibleCount, " restantes)"),
                   ),
@@ -3167,7 +3171,9 @@
             ),
           );
         }
-        function ro({ player: e, onClose: t }) {
+        function ro({ player: e, onClose: t, onOffer }) {
+          let detailContext = e && e.player ? e : { player:e, fromOtherTeam:false };
+          e = detailContext.player;
           let l = e.attrs || {},
             a = [
               ["Ataque", e.attack],
@@ -3325,6 +3331,7 @@
             F("Passes", f),
             F("Finalização e bola parada", d),
             F("Atributos especiais", p),
+            detailContext.fromOtherTeam && onOffer && React.createElement("div", { style:{ position:"sticky", bottom:-20, margin:"4px -20px -20px", padding:"14px 20px calc(14px + env(safe-area-inset-bottom))", background:"color-mix(in srgb, var(--surface) 94%, transparent)", backdropFilter:"blur(18px)", borderTop:"1px solid var(--border)", zIndex:5 } }, React.createElement("button", { className:"tapbtn", onClick:()=>onOffer(e), style:{ ...M, ...W, width:"100%", margin:0 } }, "Fazer proposta")),
           );
         }
         function ie({ label: e }) {
@@ -4549,7 +4556,7 @@
                   }),
               );
         }
-        function TeamViewer({ team, squadOf, ownership, onOpenDetail, profiles, tournament, onClose }) {
+        function TeamViewer({ team, squadOf, ownership, onOpenDetail, profiles, tournament, onClose, canOffer }) {
           let profile = (profiles || []).find((item) => item && typeof item === "object" && item.id === team.profileId);
           return React.createElement(
             "div",
@@ -4563,7 +4570,7 @@
               { onClick:(event)=>event.stopPropagation(), style:{ width:"min(1120px,100%)", margin:"0 auto", minHeight:"calc(100vh - 64px)", background:"var(--bg)", border:"1px solid var(--border)", borderRadius:28, padding:"clamp(18px,3vw,36px)", boxShadow:"0 24px 80px rgba(0,0,0,.35)" } },
               React.createElement(io, {
                 teams:[team], activeTeamId:team.id, setActiveTeamId:()=>{}, onNewTeam:null, onDeleteTeam:()=>{},
-                squadOf, onSellToMarket:()=>{}, depreciationPct:0, ownership, onOpenDetail, onGoMarket:()=>{},
+                squadOf, onSellToMarket:()=>{}, depreciationPct:0, ownership, onOpenDetail:(player)=>onOpenDetail({ player, fromOtherTeam:!!canOffer }), onGoMarket:()=>{},
                 rosterSettings:tournament&&tournament.rosterSettings?tournament.rosterSettings:{minPlayers:23,maxPlayers:30},
                 readOnly:true, onBack:onClose, viewerProfile:profile,
               })
@@ -4607,8 +4614,8 @@
             React.createElement("div", { style:E },
               React.createElement("div", { style:{ fontSize:19, fontWeight:700, marginBottom:16 } }, "Classificação"),
               standings.length ? React.createElement("div", { style:{ overflowX:"auto" } }, React.createElement("table", { style:{ width:"100%", borderCollapse:"collapse", minWidth:460 } },
-                React.createElement("thead", null, React.createElement("tr", null, ["#","Time","J","V","E","D","SG","PTS"].map((label)=>React.createElement("th", { key:label, style:{ textAlign: label==="Time"?"left":"center", fontSize:11, color:"var(--muted)", padding:"8px 6px", borderBottom:"1px solid var(--border)" } }, label)))),
-                React.createElement("tbody", null, standings.map((row,index)=>{ let team=teamById(row.id); return React.createElement("tr", { key:row.id }, React.createElement("td", { style:{ padding:"12px 6px", fontWeight:700, textAlign:"center" } }, index+1), React.createElement("td", { style:{ padding:"12px 6px", fontWeight:650 } }, React.createElement("button", { onClick:()=>team&&onOpenTeam&&onOpenTeam(team.id), disabled:!team, style:{ display:"flex", alignItems:"center", gap:9, background:"none", border:0, padding:0, color:"var(--heading)", font:"inherit", cursor:team?"pointer":"default", textAlign:"left" } }, avatarForTeam(team,30), React.createElement("span", { style:{ textDecoration:team?"underline":"none", textDecorationColor:"color-mix(in srgb, var(--green) 50%, transparent)", textUnderlineOffset:4 } }, team ? team.name : "Time removido"))), [row.pj,row.v,row.e,row.d,row.sg,row.pts].map((value,i)=>React.createElement("td", { key:i, style:{ padding:"12px 6px", textAlign:"center", fontWeight:i===5?800:500 } }, value))); }))
+                React.createElement("thead", null, React.createElement("tr", null, ["#","Time","J","V","E","D","SG","PTS"].map((label)=>React.createElement("th", { key:label, style:{ textAlign: label==="Time"?"left":"center", fontSize:11, color:"var(--muted)", padding:"8px 10px", borderBottom:"1px solid var(--border)", ...(label==="PTS"?{position:"sticky",right:0,zIndex:4,background:"var(--surface)",boxShadow:"-10px 0 18px rgba(0,0,0,.12)"}:{}) } }, label)))),
+                React.createElement("tbody", null, standings.map((row,index)=>{ let team=teamById(row.id); return React.createElement("tr", { key:row.id }, React.createElement("td", { style:{ padding:"12px 6px", fontWeight:700, textAlign:"center" } }, index+1), React.createElement("td", { style:{ padding:"12px 6px", fontWeight:650 } }, React.createElement("button", { onClick:()=>team&&onOpenTeam&&onOpenTeam(team.id), disabled:!team, style:{ display:"flex", alignItems:"center", gap:9, background:"none", border:0, padding:0, color:"var(--heading)", font:"inherit", cursor:team?"pointer":"default", textAlign:"left" } }, avatarForTeam(team,30), React.createElement("span", { style:{ textDecoration:team?"underline":"none", textDecorationColor:"color-mix(in srgb, var(--green) 50%, transparent)", textUnderlineOffset:4 } }, team ? team.name : "Time removido"))), [row.pj,row.v,row.e,row.d,row.sg,row.pts].map((value,i)=>React.createElement("td", { key:i, style:{ padding:"12px 10px", textAlign:"center", fontWeight:i===5?850:500, ...(i===5?{position:"sticky",right:0,zIndex:3,background:"var(--surface)",boxShadow:"-10px 0 18px rgba(0,0,0,.12)"}:{}) } }, value))); }))
               )) : React.createElement("div", { style:{ color:"var(--muted)", fontSize:14 } }, "A classificação aparecerá quando houver participantes.")
             ),
             React.createElement("div", { style:{ marginTop:28, marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"end" } }, React.createElement("div", null, React.createElement("div", { style:{ fontSize:12, color:"var(--muted)" } }, "Resultados"), React.createElement("div", { style:{ fontSize:21, fontWeight:750 } }, "Histórico de partidas")), React.createElement("div", { style:{ fontSize:12, color:"var(--muted)" } }, history.length + " partidas")),
@@ -4711,7 +4718,7 @@
                 display: "flex",
                 alignItems: "flex-end",
                 justifyContent: "center",
-                zIndex: 50,
+                zIndex: 220,
               },
               onClick: t,
             },
