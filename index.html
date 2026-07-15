@@ -977,6 +977,52 @@
             let i = { ...c };
             (delete i[o.id], ne(i));
           }
+          function importRosterPlan(plan, mode) {
+            if (!R || !plan || !Array.isArray(plan.entries) || !plan.entries.length) return;
+            let tournamentId = R.id;
+            let targetTeamIds = [...new Set(plan.entries.map((entry) => entry.teamId))];
+            let applyImport = (tournament) => {
+              let context = { ...(tournament.context || {}) };
+              let ownership = { ...(context.ownership || {}) };
+              if (mode === "replace") {
+                Object.keys(ownership).forEach((playerId) => {
+                  if (ownership[playerId] && targetTeamIds.includes(ownership[playerId].teamId)) delete ownership[playerId];
+                });
+              }
+              for (let entry of plan.entries) {
+                let current = ownership[entry.playerId];
+                if (current && current.teamId && current.teamId !== entry.teamId && !targetTeamIds.includes(current.teamId)) {
+                  return null;
+                }
+                ownership[entry.playerId] = { teamId: entry.teamId, forSale: false, price: null, squadRole: entry.squadRole || null };
+              }
+              let imports = Array.isArray(context.adminImports) ? [...context.adminImports] : [];
+              imports.unshift({ id: _(), type: "roster_txt", importedAt: Date.now(), importedByProfileId: te && te.id ? te.id : null, mode, playerCount: plan.entries.length, teamCount: targetTeamIds.length });
+              return { ...tournament, context: { ...context, ownership, adminImports: imports.slice(0, 20) } };
+            };
+            let db = Ee();
+            if (!db) {
+              let updated = applyImport(R);
+              if (!updated) { window.alert("A importação encontrou um jogador que já pertence a outro time."); return; }
+              ae(m.map((item) => item.id === tournamentId ? updated : item));
+              window.alert("Elencos importados com sucesso.");
+              return;
+            }
+            db.ref("pes/tournaments").transaction((serverList) => {
+              let list = Array.isArray(serverList) ? [...serverList] : [];
+              let index = list.findIndex((item) => item && item.id === tournamentId);
+              if (index < 0) return;
+              let updated = applyImport(list[index]);
+              if (!updated) return;
+              list[index] = updated;
+              return list;
+            }, (error, committed) => {
+              if (error) window.alert("Não foi possível importar os elencos. Tente novamente.");
+              else if (!committed) window.alert("A importação foi cancelada porque um jogador já pertence a outro time. Atualize a prévia e tente novamente.");
+              else window.alert("Elencos importados com sucesso.");
+            });
+          }
+
           function createAdminTournament() {
             let name = adminTournamentName.trim();
             if (!name) return;
@@ -1678,6 +1724,7 @@
                           onDeleteTournament: deleteAdminTournament, onSelectTournament: selectTournament,
                           onUpdateBudget: updateAdminBudget, onToggleParticipant: toggleTournamentParticipant,
                           onDeleteProfile: deleteGlobalProfile, onResetTournament: resetCurrentTournament,
+                          catalog: n, onImportRosters: importRosterPlan,
                         }),
                       Y === "profile" &&
                         React.createElement(ProfileArea, {
@@ -3980,9 +4027,103 @@
             ].map((o) => React.createElement("button", { key: o.key, onClick: () => t(o.key), className: "settings-theme-card" + (e === o.key ? " is-active" : "") }, React.createElement("div", { className: "theme-preview " + o.key }, React.createElement("span"), React.createElement("span"), React.createElement("span")), React.createElement("strong", { style: { color: "var(--heading)", fontSize: 14 } }, o.label))))
           );
         }
-        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament }) {
+        function normalizeImportText(value) {
+          return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+        }
+        function importNameVariants(value) {
+          let raw = String(value || "").trim(), values = [raw];
+          let matches = [...raw.matchAll(/\(([^)]+)\)/g)].map((item) => item[1]);
+          values.push(...matches, raw.replace(/\s*\([^)]*\)\s*/g, " "));
+          return [...new Set(values.map(normalizeImportText).filter(Boolean))];
+        }
+        function normalizeImportPosition(value) {
+          let position = String(value || "").trim().toUpperCase();
+          return ({ ATA_LEVE: "SS", ZAG: "CBT", LE: "SB_E", LD: "SB_D", GOL: "GK" })[position] || position;
+        }
+        function parseRosterTxt(text, catalog, profiles, teams) {
+          let rows = String(text || "").split(/\r?\n/), ownerName = "", squadRole = "", rawEntries = [];
+          for (let rawLine of rows) {
+            let line = rawLine.trim();
+            let ownerMatch = line.match(/^🎮\s*(.+)$/u);
+            if (ownerMatch) { ownerName = ownerMatch[1].trim(); squadRole = ""; continue; }
+            if (/TIME TITULAR/i.test(line)) { squadRole = "starter"; continue; }
+            if (/BANCO DE RESERVAS/i.test(line)) { squadRole = "bench"; continue; }
+            if (!ownerName || !squadRole || !line.includes("|")) continue;
+            if (/^NOME\s*\|/i.test(line)) continue;
+            let parts = line.split("|").map((part) => part.trim());
+            if (parts.length < 5 || !parts[0] || !/^\d+$/.test(parts[3])) continue;
+            rawEntries.push({ ownerName, squadRole, txtName: parts[0], position: parts[1], club: parts[2], overall: Number(parts[3]), value: Number(parts[4]) || 0 });
+          }
+          let activeProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.role !== "admin" && profile.active !== false);
+          let owners = [...new Set(rawEntries.map((entry) => entry.ownerName))].map((name) => {
+            let normalized = normalizeImportText(name);
+            let profileMatches = activeProfiles.filter((profile) => normalizeImportText(profile.name) === normalized);
+            let profile = profileMatches.length === 1 ? profileMatches[0] : null;
+            let team = profile ? teams.find((item) => item.profileId === profile.id && item.active !== false) : null;
+            return { name, profile, team, status: !profile ? "profile_missing" : !team ? "team_missing" : "ok" };
+          });
+          let ownerMap = new Map(owners.map((owner) => [owner.name, owner]));
+          let entries = rawEntries.map((entry) => {
+            let owner = ownerMap.get(entry.ownerName);
+            let txtNames = importNameVariants(entry.txtName), txtClub = normalizeImportText(entry.club), txtPosition = normalizeImportPosition(entry.position);
+            let candidates = (catalog || []).map((player) => {
+              let playerNames = importNameVariants(player.name);
+              let nameExact = txtNames.some((name) => playerNames.includes(name));
+              if (!nameExact) return null;
+              let score = 100;
+              if (normalizeImportPosition(player.position) === txtPosition) score += 20;
+              if (normalizeImportText(player.club) === txtClub) score += 20;
+              if (Number(player.overall) === entry.overall) score += 15;
+              if (Number(player.value) === entry.value) score += 5;
+              return { player, score };
+            }).filter(Boolean).sort((a, b) => b.score - a.score);
+            let best = candidates[0], tied = best ? candidates.filter((candidate) => candidate.score === best.score) : [];
+            let status = !owner || owner.status !== "ok" ? "owner_error" : !best ? "not_found" : tied.length > 1 ? "ambiguous" : "matched";
+            return { ...entry, owner, status, candidates: candidates.slice(0, 8), playerId: status === "matched" ? best.player.id : null, teamId: owner && owner.team ? owner.team.id : null };
+          });
+          let seen = new Map();
+          entries.forEach((entry) => {
+            if (!entry.playerId) return;
+            if (seen.has(entry.playerId) && seen.get(entry.playerId) !== entry.teamId) {
+              entry.status = "duplicate";
+              let previous = entries.find((candidate) => candidate.playerId === entry.playerId && candidate !== entry);
+              if (previous) previous.status = "duplicate";
+            } else seen.set(entry.playerId, entry.teamId);
+          });
+          return { owners, entries, total: entries.length };
+        }
+
+        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, catalog, onImportRosters }) {
           let globalProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.role !== "admin" && String(profile.name || "").trim().toLowerCase() !== "admin");
           let participants = currentTournament && Array.isArray(currentTournament.participants) ? currentTournament.participants : [];
+          let [importText, setImportText] = b("");
+          let [importMode, setImportMode] = b("replace");
+          let [importPreview, setImportPreview] = b(null);
+          function readImportFile(event) {
+            let file = event.target.files && event.target.files[0];
+            if (!file) return;
+            if (!/\.txt$/i.test(file.name)) { window.alert("Selecione um arquivo .txt."); return; }
+            let reader = new FileReader();
+            reader.onload = () => { setImportText(String(reader.result || "")); setImportPreview(null); };
+            reader.readAsText(file, "UTF-8");
+          }
+          function buildImportPreview() {
+            if (!currentTournament) { window.alert("Selecione um campeonato antes de importar."); return; }
+            let preview = parseRosterTxt(importText, catalog, profiles, teams);
+            if (!preview.total) { window.alert("Nenhum jogador foi identificado no TXT."); return; }
+            setImportPreview(preview);
+          }
+          function resolveImportEntry(index, playerId) {
+            let next = { ...importPreview, entries: importPreview.entries.map((entry, entryIndex) => entryIndex === index ? { ...entry, playerId, status: playerId ? "matched" : "not_found" } : entry) };
+            let seen = new Map();
+            next.entries.forEach((entry) => {
+              if (!entry.playerId || entry.status === "owner_error") return;
+              if (seen.has(entry.playerId) && seen.get(entry.playerId) !== entry.teamId) entry.status = "duplicate";
+              else seen.set(entry.playerId, entry.teamId);
+            });
+            setImportPreview(next);
+          }
+          let importErrors = importPreview ? importPreview.entries.filter((entry) => entry.status !== "matched") : [];
           return React.createElement("div", null,
             React.createElement(Z, { icon: React.createElement(AdminIcon, { size: 17 }), text: "Administração" }),
             React.createElement("div", { style: E },
@@ -4021,6 +4162,45 @@
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Moedas dos participantes"),
               React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginBottom: 14 } }, currentTournament.name),
               teams.filter((team) => team.active !== false).length ? teams.filter((team) => team.active !== false).map((team) => React.createElement("div", { key: team.id, style: { display: "grid", gridTemplateColumns: "1fr 120px", gap: 10, alignItems: "center", marginBottom: 10 } }, React.createElement("div", { style: { fontWeight: 700 } }, team.name), React.createElement("input", { type: "number", min: 0, style: { ...q, padding: "9px 10px" }, value: team.budget, onChange: (event) => onUpdateBudget(team.id, event.target.value) }))) : React.createElement("div", { style: { color: "var(--muted)" } }, "Nenhum participante ativo.")
+            ),
+            currentTournament && React.createElement("div", { style: E },
+              React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 } },
+                React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, "Importar elencos por TXT"),
+                React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "var(--orange)", background: "var(--surface-soft)", borderRadius: 999, padding: "5px 8px" } }, "Ferramenta temporária")
+              ),
+              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 } }, "Use o arquivo do sorteio para preencher os elencos de ", currentTournament.name, ". A importação preserva as moedas e só grava depois da prévia."),
+              React.createElement("input", { type: "file", accept: ".txt,text/plain", onChange: readImportFile, style: { ...q, padding: 10, marginBottom: 10 } }),
+              React.createElement("textarea", { value: importText, onChange: (event) => { setImportText(event.target.value); setImportPreview(null); }, placeholder: "Ou cole aqui o conteúdo do TXT...", rows: 7, style: { ...q, resize: "vertical", minHeight: 140, fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace", fontSize: 11.5 } }),
+              React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 } },
+                React.createElement("button", { onClick: () => setImportMode("replace"), style: { padding: 11, borderRadius: 10, border: importMode === "replace" ? "2px solid var(--heading)" : "1px solid var(--border)", background: importMode === "replace" ? "var(--surface-soft)" : "var(--surface)", color: "var(--heading)", cursor: "pointer", fontWeight: 700 } }, "Substituir elencos"),
+                React.createElement("button", { onClick: () => setImportMode("add"), style: { padding: 11, borderRadius: 10, border: importMode === "add" ? "2px solid var(--heading)" : "1px solid var(--border)", background: importMode === "add" ? "var(--surface-soft)" : "var(--surface)", color: "var(--heading)", cursor: "pointer", fontWeight: 700 } }, "Adicionar aos atuais")
+              ),
+              React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.45 } }, importMode === "replace" ? "Remove os jogadores atuais apenas dos times presentes no TXT e aplica os novos elencos." : "Mantém os elencos atuais. Jogadores que já pertencem a outro time bloquearão a importação."),
+              React.createElement("button", { disabled: !importText.trim(), onClick: buildImportPreview, style: { ...M, ...W, opacity: importText.trim() ? 1 : 0.45 } }, "Gerar prévia"),
+              importPreview && React.createElement("div", { style: { marginTop: 18 } },
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10 } },
+                  React.createElement("strong", null, importPreview.total, " jogadores identificados"),
+                  React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: importErrors.length ? "var(--danger)" : "var(--green)" } }, importErrors.length ? importErrors.length + " pendências" : "Pronto para importar")
+                ),
+                importPreview.owners.map((owner) => React.createElement("div", { key: owner.name, style: { padding: "8px 10px", borderRadius: 8, background: "var(--surface-soft)", marginBottom: 6, fontSize: 12.5 } },
+                  React.createElement("strong", null, owner.name), " — ", owner.status === "ok" ? owner.team.name : owner.status === "profile_missing" ? "perfil global não encontrado" : "perfil não participa deste campeonato"
+                )),
+                React.createElement("div", { style: { maxHeight: 360, overflow: "auto", marginTop: 12, borderTop: "1px solid var(--border)" } }, importPreview.entries.map((entry, index) => {
+                  let matched = entry.playerId ? (catalog || []).find((player) => player.id === entry.playerId) : null;
+                  return React.createElement("div", { key: index, style: { padding: "10px 0", borderBottom: "1px solid var(--border)", display: "grid", gap: 6 } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 10 } },
+                      React.createElement("div", null, React.createElement("strong", { style: { fontSize: 13 } }, entry.txtName), React.createElement("div", { style: { fontSize: 11, color: "var(--muted)" } }, entry.ownerName, " · ", entry.position, " · OVR ", entry.overall)),
+                      React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: entry.status === "matched" ? "var(--green)" : "var(--danger)" } }, entry.status === "matched" ? "Encontrado" : entry.status === "ambiguous" ? "Ambíguo" : entry.status === "duplicate" ? "Duplicado" : entry.status === "owner_error" ? "Perfil inválido" : "Não encontrado")
+                    ),
+                    (entry.status === "ambiguous" || entry.status === "not_found" || entry.status === "duplicate") && React.createElement("select", { value: entry.playerId || "", onChange: (event) => resolveImportEntry(index, event.target.value), style: { ...q, padding: "8px 10px", fontSize: 12 } },
+                      React.createElement("option", { value: "" }, "Selecionar jogador manualmente"),
+                      (entry.candidates && entry.candidates.length ? entry.candidates.map((candidate) => candidate.player) : (catalog || []).filter((player) => normalizeImportPosition(player.position) === normalizeImportPosition(entry.position)).sort((a, b) => { let clubA = normalizeImportText(a.club) === normalizeImportText(entry.club) ? 1 : 0, clubB = normalizeImportText(b.club) === normalizeImportText(entry.club) ? 1 : 0; return clubB - clubA || Math.abs(Number(a.overall) - entry.overall) - Math.abs(Number(b.overall) - entry.overall); }).slice(0, 80)).map((player) => React.createElement("option", { key: player.id, value: player.id }, player.name, " · ", player.position, " · OVR ", player.overall, " · ", player.club))
+                    ),
+                    matched && entry.status === "matched" && React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)" } }, "Vinculado a ", matched.name, " · ", matched.club)
+                  );
+                })),
+                React.createElement("button", { disabled: importErrors.length > 0, onClick: () => { if (!window.confirm(`Importar ${importPreview.entries.length} jogadores para ${currentTournament.name}?`)) return; onImportRosters({ entries: importPreview.entries.map((entry) => ({ playerId: entry.playerId, teamId: entry.teamId, squadRole: entry.squadRole })) }, importMode); }, style: { ...M, ...W, opacity: importErrors.length ? 0.45 : 1 } }, importErrors.length ? "Resolva as pendências" : "Confirmar importação")
+              )
             ),
             currentTournament && React.createElement("div", { style: { ...E, border: "1px solid color-mix(in srgb, var(--danger) 40%, var(--border))" } },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: "var(--danger)", marginBottom: 4 } }, "Zona de perigo"),
