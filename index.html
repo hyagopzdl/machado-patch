@@ -8,29 +8,36 @@
     />
     <title>PES Manager</title>
     <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
     <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        background: #0a1712;
+      :root {
+        --green: #58cc02;
+        --green-soft: #d7ffb8;
+        --green-light: #a5ed6e;
+        --blue: #1cb0f6;
+        --ink: #000437;
+        --charcoal: #4b4b4b;
+        --gray: #777777;
+        --gray-light: #afafaf;
+        --border: #dedede;
+        --paper: #ffffff;
+        --surface: #f7f9f5;
       }
-      * {
-        box-sizing: border-box;
-      }
-      ::-webkit-scrollbar {
-        display: none;
-      }
-      @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .animate-spin {
-        animation: spin 1s linear infinite;
+      html, body { margin: 0; padding: 0; background: var(--paper); }
+      body { color: var(--charcoal); font-family: "Nunito", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; }
+      ::-webkit-scrollbar { display: none; }
+      button, input, select, textarea { font: inherit; }
+      button { transition: transform .12s ease, filter .12s ease; }
+      button:hover { filter: brightness(.98); }
+      button:active { transform: translateY(2px); }
+      input:focus, select:focus, textarea:focus { border-color: var(--blue) !important; box-shadow: 0 0 0 3px rgba(28,176,246,.14); }
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      .animate-spin { animation: spin 1s linear infinite; }
+      @media (max-width: 560px) {
+        body { background: #fff; }
       }
     </style>
 
@@ -137,10 +144,10 @@
             CF: "Centroavante",
           },
           se = [
-            "#D4AF37",
+            "#58CC02",
             "#4A7FC1",
-            "#C1443D",
-            "#2F7A4D",
+            "#EA2B2B",
+            "#58CC02",
             "#9B59B6",
             "#E67E22",
             "#1ABC9C",
@@ -288,52 +295,55 @@
           } catch (l) {}
         }
         var W = {
-            background: "linear-gradient(180deg,#E8C766,#D4AF37)",
-            color: "#12241C",
-            fontWeight: 700,
+            background: "#58CC02",
+            color: "#FFFFFF",
+            fontWeight: 800,
           },
           P = {
             display: "block",
             fontSize: 12,
             textTransform: "uppercase",
             letterSpacing: 1,
-            color: "#9AAA9F",
+            color: "#777777",
             marginBottom: 6,
           },
           q = {
             width: "100%",
             padding: "12px 14px",
-            borderRadius: 10,
-            border: "1px solid #24402F",
-            backgroundColor: "#0E1E16",
-            color: "#EDEFE7",
+            borderRadius: 12,
+            border: "2px solid #DEDEDE",
+            backgroundColor: "#FFFFFF",
+            color: "#4B4B4B",
             fontSize: 15,
+            fontWeight: 600,
           },
           M = {
             width: "100%",
             padding: "13px 16px",
             borderRadius: 12,
-            border: "none",
+            border: "2px solid transparent",
             fontSize: 15,
             cursor: "pointer",
             marginTop: 4,
+            fontWeight: 800,
+            letterSpacing: 0.2,
           },
           E = {
-            background: "#12241C",
-            border: "1px solid #1E3528",
-            borderRadius: 14,
-            padding: 14,
+            background: "#FFFFFF",
+            border: "2px solid #DEDEDE",
+            borderRadius: 16,
+            padding: 18,
             marginBottom: 12,
           },
           V = (e) => ({
             padding: "6px 12px",
-            borderRadius: 20,
+            borderRadius: 12,
             fontSize: 12.5,
             fontWeight: 600,
             cursor: "pointer",
-            background: e ? "#D4AF37" : "#1A2F24",
-            color: e ? "#12241C" : "#9AAA9F",
-            border: e ? "none" : "1px solid #24402F",
+            background: e ? "#58CC02" : "#F7F9F5",
+            color: e ? "#FFFFFF" : "#777777",
+            border: e ? "none" : "1px solid #AFAFAF",
           }),
           O = { textAlign: "center", padding: "4px 4px" };
         function L(e) {
@@ -897,7 +907,7 @@
                 "div",
                 {
                   style: {
-                    background: "#0A1712",
+                    background: "#FFFFFF",
                     minHeight: "100vh",
                     display: "flex",
                     alignItems: "center",
@@ -909,10 +919,10 @@
                   "div",
                   {
                     style: {
-                      color: "#EDEFE7",
+                      color: "#4B4B4B",
                       maxWidth: 420,
                       textAlign: "center",
-                      fontFamily: "system-ui",
+                      fontFamily: "Nunito,system-ui",
                     },
                   },
                   React.createElement(
@@ -932,20 +942,20 @@
                     {
                       style: {
                         fontSize: 13.5,
-                        color: "#9AAA9F",
+                        color: "#777777",
                         lineHeight: 1.5,
                       },
                     },
                     "Preencha o ",
                     React.createElement(
                       "code",
-                      { style: { color: "#D4AF37" } },
+                      { style: { color: "#58CC02" } },
                       "firebaseConfig",
                     ),
                     " no topo do ",
                     React.createElement(
                       "code",
-                      { style: { color: "#D4AF37" } },
+                      { style: { color: "#58CC02" } },
                       "index.html",
                     ),
                     ".",
@@ -957,7 +967,7 @@
                   "div",
                   {
                     style: {
-                      background: "#0A1712",
+                      background: "#FFFFFF",
                       minHeight: "100vh",
                       display: "flex",
                       alignItems: "center",
@@ -968,7 +978,7 @@
                     "div",
                     {
                       style: {
-                        color: "#D4AF37",
+                        color: "#58CC02",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
@@ -983,11 +993,11 @@
                       "span",
                       {
                         style: {
-                          fontFamily: "system-ui",
+                          fontFamily: "Nunito,system-ui",
                           letterSpacing: 2,
                           fontSize: 13,
                           textTransform: "uppercase",
-                          color: "#9AAA9F",
+                          color: "#777777",
                         },
                       },
                       "Carregando temporada...",
@@ -1006,15 +1016,16 @@
                     {
                       style: {
                         minHeight: "100vh",
-                        background:
-                          "radial-gradient(circle at 15% 0%, #16301F 0%, #0A1712 45%), radial-gradient(circle at 90% 10%, #14281B 0%, #0A1712 40%)",
-                        color: "#EDEFE7",
+                        background: "#FFFFFF",
+                        color: "#4B4B4B",
                         fontFamily:
-                          "system-ui,-apple-system,Segoe UI,Roboto,sans-serif",
+                          "Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif",
                         paddingBottom: 84,
-                        maxWidth: 480,
+                        maxWidth: 760,
                         margin: "0 auto",
                         position: "relative",
+                        borderLeft: "2px solid #F0F0F0",
+                        borderRight: "2px solid #F0F0F0",
                       },
                     },
                     React.createElement(
@@ -1024,9 +1035,9 @@
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { display: none; }
         .scoreboard { font-variant-numeric: tabular-nums; letter-spacing: 1px; }
-        .tapbtn:active { transform: scale(0.97); }
+        .tapbtn:active { transform: translateY(2px); }
         input, select { outline: none; }
-        input::placeholder { color: #6B7A6F; }
+        input::placeholder { color: #afafaf; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
       `,
@@ -1044,11 +1055,11 @@
                           style: {
                             margin: "0 16px 12px",
                             background: "rgba(193,68,61,0.15)",
-                            border: "1px solid #C1443D",
+                            border: "1px solid #EA2B2B",
                             borderRadius: 10,
                             padding: 10,
                             fontSize: 12.5,
-                            color: "#F0A8A3",
+                            color: "#EA2B2B",
                           },
                         },
                         "N\xE3o encontrei o arquivo ",
@@ -1159,7 +1170,7 @@
                                 background: o,
                                 border:
                                   j.color === o
-                                    ? "2px solid #EDEFE7"
+                                    ? "2px solid #4B4B4B"
                                     : "2px solid transparent",
                                 cursor: "pointer",
                               },
@@ -1249,15 +1260,15 @@
             {
               style: {
                 minHeight: "100vh",
-                background: "#080808",
-                color: "#EDEFE7",
+                background: "#FFFFFF",
+                color: "#4B4B4B",
                 fontFamily:
-                  "system-ui,-apple-system,Segoe UI,Roboto,sans-serif",
+                  "Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif",
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
                 padding: 24,
-                maxWidth: 480,
+                maxWidth: 760,
                 margin: "0 auto",
               },
             },
@@ -1266,17 +1277,17 @@
               { style: { textAlign: "center", marginBottom: 34 } },
               React.createElement(
                 "div",
-                { style: { fontSize: 24, fontWeight: 900, letterSpacing: 1 } },
+                { style: { fontSize: 30, fontWeight: 900, letterSpacing: -0.6 } },
                 "PES ",
                 React.createElement(
                   "span",
-                  { style: { color: "#D4AF37" } },
+                  { style: { color: "#58CC02" } },
                   "MANAGER",
                 ),
               ),
               React.createElement(
                 "div",
-                { style: { fontSize: 20, fontWeight: 600, marginTop: 28 } },
+                { style: { fontSize: 32, fontWeight: 900, marginTop: 28, color: "#4B4B4B" } },
                 "Quem vai jogar?",
               ),
             ),
@@ -1301,7 +1312,7 @@
                       style: {
                         background: "none",
                         border: "none",
-                        color: "#EDEFE7",
+                        color: "#4B4B4B",
                         cursor: "pointer",
                         padding: 0,
                         textAlign: "center",
@@ -1312,8 +1323,8 @@
                       {
                         style: {
                           aspectRatio: "1",
-                          borderRadius: 12,
-                          background: `linear-gradient(145deg,${r.color},#18211C)`,
+                          borderRadius: 20,
+                          background: r.color,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -1330,7 +1341,7 @@
                         style: {
                           fontSize: 14,
                           marginTop: 9,
-                          color: "#C9C9C9",
+                          color: "#777777",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -1393,8 +1404,8 @@
                 position: "sticky",
                 top: 0,
                 zIndex: 5,
-                background:
-                  "linear-gradient(180deg,#0A1712 60%, rgba(10,23,18,0))",
+                background: "rgba(255,255,255,.96)",
+                borderBottom: "2px solid #F0F0F0",
               },
             },
             React.createElement(
@@ -1416,13 +1427,13 @@
                       fontSize: 22,
                       fontWeight: 900,
                       letterSpacing: 1.5,
-                      color: "#EDEFE7",
+                      color: "#4B4B4B",
                     },
                   },
                   "PES ",
                   React.createElement(
                     "span",
-                    { style: { color: "#D4AF37" } },
+                    { style: { color: "#58CC02" } },
                     "MANAGER",
                   ),
                 ),
@@ -1432,7 +1443,7 @@
                     style: {
                       fontSize: 11,
                       letterSpacing: 2,
-                      color: "#6B7A6F",
+                      color: "#777777",
                       textTransform: "uppercase",
                       marginTop: 2,
                     },
@@ -1453,10 +1464,10 @@
                         display: "flex",
                         alignItems: "center",
                         gap: 6,
-                        background: "#1A2F24",
+                        background: "#F7F9F5",
                         padding: "6px 10px",
                         borderRadius: 20,
-                        border: "1px solid #2F7A4D",
+                        border: "1px solid #58CC02",
                       },
                     },
                     React.createElement("span", {
@@ -1464,8 +1475,8 @@
                         width: 7,
                         height: 7,
                         borderRadius: 99,
-                        background: "#2F7A4D",
-                        boxShadow: "0 0 6px #2F7A4D",
+                        background: "#58CC02",
+                        boxShadow: "0 0 6px #58CC02",
                         display: "inline-block",
                       },
                     }),
@@ -1474,7 +1485,7 @@
                       {
                         style: {
                           fontSize: 11,
-                          color: "#8FD6A8",
+                          color: "#58CC02",
                           fontWeight: 700,
                           textTransform: "uppercase",
                           letterSpacing: 0.5,
@@ -1489,9 +1500,9 @@
                     {
                       onClick: a,
                       style: {
-                        background: "#1A2F24",
-                        border: "1px solid #24402F",
-                        color: "#EDEFE7",
+                        background: "#F7F9F5",
+                        border: "1px solid #AFAFAF",
+                        color: "#4B4B4B",
                         borderRadius: 20,
                         padding: "6px 10px",
                         fontSize: 11.5,
@@ -1503,7 +1514,7 @@
                       },
                       title: "Trocar perfil",
                     },
-                    React.createElement(qt, { size: 12, color: "#D4AF37" }),
+                    React.createElement(qt, { size: 12, color: "#58CC02" }),
                     " ",
                     l,
                   ),
@@ -1517,11 +1528,11 @@
             {
               className: "scoreboard",
               style: {
-                background: "#0A1712",
-                border: "1px solid #2F4A38",
+                background: "#FFFFFF",
+                border: "1px solid #D7FFB8",
                 borderRadius: 6,
                 padding: "3px 9px",
-                color: "#F2D77A",
+                color: "#A5ED6E",
                 fontWeight: 800,
                 fontSize: 17,
                 minWidth: 30,
@@ -1571,15 +1582,15 @@
                 },
                 React.createElement(
                   "span",
-                  { style: { fontSize: 13.5, color: "#9AAA9F" } },
+                  { style: { fontSize: 13.5, color: "#777777" } },
                   React.createElement(
                     "b",
-                    { style: { color: "#EDEFE7" } },
+                    { style: { color: "#4B4B4B" } },
                     a == null ? void 0 : a.name,
                   ),
                   " avan\xE7ou de bye",
                 ),
-                React.createElement(Ut, { size: 14, color: "#6B7A6F" }),
+                React.createElement(Ut, { size: 14, color: "#777777" }),
               )
             : React.createElement(
                 "button",
@@ -1596,8 +1607,8 @@
                     cursor: "pointer",
                     textAlign: "left",
                     border: e.played
-                      ? "1px solid #1E3528"
-                      : "1px solid #3A5540",
+                      ? "1px solid #DEDEDE"
+                      : "1px solid #D7FFB8",
                   },
                 },
                 React.createElement(
@@ -1634,7 +1645,7 @@
                           display: "flex",
                           alignItems: "center",
                           gap: 4,
-                          color: "#D4AF37",
+                          color: "#58CC02",
                           fontSize: 12.5,
                           fontWeight: 700,
                         },
@@ -1665,7 +1676,7 @@
                     {
                       style: {
                         ...E,
-                        background: "linear-gradient(135deg,#16301F,#12241C)",
+                        background: "#F7F9F5",
                       },
                     },
                     React.createElement(
@@ -1685,7 +1696,7 @@
                           {
                             style: {
                               fontSize: 11,
-                              color: "#8FD6A8",
+                              color: "#58CC02",
                               textTransform: "uppercase",
                               letterSpacing: 1,
                               fontWeight: 700,
@@ -1709,9 +1720,9 @@
                           className: "tapbtn",
                           onClick: n,
                           style: {
-                            background: "#1A2F24",
-                            border: "1px solid #2F7A4D",
-                            color: "#8FD6A8",
+                            background: "#F7F9F5",
+                            border: "1px solid #58CC02",
+                            color: "#58CC02",
                             borderRadius: 10,
                             padding: "8px 12px",
                             fontSize: 12.5,
@@ -1737,7 +1748,7 @@
                         {
                           style: {
                             fontSize: 13,
-                            color: "#6B7A6F",
+                            color: "#777777",
                             marginBottom: 12,
                           },
                         },
@@ -1757,7 +1768,7 @@
                   { style: { ...E, textAlign: "center", padding: 26 } },
                   React.createElement(pe, {
                     size: 30,
-                    color: "#D4AF37",
+                    color: "#58CC02",
                     style: { marginBottom: 10 },
                   }),
                   React.createElement(
@@ -1769,7 +1780,7 @@
                   ),
                   React.createElement(
                     "div",
-                    { style: { fontSize: 13, color: "#9AAA9F" } },
+                    { style: { fontSize: 13, color: "#777777" } },
                     "Contrate jogadores no mercado e depois inicie um campeonato.",
                   ),
                 ),
@@ -1794,7 +1805,7 @@
                           alignItems: "center",
                           justifyContent: "space-between",
                           padding: "6px 0",
-                          borderBottom: p < 4 ? "1px solid #1E3528" : "none",
+                          borderBottom: p < 4 ? "1px solid #DEDEDE" : "none",
                         },
                       },
                       React.createElement(
@@ -1811,7 +1822,7 @@
                           {
                             style: {
                               fontSize: 12,
-                              color: "#6B7A6F",
+                              color: "#777777",
                               width: 16,
                             },
                           },
@@ -1832,13 +1843,13 @@
                         ),
                         React.createElement(
                           "span",
-                          { style: { fontSize: 11.5, color: "#6B7A6F" } },
+                          { style: { fontSize: 11.5, color: "#777777" } },
                           d.teamName,
                         ),
                       ),
                       React.createElement(
                         "span",
-                        { style: { fontWeight: 800, color: "#D4AF37" } },
+                        { style: { fontWeight: 800, color: "#58CC02" } },
                         d.goals,
                       ),
                     ),
@@ -1860,7 +1871,7 @@
             { style: { ...E, flex: 1, textAlign: "center" } },
             React.createElement(
               "div",
-              { style: { fontSize: 20, fontWeight: 900, color: "#D4AF37" } },
+              { style: { fontSize: 20, fontWeight: 900, color: "#58CC02" } },
               t,
             ),
             React.createElement(
@@ -1868,7 +1879,7 @@
               {
                 style: {
                   fontSize: 10.5,
-                  color: "#9AAA9F",
+                  color: "#777777",
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
                 },
@@ -1886,7 +1897,7 @@
                 alignItems: "center",
                 gap: 6,
                 margin: "18px 0 10px",
-                color: "#9AAA9F",
+                color: "#777777",
               },
             },
             e,
@@ -1936,7 +1947,7 @@
                   style: {
                     background: "none",
                     border: "none",
-                    color: "#9AAA9F",
+                    color: "#777777",
                     fontSize: 13,
                     marginBottom: 10,
                     cursor: "pointer",
@@ -1974,7 +1985,7 @@
                   ),
                   React.createElement(
                     "div",
-                    { style: { fontSize: 12, color: "#9AAA9F" } },
+                    { style: { fontSize: 12, color: "#777777" } },
                     h.length,
                     " jogadores \xB7 M\xE9dia ",
                     m,
@@ -1988,7 +1999,7 @@
                     style: {
                       background: "none",
                       border: "none",
-                      color: "#C1443D",
+                      color: "#EA2B2B",
                       cursor: "pointer",
                     },
                   },
@@ -2010,19 +2021,19 @@
                   {
                     style: {
                       fontSize: 13,
-                      color: "#9AAA9F",
+                      color: "#777777",
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
                     },
                   },
-                  React.createElement(Qt, { size: 14, color: "#D4AF37" }),
+                  React.createElement(Qt, { size: 14, color: "#58CC02" }),
                   " Or\xE7amento dispon\xEDvel",
                 ),
                 React.createElement(
                   "span",
                   {
-                    style: { fontWeight: 800, color: "#D4AF37", fontSize: 16 },
+                    style: { fontWeight: 800, color: "#58CC02", fontSize: 16 },
                   },
                   L(s.budget),
                 ),
@@ -2052,7 +2063,7 @@
                     "div",
                     {
                       style: {
-                        color: "#6B7A6F",
+                        color: "#777777",
                         fontSize: 13,
                         textAlign: "center",
                         padding: 20,
@@ -2080,11 +2091,11 @@
                           style: {
                             fontSize: 10.5,
                             fontWeight: 800,
-                            background: "#1A2F24",
-                            color: "#8FD6A8",
+                            background: "#F7F9F5",
+                            color: "#58CC02",
                             padding: "3px 6px",
                             borderRadius: 6,
-                            border: "1px solid #2F7A4D",
+                            border: "1px solid #58CC02",
                             minWidth: 34,
                             textAlign: "center",
                           },
@@ -2102,7 +2113,7 @@
                             textAlign: "left",
                             cursor: "pointer",
                             padding: 0,
-                            color: "#EDEFE7",
+                            color: "#4B4B4B",
                           },
                         },
                         React.createElement(
@@ -2112,7 +2123,7 @@
                         ),
                         React.createElement(
                           "div",
-                          { style: { fontSize: 11.5, color: "#6B7A6F" } },
+                          { style: { fontSize: 11.5, color: "#777777" } },
                           g.age,
                           " anos \xB7 valor ",
                           L(g.value),
@@ -2123,7 +2134,7 @@
                         {
                           style: {
                             fontWeight: 800,
-                            color: "#D4AF37",
+                            color: "#58CC02",
                             fontSize: 15,
                           },
                         },
@@ -2140,9 +2151,9 @@
                               onClick: () => d(g, s.id),
                               style: {
                                 flex: 1,
-                                background: "#1A2F24",
-                                border: "1px solid #C1443D",
-                                color: "#F0A8A3",
+                                background: "#F7F9F5",
+                                border: "1px solid #EA2B2B",
+                                color: "#EA2B2B",
                                 borderRadius: 8,
                                 padding: "7px 0",
                                 fontSize: 12,
@@ -2160,9 +2171,9 @@
                               onClick: () => f(g, s.id),
                               style: {
                                 flex: 1,
-                                background: "#1A2F24",
-                                border: "1px solid #2F7A4D",
-                                color: "#8FD6A8",
+                                background: "#F7F9F5",
+                                border: "1px solid #58CC02",
+                                color: "#58CC02",
                                 borderRadius: 8,
                                 padding: "7px 0",
                                 fontSize: 12,
@@ -2178,8 +2189,8 @@
                           onClick: () => p(g),
                           style: {
                             background: "none",
-                            border: "1px solid #24402F",
-                            color: "#9AAA9F",
+                            border: "1px solid #AFAFAF",
+                            color: "#777777",
                             borderRadius: 8,
                             padding: "7px 10px",
                             fontSize: 12,
@@ -2220,7 +2231,7 @@
                 "div",
                 {
                   style: {
-                    color: "#6B7A6F",
+                    color: "#777777",
                     fontSize: 13,
                     textAlign: "center",
                     padding: 30,
@@ -2265,14 +2276,14 @@
                   ),
                   React.createElement(
                     "div",
-                    { style: { fontSize: 11.5, color: "#6B7A6F" } },
+                    { style: { fontSize: 11.5, color: "#777777" } },
                     m.length,
                     " jogadores \xB7 ",
                     L(h.budget),
                     " dispon\xEDvel",
                   ),
                 ),
-                React.createElement(ue, { size: 18, color: "#6B7A6F" }),
+                React.createElement(ue, { size: 18, color: "#777777" }),
               );
             }),
           );
@@ -2334,7 +2345,7 @@
               React.createElement(
                 "span",
                 { style: { position: "absolute", left: 10, top: 12 } },
-                React.createElement(Xt, { size: 15, color: "#6B7A6F" }),
+                React.createElement(Xt, { size: 15, color: "#777777" }),
               ),
             ),
             React.createElement(
@@ -2407,11 +2418,11 @@
                     style: {
                       fontSize: 10.5,
                       fontWeight: 800,
-                      background: "#1A2F24",
-                      color: "#8FD6A8",
+                      background: "#F7F9F5",
+                      color: "#58CC02",
                       padding: "3px 6px",
                       borderRadius: 6,
-                      border: "1px solid #2F7A4D",
+                      border: "1px solid #58CC02",
                       minWidth: 34,
                       textAlign: "center",
                     },
@@ -2429,7 +2440,7 @@
                       textAlign: "left",
                       cursor: "pointer",
                       padding: 0,
-                      color: "#EDEFE7",
+                      color: "#4B4B4B",
                     },
                   },
                   React.createElement(
@@ -2442,7 +2453,7 @@
                       {
                         style: {
                           fontWeight: 800,
-                          color: "#D4AF37",
+                          color: "#58CC02",
                           fontSize: 12.5,
                         },
                       },
@@ -2451,7 +2462,7 @@
                   ),
                   React.createElement(
                     "div",
-                    { style: { fontSize: 11.5, color: "#6B7A6F" } },
+                    { style: { fontSize: 11.5, color: "#777777" } },
                     x.kind === "free" &&
                       React.createElement(
                         React.Fragment,
@@ -2485,7 +2496,7 @@
                         {
                           style: {
                             fontWeight: 800,
-                            color: "#D4AF37",
+                            color: "#58CC02",
                             fontSize: 13,
                             marginBottom: 4,
                           },
@@ -2498,9 +2509,9 @@
                           className: "tapbtn",
                           onClick: () => r(u),
                           style: {
-                            background: "#1A2F24",
-                            border: "1px solid #2F7A4D",
-                            color: "#8FD6A8",
+                            background: "#F7F9F5",
+                            border: "1px solid #58CC02",
+                            color: "#58CC02",
                             borderRadius: 8,
                             padding: "6px 10px",
                             fontSize: 11.5,
@@ -2522,9 +2533,9 @@
                   onClick: () => g((u) => u + 30),
                   style: {
                     ...M,
-                    background: "#1A2F24",
-                    color: "#EDEFE7",
-                    border: "1px solid #2F7A4D",
+                    background: "#F7F9F5",
+                    color: "#4B4B4B",
+                    border: "1px solid #58CC02",
                   },
                 },
                 "Mostrar mais (",
@@ -2562,7 +2573,7 @@
                       {
                         style: {
                           fontSize: 10.5,
-                          color: "#6B7A6F",
+                          color: "#777777",
                           marginTop: 2,
                         },
                       },
@@ -2578,12 +2589,12 @@
         function N({ label: e, value: t }) {
           let l =
             t >= 85
-              ? "#8FD6A8"
+              ? "#58CC02"
               : t >= 70
-                ? "#D4AF37"
+                ? "#58CC02"
                 : t >= 50
-                  ? "#C98A3E"
-                  : "#C1443D";
+                  ? "#FF9600"
+                  : "#EA2B2B";
           return React.createElement(
             "div",
             { style: { marginBottom: 8 } },
@@ -2594,14 +2605,14 @@
                   display: "flex",
                   justifyContent: "space-between",
                   fontSize: 11.5,
-                  color: "#9AAA9F",
+                  color: "#777777",
                   marginBottom: 3,
                 },
               },
               React.createElement("span", null, e),
               React.createElement(
                 "span",
-                { style: { fontWeight: 700, color: "#EDEFE7" } },
+                { style: { fontWeight: 700, color: "#4B4B4B" } },
                 t,
               ),
             ),
@@ -2610,7 +2621,7 @@
               {
                 style: {
                   height: 6,
-                  background: "#0E1E16",
+                  background: "#FFFFFF",
                   borderRadius: 4,
                   overflow: "hidden",
                 },
@@ -2667,7 +2678,7 @@
                 React.createElement(
                   "div",
                   {
-                    style: { fontSize: 24, fontWeight: 900, color: "#D4AF37" },
+                    style: { fontSize: 24, fontWeight: 900, color: "#58CC02" },
                   },
                   e.overall,
                 ),
@@ -2676,7 +2687,7 @@
                   {
                     style: {
                       fontSize: 10.5,
-                      color: "#9AAA9F",
+                      color: "#777777",
                       textTransform: "uppercase",
                     },
                   },
@@ -2696,7 +2707,7 @@
                 React.createElement(
                   "div",
                   {
-                    style: { fontSize: 24, fontWeight: 900, color: "#EDEFE7" },
+                    style: { fontSize: 24, fontWeight: 900, color: "#4B4B4B" },
                   },
                   L(e.value),
                 ),
@@ -2705,7 +2716,7 @@
                   {
                     style: {
                       fontSize: 10.5,
-                      color: "#9AAA9F",
+                      color: "#777777",
                       textTransform: "uppercase",
                     },
                   },
@@ -2759,9 +2770,9 @@
             {
               style: {
                 fontSize: 11.5,
-                color: "#9AAA9F",
-                background: "#1A2F24",
-                border: "1px solid #24402F",
+                color: "#777777",
+                background: "#F7F9F5",
+                border: "1px solid #AFAFAF",
                 borderRadius: 20,
                 padding: "4px 10px",
               },
@@ -2792,7 +2803,7 @@
               ),
               React.createElement(
                 "div",
-                { style: { fontSize: 12, color: "#9AAA9F", marginTop: 2 } },
+                { style: { fontSize: 12, color: "#777777", marginTop: 2 } },
                 it[n.position] || n.position,
               ),
               React.createElement(
@@ -2800,7 +2811,7 @@
                 {
                   style: {
                     fontWeight: 800,
-                    color: "#D4AF37",
+                    color: "#58CC02",
                     fontSize: 18,
                     marginTop: 8,
                   },
@@ -2837,10 +2848,10 @@
                       borderRadius: 10,
                       cursor: "pointer",
                       background:
-                        f === s.id ? "rgba(212,175,55,0.12)" : "#0E1E16",
+                        f === s.id ? "rgba(212,175,55,0.12)" : "#FFFFFF",
                       border:
-                        f === s.id ? "1px solid #D4AF37" : "1px solid #24402F",
-                      color: "#EDEFE7",
+                        f === s.id ? "1px solid #58CC02" : "1px solid #AFAFAF",
+                      color: "#4B4B4B",
                     },
                   },
                   React.createElement("span", {
@@ -2858,17 +2869,17 @@
                   ),
                   React.createElement(
                     "span",
-                    { style: { fontSize: 12, color: "#9AAA9F" } },
+                    { style: { fontSize: 12, color: "#777777" } },
                     L(s.budget),
                   ),
                   f === s.id &&
-                    React.createElement(et, { size: 16, color: "#D4AF37" }),
+                    React.createElement(et, { size: 16, color: "#58CC02" }),
                 ),
               ),
               F.length === 0 &&
                 React.createElement(
                   "div",
-                  { style: { fontSize: 12.5, color: "#6B7A6F" } },
+                  { style: { fontSize: 12.5, color: "#777777" } },
                   "Crie outro time pra poder comprar.",
                 ),
             ),
@@ -2878,7 +2889,7 @@
                 {
                   style: {
                     fontSize: 12.5,
-                    color: "#C1443D",
+                    color: "#EA2B2B",
                     marginBottom: 10,
                     display: "flex",
                     gap: 6,
@@ -2923,7 +2934,7 @@
               {
                 style: {
                   fontSize: 11.5,
-                  color: "#6B7A6F",
+                  color: "#777777",
                   marginTop: 6,
                   marginBottom: 16,
                 },
@@ -2964,7 +2975,7 @@
                 { style: { ...E, padding: 24 } },
                 React.createElement(pe, {
                   size: 28,
-                  color: "#D4AF37",
+                  color: "#58CC02",
                   style: { marginBottom: 8 },
                 }),
                 React.createElement(
@@ -2975,7 +2986,7 @@
                 React.createElement(
                   "div",
                   {
-                    style: { fontSize: 13, color: "#9AAA9F", marginBottom: 16 },
+                    style: { fontSize: 13, color: "#777777", marginBottom: 16 },
                   },
                   "Escolha o formato e os times participantes.",
                 ),
@@ -2998,12 +3009,12 @@
                     ...E,
                     textAlign: "center",
                     padding: 28,
-                    background: "linear-gradient(160deg,#20351F,#12241C)",
+                    background: "#F7F9F5",
                   },
                 },
                 React.createElement(tt, {
                   size: 34,
-                  color: "#D4AF37",
+                  color: "#58CC02",
                   style: { marginBottom: 10 },
                 }),
                 React.createElement(
@@ -3011,7 +3022,7 @@
                   {
                     style: {
                       fontSize: 12,
-                      color: "#8FD6A8",
+                      color: "#58CC02",
                       textTransform: "uppercase",
                       letterSpacing: 1.5,
                       fontWeight: 700,
@@ -3026,7 +3037,7 @@
                 ),
                 React.createElement(
                   "div",
-                  { style: { fontSize: 12.5, color: "#9AAA9F", marginTop: 4 } },
+                  { style: { fontSize: 12.5, color: "#777777", marginTop: 4 } },
                   e.name,
                 ),
               ),
@@ -3042,9 +3053,9 @@
                   onClick: l,
                   style: {
                     ...M,
-                    background: "#1A2F24",
-                    color: "#EDEFE7",
-                    border: "1px solid #2F7A4D",
+                    background: "#F7F9F5",
+                    color: "#4B4B4B",
+                    border: "1px solid #58CC02",
                   },
                 },
                 "Novo campeonato agora",
@@ -3086,7 +3097,7 @@
                     {
                       style: {
                         fontSize: 12,
-                        color: "#6B7A6F",
+                        color: "#777777",
                         marginBottom: 6,
                         fontWeight: 700,
                       },
@@ -3188,7 +3199,7 @@
                               {
                                 style: {
                                   fontSize: 12,
-                                  color: "#6B7A6F",
+                                  color: "#777777",
                                   marginBottom: 6,
                                   fontWeight: 700,
                                 },
@@ -3260,7 +3271,7 @@
                   {
                     style: {
                       fontSize: 12,
-                      color: "#6B7A6F",
+                      color: "#777777",
                       marginBottom: 6,
                       fontWeight: 700,
                       letterSpacing: 1,
@@ -3289,7 +3300,7 @@
                           {
                             style: {
                               fontSize: 11.5,
-                              color: "#9AAA9F",
+                              color: "#777777",
                               marginTop: -4,
                               marginBottom: 8,
                               paddingLeft: 4,
@@ -3341,7 +3352,7 @@
                   "tr",
                   {
                     style: {
-                      color: "#6B7A6F",
+                      color: "#777777",
                       textTransform: "uppercase",
                       fontSize: 10.5,
                     },
@@ -3374,14 +3385,14 @@
                     {
                       key: a.id,
                       style: {
-                        borderTop: "1px solid #1E3528",
+                        borderTop: "1px solid #DEDEDE",
                         background:
                           l && n < l ? "rgba(47,122,77,0.15)" : "transparent",
                       },
                     },
                     React.createElement(
                       "td",
-                      { style: { padding: "6px 4px", color: "#6B7A6F" } },
+                      { style: { padding: "6px 4px", color: "#777777" } },
                       n + 1,
                     ),
                     React.createElement(
@@ -3412,7 +3423,7 @@
                     React.createElement("td", { style: O }, a.sg),
                     React.createElement(
                       "td",
-                      { style: { ...O, fontWeight: 800, color: "#D4AF37" } },
+                      { style: { ...O, fontWeight: 800, color: "#58CC02" } },
                       a.pts,
                     ),
                   );
@@ -3432,7 +3443,7 @@
                 "div",
                 {
                   style: {
-                    color: "#6B7A6F",
+                    color: "#777777",
                     fontSize: 13,
                     textAlign: "center",
                     padding: 30,
@@ -3469,7 +3480,7 @@
                             justifyContent: "space-between",
                             cursor: "pointer",
                             padding: 0,
-                            color: "#EDEFE7",
+                            color: "#4B4B4B",
                           },
                         },
                         React.createElement(
@@ -3480,7 +3491,7 @@
                             {
                               style: {
                                 fontSize: 11,
-                                color: "#8FD6A8",
+                                color: "#58CC02",
                                 fontWeight: 700,
                               },
                             },
@@ -3497,7 +3508,7 @@
                             {
                               style: {
                                 fontSize: 12,
-                                color: "#9AAA9F",
+                                color: "#777777",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 4,
@@ -3506,7 +3517,7 @@
                             },
                             React.createElement(tt, {
                               size: 12,
-                              color: "#D4AF37",
+                              color: "#58CC02",
                             }),
                             " ",
                             (f = t(n.champion)) == null ? void 0 : f.name,
@@ -3518,7 +3529,7 @@
                             transform: r ? "rotate(180deg)" : "none",
                             transition: "transform 0.15s",
                           },
-                          color: "#6B7A6F",
+                          color: "#777777",
                         }),
                       ),
                       r &&
@@ -3530,7 +3541,7 @@
                             {
                               style: {
                                 fontSize: 12,
-                                color: "#6B7A6F",
+                                color: "#777777",
                                 marginBottom: 6,
                               },
                             },
@@ -3543,7 +3554,7 @@
                           ),
                           React.createElement(
                             "div",
-                            { style: { fontSize: 12, color: "#6B7A6F" } },
+                            { style: { fontSize: 12, color: "#777777" } },
                             n.matches.filter((d) => d.played).length,
                             " partidas disputadas",
                           ),
@@ -3562,9 +3573,9 @@
                 left: "50%",
                 transform: "translateX(-50%)",
                 width: "100%",
-                maxWidth: 480,
-                background: "#0E1E16",
-                borderTop: "1px solid #1E3528",
+                maxWidth: 760,
+                background: "#FFFFFF",
+                borderTop: "1px solid #DEDEDE",
                 display: "flex",
                 padding: "8px 4px 10px",
                 zIndex: 10,
@@ -3598,14 +3609,14 @@
                 },
                 React.createElement(n, {
                   size: 20,
-                  color: f ? "#D4AF37" : "#6B7A6F",
+                  color: f ? "#58CC02" : "#777777",
                 }),
                 React.createElement(
                   "span",
                   {
                     style: {
                       fontSize: 10,
-                      color: f ? "#D4AF37" : "#6B7A6F",
+                      color: f ? "#58CC02" : "#777777",
                       fontWeight: f ? 700 : 500,
                     },
                   },
@@ -3635,12 +3646,12 @@
               {
                 onClick: (a) => a.stopPropagation(),
                 style: {
-                  background: "#12241C",
-                  borderTop: "1px solid #2F4A38",
+                  background: "#FFFFFF",
+                  borderTop: "1px solid #D7FFB8",
                   borderRadius: "18px 18px 0 0",
                   padding: 20,
                   width: "100%",
-                  maxWidth: 480,
+                  maxWidth: 760,
                   maxHeight: "85vh",
                   overflowY: "auto",
                 },
@@ -3667,7 +3678,7 @@
                     style: {
                       background: "none",
                       border: "none",
-                      color: "#9AAA9F",
+                      color: "#777777",
                       cursor: "pointer",
                     },
                   },
@@ -3744,12 +3755,12 @@
                       borderRadius: 10,
                       cursor: "pointer",
                       background:
-                        t.format === d.k ? "rgba(212,175,55,0.12)" : "#0E1E16",
+                        t.format === d.k ? "rgba(212,175,55,0.12)" : "#FFFFFF",
                       border:
                         t.format === d.k
-                          ? "1px solid #D4AF37"
-                          : "1px solid #24402F",
-                      color: "#EDEFE7",
+                          ? "1px solid #58CC02"
+                          : "1px solid #AFAFAF",
+                      color: "#4B4B4B",
                     },
                   },
                   React.createElement(
@@ -3760,7 +3771,7 @@
                   React.createElement(
                     "div",
                     {
-                      style: { fontSize: 11.5, color: "#9AAA9F", marginTop: 2 },
+                      style: { fontSize: 11.5, color: "#777777", marginTop: 2 },
                     },
                     d.d,
                   ),
@@ -3804,7 +3815,7 @@
               React.createElement(
                 "div",
                 {
-                  style: { fontSize: 12.5, color: "#C1443D", marginBottom: 8 },
+                  style: { fontSize: 12.5, color: "#EA2B2B", marginBottom: 8 },
                 },
                 "Crie times na aba Elenco primeiro.",
               ),
@@ -3832,9 +3843,9 @@
                       padding: 10,
                       borderRadius: 10,
                       cursor: "pointer",
-                      background: p ? "rgba(47,122,77,0.15)" : "#0E1E16",
-                      border: p ? "1px solid #2F7A4D" : "1px solid #24402F",
-                      color: "#EDEFE7",
+                      background: p ? "rgba(47,122,77,0.15)" : "#FFFFFF",
+                      border: p ? "1px solid #58CC02" : "1px solid #AFAFAF",
+                      color: "#4B4B4B",
                     },
                   },
                   React.createElement("span", {
@@ -3857,7 +3868,7 @@
                     },
                     d.name,
                   ),
-                  p && React.createElement(et, { size: 16, color: "#8FD6A8" }),
+                  p && React.createElement(et, { size: 16, color: "#58CC02" }),
                 );
               }),
             ),
@@ -3869,7 +3880,7 @@
                 {
                   style: {
                     fontSize: 12,
-                    color: "#C1443D",
+                    color: "#EA2B2B",
                     marginBottom: 10,
                     display: "flex",
                     gap: 6,
@@ -3952,7 +3963,7 @@
               ),
               React.createElement(
                 "span",
-                { style: { fontSize: 18, color: "#6B7A6F", marginTop: 20 } },
+                { style: { fontSize: 18, color: "#777777", marginTop: 20 } },
                 "\xD7",
               ),
               React.createElement(
@@ -4055,7 +4066,7 @@
                         padding: "5px 0",
                         borderBottom:
                           I < n.scorers.length - 1
-                            ? "1px solid #1E3528"
+                            ? "1px solid #DEDEDE"
                             : "none",
                       },
                     },
@@ -4065,7 +4076,7 @@
                       React.createElement(nt, {
                         size: 12,
                         style: { verticalAlign: -1, marginRight: 5 },
-                        color: "#D4AF37",
+                        color: "#58CC02",
                       }),
                       B ? B.name : "?",
                     ),
@@ -4076,7 +4087,7 @@
                         style: {
                           background: "none",
                           border: "none",
-                          color: "#C1443D",
+                          color: "#EA2B2B",
                           cursor: "pointer",
                         },
                       },
@@ -4106,9 +4117,9 @@
                       width: "100%",
                       padding: "9px 10px",
                       borderRadius: 8,
-                      background: "#0E1E16",
-                      border: "1px solid #24402F",
-                      color: "#9AAA9F",
+                      background: "#FFFFFF",
+                      border: "1px solid #AFAFAF",
+                      color: "#777777",
                       fontSize: 12,
                       cursor: "pointer",
                       display: "flex",
@@ -4130,8 +4141,8 @@
                         top: "105%",
                         left: 0,
                         right: 0,
-                        background: "#182B20",
-                        border: "1px solid #2F4A38",
+                        background: "#FFFFFF",
+                        border: "1px solid #D7FFB8",
                         borderRadius: 8,
                         zIndex: 5,
                         maxHeight: 160,
@@ -4145,7 +4156,7 @@
                           style: {
                             padding: 10,
                             fontSize: 12,
-                            color: "#6B7A6F",
+                            color: "#777777",
                           },
                         },
                         "Sem jogadores no elenco",
@@ -4162,7 +4173,7 @@
                             padding: "8px 10px",
                             fontSize: 12.5,
                             cursor: "pointer",
-                            borderBottom: "1px solid #1E3528",
+                            borderBottom: "1px solid #DEDEDE",
                           },
                         },
                         r.name,
