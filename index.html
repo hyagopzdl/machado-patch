@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1"
     />
-    <title>PES Manager</title>
+    <title>Manchado Patch</title>
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -94,6 +94,10 @@
       @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       .animate-spin { animation: spin 1s linear infinite; }
       @media (max-width: 560px) { body { background: var(--canvas); } }
+      .profile-gate { background: radial-gradient(700px 420px at 50% 20%, rgba(33,228,147,.08), transparent 68%), linear-gradient(180deg,#050807 0%,#080d0b 100%); }
+      .profile-choice-avatar { transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, border-color .22s ease; }
+      @media (hover:hover) { .profile-choice:hover .profile-choice-avatar { transform:scale(1.055); border-color:rgba(255,255,255,.8) !important; box-shadow:0 24px 60px rgba(0,0,0,.38),0 0 28px rgba(33,228,147,.12) !important; } }
+
       /* Sports premium responsive system */
       :root {
         --canvas: #f4f6f8;
@@ -604,10 +608,7 @@
             [setupAdminName, setSetupAdminName] = b("Admin"),
             [setupTournamentName, setSetupTournamentName] = b("Campeonato 1"),
             [setupSubmitting, setSetupSubmitting] = b(!1),
-            [theme, setTheme] = b(() => {
-              let saved = eo("pes-theme");
-              return saved === "dark" ? "dark" : "light";
-            });
+            [theme, setTheme] = b("dark");
           He(() => {
             document.documentElement.setAttribute("data-theme", theme);
             localStorage.setItem("pes-theme", JSON.stringify(theme));
@@ -1949,7 +1950,6 @@
                       onOpenDetail: be,
                       profiles: x,
                       tournament: R,
-                      canOffer: !!(ProfileTeam && viewedTeamId !== ProfileTeam.id),
                       onClose: () => setViewedTeamId(null),
                     }),
                     matchWizard && React.createElement(MatchWizard, { data: matchWizard, setData: setMatchWizard, teams: p.filter((team) => team && team.active !== false), profiles: x, onClose: () => setMatchWizard(null), onSave: saveQuickMatch }),
@@ -2104,31 +2104,31 @@
 
         function oo({ profiles: e, tournaments: t, selectedTournamentId: l, onSelectTournament: a, onPick: n, belongsToTournament: r }) {
           let selected = t.find((item) => item.id === l) || null;
+          let ctaWords = ["tanga", "paçoca", "peba", "spritflai"];
+          let [ctaWord] = b(() => ctaWords[Math.floor(Math.random() * ctaWords.length)]);
           let visibleProfiles = selected ? e.map((profile, index) => {
             let item = typeof profile === "object" && profile ? profile : { name: String(profile) };
             return { raw: profile, name: String(item.name || "").trim(), color: item.color || se[index % se.length] };
           }).filter((profile) => profile.name && r(profile.raw, selected)) : [];
-          return React.createElement("div", { style: { minHeight: "100vh", background: "var(--surface)", color: "var(--heading)", fontFamily: "Manrope,system-ui,-apple-system,Segoe UI,Roboto,sans-serif", padding: 24, maxWidth: 760, margin: "0 auto" } },
-            React.createElement("div", { style: { textAlign: "center", paddingTop: 36, marginBottom: 28 } },
-              React.createElement("div", { style: { fontSize: 30, fontWeight: 900 } }, "PES ", React.createElement("span", { style: { color: "var(--green)" } }, "MANAGER")),
-              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginTop: 6 } }, "Escolha o campeonato e depois seu perfil")
-            ),
-            React.createElement("div", { style: { marginBottom: 30 } },
-              React.createElement("div", { style: { ...P, textAlign: "center", marginBottom: 12 } }, "1. Campeonato"),
-              t.length ? React.createElement("div", { style: { display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 } }, t.map((tournament) => {
+          return React.createElement("div", { className: "profile-gate", style: { minHeight: "100vh", color: "var(--heading)", fontFamily: "Manrope,system-ui,-apple-system,Segoe UI,Roboto,sans-serif", padding: "clamp(24px,5vw,64px) 24px", display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center" } },
+            React.createElement("div", { style: { width:"min(100%,980px)", textAlign:"center" } },
+              React.createElement("div", { style: { marginBottom: "clamp(32px,6vw,64px)" } },
+                React.createElement("div", { style: { fontSize: "clamp(13px,1.2vw,15px)", textTransform:"uppercase", letterSpacing:".22em", color:"var(--muted)", fontWeight:800, marginBottom:14 } }, "MANCHADO PATCH"),
+                React.createElement("h1", { style: { margin:0, fontSize:"clamp(32px,5vw,58px)", lineHeight:1.05, fontWeight:700, letterSpacing:"-.045em" } }, `Quem é o ${ctaWord} da vez?`)
+              ),
+              t.length ? React.createElement("div", { style: { display:"flex", justifyContent:t.length === 1 ? "center" : "flex-start", gap:10, overflowX:t.length === 1 ? "visible" : "auto", padding:"2px 2px 8px", marginBottom:"clamp(34px,5vw,56px)" } }, t.map((tournament) => {
                 let active = tournament.id === l;
-                return React.createElement("button", { key: tournament.id, onClick: () => a(tournament.id), style: { minWidth: 180, padding: "14px 16px", borderRadius: 14, border: active ? "2px solid #58CC02" : "2px solid #DEDEDE", background: active ? "#D7FFB8" : "var(--surface)", color: "var(--heading)", cursor: "pointer", textAlign: "left" } },
-                  React.createElement("div", { style: { fontSize: 15, fontWeight: 900 } }, tournament.name),
-                  React.createElement("div", { style: { fontSize: 12, color: "var(--muted)", marginTop: 3 } }, (tournament.teamIds || []).length, " perfis")
+                return React.createElement("button", { key:tournament.id, onClick:()=>a(tournament.id), className:"tapbtn", style:{ minWidth:t.length===1 ? "min(100%,320px)" : 190, padding:"12px 18px", borderRadius:999, border:active ? "1px solid color-mix(in srgb,var(--green) 60%,transparent)" : "1px solid var(--border)", background:active ? "color-mix(in srgb,var(--green) 12%,var(--surface))" : "color-mix(in srgb,var(--surface) 90%,transparent)", color:"var(--heading)", cursor:"pointer", textAlign:"center", boxShadow:active ? "0 0 28px color-mix(in srgb,var(--green) 12%,transparent)" : "none", backdropFilter:"blur(16px)" } },
+                  React.createElement("div", { style:{ fontSize:14, fontWeight:800 } }, tournament.name),
+                  React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", marginTop:3 } }, (tournament.teamIds || []).length, " perfis")
                 );
-              })) : React.createElement("div", { style: { ...E, textAlign: "center", color: "var(--muted)" } }, "Nenhum campeonato ativo foi encontrado." )
-            ),
-            React.createElement("div", { style: { ...P, textAlign: "center", marginBottom: 14 } }, "2. Perfil"),
-            !selected ? React.createElement("div", { style: { textAlign: "center", color: "var(--muted)", padding: 28 } }, "Selecione um campeonato acima.") :
-            visibleProfiles.length ? React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 18 } }, visibleProfiles.map((profile) => React.createElement("button", { key: profile.name, onClick: () => n(profile.raw), className: "tapbtn", style: { background: "none", border: "none", color: "var(--heading)", cursor: "pointer", padding: 0, textAlign: "center" } },
-              React.createElement("div", { style: { aspectRatio: "1", borderRadius: 20, background: profile.color, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44, fontWeight: 900, border: "2px solid transparent" } }, profile.raw && profile.raw.avatar ? React.createElement("img", { src: profile.raw.avatar, alt: profile.name, style: { width: "100%", height: "100%", objectFit: "cover" } }) : profile.name.charAt(0).toUpperCase()),
-              React.createElement("div", { style: { fontSize: 14, marginTop: 9, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, profile.name)
-            ))) : React.createElement("div", { style: { ...E, textAlign: "center", color: "var(--muted)" } }, "Nenhum perfil pertence a este campeonato.")
+              })) : React.createElement("div", { className:"family-card", style:{ padding:24, color:"var(--muted)", marginBottom:36 } }, "Nenhum campeonato ativo foi encontrado."),
+              !selected ? React.createElement("div", { style:{ color:"var(--muted)", padding:28 } }, "Selecione um campeonato acima.") :
+              visibleProfiles.length ? React.createElement("div", { style:{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:"clamp(26px,4vw,46px)" } }, visibleProfiles.map((profile) => React.createElement("button", { key:profile.name, onClick:()=>n(profile.raw), className:"profile-choice tapbtn", style:{ width:"clamp(112px,15vw,154px)", background:"none", border:0, color:"var(--heading)", cursor:"pointer", padding:0, textAlign:"center" } },
+                React.createElement("div", { className:"profile-choice-avatar", style:{ width:"clamp(104px,14vw,146px)", height:"clamp(104px,14vw,146px)", margin:"0 auto", borderRadius:"50%", background:profile.color, overflow:"hidden", display:"grid", placeItems:"center", fontSize:"clamp(38px,5vw,56px)", fontWeight:800, border:"3px solid transparent", boxShadow:"0 18px 46px rgba(0,0,0,.28)" } }, profile.raw && profile.raw.avatar ? React.createElement("img", { src:profile.raw.avatar, alt:profile.name, style:{ width:"100%", height:"100%", objectFit:"cover" } }) : profile.name.charAt(0).toUpperCase()),
+                React.createElement("div", { style:{ fontSize:"clamp(15px,1.6vw,18px)", fontWeight:750, marginTop:14, color:"var(--heading)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, profile.name)
+              ))) : React.createElement("div", { className:"family-card", style:{ padding:24, color:"var(--muted)" } }, "Nenhum perfil pertence a este campeonato.")
+            )
           );
         }
         function no({
@@ -2908,11 +2908,6 @@
             let player = item.player, status = item.status;
             let activeOffer = Object.values(offers || {}).find((offer) => isOfferOpen(offer) && offer.playerId === player.id && activeTeam && offer.buyerTeamId === activeTeam.id);
             let owner = status.teamId ? l(status.teamId) : null;
-            let reason = item.need.deficit > 0
-              ? `Faltam ${item.need.deficit} em ${groupLabels[item.group].toLowerCase()}`
-              : item.upgrade > 0
-                ? `+${Math.round(item.upgrade)} sobre sua opção mais fraca`
-                : "Boa relação entre overall e valor";
             return React.createElement(
               "article",
               {
@@ -2947,17 +2942,19 @@
                   "div",
                   null,
                   React.createElement("div", { style: { fontSize: 36, lineHeight: 1, fontWeight: 850, letterSpacing: "-1.8px", color: overallColor(player.overall) } }, player.overall),
-                  React.createElement("span", { style: { display: "inline-flex", marginTop: 7, fontSize: 10.5, fontWeight: 800, background: positionColor(player.position), color: "white", padding: "4px 7px", borderRadius: 7 } }, player.position),
                 ),
                 React.createElement("span", { style: { padding: "5px 8px", borderRadius: 999, background: "rgba(255,255,255,.08)", border: "1px solid var(--border)", color: "var(--muted)", fontSize: 9.5, fontWeight: 750 } }, `#${index + 1}`),
               ),
               React.createElement(
                 "div",
-                { style: { position: "relative" } },
-                React.createElement("div", { style: { fontSize: 18, fontWeight: 800, lineHeight: 1.08, letterSpacing: "-.45px", marginBottom: 7, minHeight:39, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" } }, player.name),
-                React.createElement("div", { style: { fontSize: 10.5, color: "var(--muted)", lineHeight: 1.35, minHeight: 28 } }, player.club || "Clube não informado"),
-                owner && React.createElement("div", { style: { marginTop: 7, fontSize: 9.5, color: "var(--muted)" } }, `Pertence a ${owner.name}`),
-                React.createElement("div", { style: { marginTop: 10 } }, playerAction(player, status, activeOffer)),
+                { style: { position: "relative", display:"flex", flexDirection:"column", flex:1, marginTop:24 } },
+                React.createElement("div", { style:{ display:"flex", flexDirection:"column", gap:3 } },
+                  React.createElement("span", { style:{ fontSize:10.5, fontWeight:800, color:positionColor(player.position), textTransform:"uppercase", letterSpacing:".08em" } }, player.position),
+                  React.createElement("div", { style: { fontSize: 18, fontWeight: 800, lineHeight: 1.08, letterSpacing: "-.45px", minHeight:39, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" } }, player.name),
+                  React.createElement("div", { style: { fontSize: 10.5, color: "var(--muted)", lineHeight: 1.35, minHeight: 28 } }, player.club || "Clube não informado"),
+                  owner && React.createElement("div", { style: { fontSize: 9.5, color: "var(--muted)" } }, `Pertence a ${owner.name}`)
+                ),
+                React.createElement("div", { style: { marginTop:"auto", paddingTop:18 } }, playerAction(player, status, activeOffer)),
               ),
             );
           }
@@ -4171,7 +4168,7 @@
             let file = event.target.files && event.target.files[0];
             if (!file) return;
             if (!file.type.startsWith("image/")) return window.alert("Escolha um arquivo de imagem.");
-            if (file.size > 1024 * 1024) return window.alert("Use uma imagem de até 1 MB.");
+            if (file.size > 4 * 1024 * 1024) return window.alert("Use uma imagem de até 4 MB.");
             let reader = new FileReader();
             reader.onload = () => onUpdateProfile(item.id, { avatar: reader.result });
             reader.readAsDataURL(file);
@@ -4184,44 +4181,26 @@
             setEditing(false);
           }
           return React.createElement("div", null,
-            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 } },
-              React.createElement(Z, { icon: React.createElement(ProfileIcon, { size: 17 }), text: "Meu perfil" }),
-              React.createElement("button", { onClick: () => setEditing(!editing), className: "tapbtn", style: { ...M, padding: "9px 14px", display: "flex", alignItems: "center", gap: 7 } }, React.createElement(SettingsIcon, { size: 17 }), editing ? "Fechar" : "Ajustes")
-            ),
-            React.createElement("div", { className: "family-card", style: { padding: 24, marginBottom: 16 } },
-              React.createElement("div", { style: { display: "flex", gap: 18, alignItems: "center" } },
-                React.createElement("label", { style: { position: "relative", cursor: "pointer", flexShrink: 0 } },
-                  React.createElement("div", { style: { width: 84, height: 84, borderRadius: 999, background: item.color || "var(--surface-soft)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, fontWeight: 700, boxShadow: "inset 0 0 0 1px var(--border)" } }, item.avatar ? React.createElement("img", { src: item.avatar, alt: "Avatar", style: { width: "100%", height: "100%", objectFit: "cover" } }) : String(item.name || "?").charAt(0).toUpperCase()),
-                  React.createElement("input", { type: "file", accept: "image/*", onChange: handleAvatar, style: { display: "none" } }),
-                  React.createElement("span", { style: { position: "absolute", right: -2, bottom: 2, width: 28, height: 28, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--ink)", color: "var(--surface)", fontSize: 16 } }, "+")
-                ),
-                React.createElement("div", { style: { minWidth: 0 } },
-                  React.createElement("div", { style: { fontSize: 25, fontWeight: 600, color: "var(--heading)", overflow: "hidden", textOverflow: "ellipsis" } }, item.name),
-                  React.createElement("div", { style: { color: "var(--muted)", marginTop: 4 } }, team ? team.name : "Administrador global"),
-                  tournament && React.createElement("div", { style: { color: "var(--accent)", fontSize: 12, marginTop: 7 } }, tournament.name)
-                )
-              )
+            React.createElement("div", { style:{ textAlign:"center", marginBottom:24, position:"relative" } },
+              React.createElement("button", { onClick:()=>setEditing(!editing), title:editing ? "Fechar edição" : "Editar perfil", className:"tapbtn", style:{ position:"absolute", right:0, top:0, width:42, height:42, borderRadius:999, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--heading)", display:"grid", placeItems:"center", cursor:"pointer", boxShadow:"var(--shadow-soft)" } }, React.createElement("span", { style:{ fontSize:19, lineHeight:1 } }, editing ? "×" : "✎")),
+              React.createElement("div", { style:{ width:116, height:116, margin:"0 auto", borderRadius:999, background:item.color || "var(--surface-soft)", overflow:"hidden", display:"grid", placeItems:"center", fontSize:44, fontWeight:750, boxShadow:"0 20px 54px rgba(0,0,0,.24), inset 0 0 0 1px var(--border)" } }, item.avatar ? React.createElement("img", { src:item.avatar, alt:"Avatar", style:{ width:"100%", height:"100%", objectFit:"cover" } }) : String(item.name || "?").charAt(0).toUpperCase()),
+              React.createElement("div", { style:{ fontSize:30, fontWeight:750, letterSpacing:"-.04em", color:"var(--heading)", marginTop:16 } }, item.name),
+              React.createElement("div", { style:{ color:"var(--muted)", marginTop:5, fontSize:15 } }, team ? team.name : "Administrador global"),
+              tournament && React.createElement("div", { style:{ color:"var(--green)", fontSize:12, fontWeight:700, marginTop:8 } }, tournament.name)
             ),
             team && React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10, marginBottom: 16 } },
               [["Saldo", `${team.budget || 0} moedas`], ["Elenco", `${squad.length} jogadores`], ["Partidas", played.length], ["Campanha", `${wins}V · ${draws}E · ${losses}D`], ["Gols marcados", goalsFor], ["Artilharia do elenco", goals]].map(([label,value]) => React.createElement("div", { key: label, className: "family-card", style: { padding: 18 } }, React.createElement("div", { style: { fontSize: 12, color: "var(--muted)", marginBottom: 6 } }, label), React.createElement("strong", { style: { fontSize: 18, color: "var(--heading)" } }, value)))
             ),
             editing && React.createElement("div", { className: "family-card", style: { padding: 24, marginBottom: 16 } },
-              React.createElement("div", { style: { fontSize: 19, fontWeight: 600, marginBottom: 16 } }, "Identidade"),
+              React.createElement("div", { style: { fontSize: 19, fontWeight: 600, marginBottom: 16 } }, "Editar perfil"),
+              React.createElement("label", { style: P }, "Avatar"),
+              React.createElement("input", { type:"file", accept:"image/*", onChange:handleAvatar, style:{ ...q, padding:"10px" } }),
+              React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", marginTop:7, marginBottom:14 } }, "Imagem JPG, PNG ou WebP de até 4 MB."),
               React.createElement("label", { style: P }, "Nome do perfil"), React.createElement("input", { style: q, value: name, onChange: (e) => setName(e.target.value), maxLength: 30 }),
               team && React.createElement(React.Fragment, null, React.createElement("label", { style: { ...P, marginTop: 14 } }, "Nome do time neste campeonato"), React.createElement("input", { style: q, value: teamName, onChange: (e) => setTeamName(e.target.value), maxLength: 40 })),
               React.createElement("button", { onClick: saveIdentity, style: { ...M, ...W, marginTop: 16 } }, "Salvar alterações")
             ),
-            editing && React.createElement(SettingsArea, { theme, setTheme }),
             React.createElement("button", { onClick: onSwitchProfile, style: { ...M, width: "100%", marginTop: 16 } }, "Trocar perfil ou campeonato")
-          );
-        }
-        function SettingsArea({ theme: e, setTheme: t }) {
-          return React.createElement("div", { className: "family-card", style: { padding: 24, marginBottom: 16 } },
-            React.createElement("div", { style: { fontSize: 19, fontWeight: 600, color: "var(--heading)", marginBottom: 8 } }, "Aparência"),
-            React.createElement("div", { style: { fontSize: 14, lineHeight: 1.5, color: "var(--muted)", marginBottom: 18 } }, "A preferência fica salva apenas neste dispositivo."),
-            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 12 } }, [
-              { key: "light", label: "Light mode" }, { key: "dark", label: "Dark mode" }
-            ].map((o) => React.createElement("button", { key: o.key, onClick: () => t(o.key), className: "settings-theme-card" + (e === o.key ? " is-active" : "") }, React.createElement("div", { className: "theme-preview " + o.key }, React.createElement("span"), React.createElement("span"), React.createElement("span")), React.createElement("strong", { style: { color: "var(--heading)", fontSize: 14 } }, o.label))))
           );
         }
         function normalizeImportText(value) {
@@ -4556,7 +4535,7 @@
                   }),
               );
         }
-        function TeamViewer({ team, squadOf, ownership, onOpenDetail, profiles, tournament, onClose, canOffer }) {
+        function TeamViewer({ team, squadOf, ownership, onOpenDetail, profiles, tournament, onClose }) {
           let profile = (profiles || []).find((item) => item && typeof item === "object" && item.id === team.profileId);
           return React.createElement(
             "div",
@@ -4570,7 +4549,7 @@
               { onClick:(event)=>event.stopPropagation(), style:{ width:"min(1120px,100%)", margin:"0 auto", minHeight:"calc(100vh - 64px)", background:"var(--bg)", border:"1px solid var(--border)", borderRadius:28, padding:"clamp(18px,3vw,36px)", boxShadow:"0 24px 80px rgba(0,0,0,.35)" } },
               React.createElement(io, {
                 teams:[team], activeTeamId:team.id, setActiveTeamId:()=>{}, onNewTeam:null, onDeleteTeam:()=>{},
-                squadOf, onSellToMarket:()=>{}, depreciationPct:0, ownership, onOpenDetail:(player)=>onOpenDetail({ player, fromOtherTeam:!!canOffer }), onGoMarket:()=>{},
+                squadOf, onSellToMarket:()=>{}, depreciationPct:0, ownership, onOpenDetail:(player)=>onOpenDetail({ player, fromOtherTeam:true }), onGoMarket:()=>{},
                 rosterSettings:tournament&&tournament.rosterSettings?tournament.rosterSettings:{minPlayers:23,maxPlayers:30},
                 readOnly:true, onBack:onClose, viewerProfile:profile,
               })
