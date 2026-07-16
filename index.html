@@ -3341,65 +3341,52 @@
                   ),
           );
         }
+        function attributeValueColor(value, max = 99) {
+          const n = Number(value);
+          if (!Number.isFinite(n)) return "var(--muted)";
+          if (max <= 10) {
+            if (n >= 8) return "#ff2b3a";
+            if (n >= 7) return "#ff3e00";
+            if (n >= 6) return "#ffbb26";
+            if (n >= 5) return "#00c978";
+            return "#a7a7a7";
+          }
+          if (n >= 95) return "#ff2b3a";
+          if (n >= 90) return "#ff3e00";
+          if (n >= 80) return "#ffbb26";
+          if (n >= 75) return "#00c978";
+          return "#a7a7a7";
+        }
         function N({ label: e, value: t, max: l = 99 }) {
-          let a = Number(t),
-            n = Number.isFinite(a) ? a : 0,
-            r = Math.max(0, Math.min(100, (n / l) * 100)),
-            f =
-              l <= 10
-                ? n >= 7
-                  ? "var(--green)"
-                  : n >= 5
-                    ? "#FF9600"
-                    : "var(--danger)"
-                : n >= 85
-                  ? "var(--green)"
-                  : n >= 70
-                    ? "var(--green)"
-                    : n >= 50
-                      ? "#FF9600"
-                      : "var(--danger)";
+          const a = Number(t), n = Number.isFinite(a);
           return React.createElement(
             "div",
-            { style: { marginBottom: 10 } },
+            {
+              style: {
+                minHeight: 42,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 18,
+                padding: "9px 2px",
+                borderBottom: "1px solid var(--border)",
+              },
+            },
+            React.createElement("span", { style: { color: "var(--heading)", fontSize: 13.5, lineHeight: 1.3 } }, e),
             React.createElement(
-              "div",
+              "strong",
               {
                 style: {
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  fontSize: 11.5,
-                  color: "var(--muted)",
-                  marginBottom: 4,
+                  flex: "0 0 auto",
+                  minWidth: 34,
+                  textAlign: "right",
+                  fontSize: 17,
+                  lineHeight: 1,
+                  fontVariantNumeric: "tabular-nums",
+                  color: attributeValueColor(a, l),
                 },
               },
-              React.createElement("span", null, e),
-              React.createElement(
-                "span",
-                { style: { fontWeight: 700, color: "var(--heading)" } },
-                Number.isFinite(a) ? a : "—",
-                l <= 10 ? `/${l}` : "",
-              ),
-            ),
-            React.createElement(
-              "div",
-              {
-                style: {
-                  height: 6,
-                  background: "var(--surface-soft)",
-                  borderRadius: 999,
-                  overflow: "hidden",
-                },
-              },
-              React.createElement("div", {
-                style: {
-                  width: `${r}%`,
-                  height: "100%",
-                  background: f,
-                  borderRadius: 999,
-                },
-              }),
+              n ? a : "—",
             ),
           );
         }
@@ -3407,83 +3394,38 @@
           let detailContext = e && e.player ? e : { player:e, fromOtherTeam:false };
           e = detailContext.player;
           let l = e.attrs || {},
-            a = [
+            attributes = [
               ["Ataque", e.attack],
               ["Defesa", e.defense],
-              ["Resposta", l.response],
-              ["Mentalidade", l.mentality],
-              ["Agressividade", l.aggression],
-              ["Trabalho em equipe", l.teamwork],
-            ],
-            n = [
-              ["Aceleração", l.acceleration],
-              ["Velocidade máxima", l.topSpeed],
               ["Equilíbrio", l.balance],
-              ["Agilidade", l.agility],
-              ["Impulsão", l.jump],
               ["Fôlego", l.stamina],
-            ],
-            r = [
+              ["Velocidade máxima", l.topSpeed],
+              ["Aceleração", l.acceleration],
+              ["Resposta", l.response],
+              ["Agilidade", l.agility],
               ["Precisão no drible", l.dribbleAccuracy],
               ["Velocidade no drible", l.dribbleSpeed],
-              ["Técnica", l.technique],
-              ["Cabeceio", l.heading],
-            ],
-            f = [
               ["Precisão no passe curto", l.shortPassAccuracy],
               ["Velocidade do passe curto", l.shortPassSpeed],
               ["Precisão no passe longo", l.longPassAccuracy],
               ["Velocidade do passe longo", l.longPassSpeed],
-            ],
-            d = [
               ["Precisão do chute", l.shotAccuracy],
               ["Força do chute", l.shotPower],
               ["Técnica de chute", l.shotTechnique],
               ["Precisão em cobranças de falta", l.freeKickAccuracy],
               ["Curva", l.curve],
-            ],
-            p = [
+              ["Cabeceio", l.heading],
+              ["Impulsão", l.jump],
+              ["Técnica", l.technique],
+              ["Agressividade", l.aggression],
+              ["Mentalidade", l.mentality],
               ["Habilidade de goleiro", l.goalKeepingSkills],
+              ["Trabalho em equipe", l.teamwork],
               ["Consistência", l.consistency, 8],
+              ["Condição física", l.conditionFitness, 8],
               ["Precisão com o pé ruim", l.weakFootAccuracy, 8],
               ["Frequência de uso do pé ruim", l.weakFootFrequency, 8],
-              ["Condição física", l.conditionFitness, 8],
-            ],
-            F = (c, v) =>
-              React.createElement(
-                "section",
-                { style: { ...E, padding: 16, marginBottom: 12 } },
-                React.createElement(
-                  "div",
-                  {
-                    style: {
-                      fontSize: 13,
-                      fontWeight: 800,
-                      color: "var(--heading)",
-                      marginBottom: 12,
-                    },
-                  },
-                  c,
-                ),
-                React.createElement(
-                  "div",
-                  {
-                    style: {
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-                      columnGap: 20,
-                    },
-                  },
-                  v.map((s) =>
-                    React.createElement(N, {
-                      key: s[0],
-                      label: s[0],
-                      value: s[1],
-                      max: s[2] || 99,
-                    }),
-                  ),
-                ),
-              );
+            ];
           return React.createElement(
             ee,
             { title: e.name, onClose: t },
@@ -3557,12 +3499,17 @@
                 ),
               ),
             ),
-            F("Visão geral e mental", a),
-            F("Velocidade e físico", n),
-            F("Drible e técnica", r),
-            F("Passes", f),
-            F("Finalização e bola parada", d),
-            F("Atributos especiais", p),
+            React.createElement(
+              "section",
+              { style: { ...E, padding: "8px 16px 10px", marginBottom: 12 } },
+              React.createElement(
+                "div",
+                { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 2px 10px", borderBottom: "1px solid var(--border)" } },
+                React.createElement("strong", { style: { fontSize: 14, color: "var(--heading)" } }, "Atributos"),
+                React.createElement("span", { style: { fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em" } }, "Ordem do PES 2007"),
+              ),
+              attributes.map((attribute) => React.createElement(N, { key: attribute[0], label: attribute[0], value: attribute[1], max: attribute[2] || 99 })),
+            ),
             (detailContext.fromOtherTeam || detailContext.canBuy) && React.createElement("div", { style:{ position:"sticky", bottom:-20, margin:"4px -20px -20px", padding:"14px 20px calc(14px + env(safe-area-inset-bottom))", background:"color-mix(in srgb, var(--surface) 94%, transparent)", backdropFilter:"blur(18px)", borderTop:"1px solid var(--border)", zIndex:5 } },
               detailContext.canBuy
                 ? React.createElement("button", { className:"tapbtn", disabled: !activeTeam || Number(activeTeam.budget || 0) < Number(e.value || 0), onClick:()=>onBuy&&onBuy(e), style:{ ...M, ...W, width:"100%", margin:0, opacity: activeTeam && Number(activeTeam.budget || 0) >= Number(e.value || 0) ? 1 : .45, cursor: activeTeam && Number(activeTeam.budget || 0) >= Number(e.value || 0) ? "pointer" : "not-allowed" } }, activeTeam && Number(activeTeam.budget || 0) < Number(e.value || 0) ? "Saldo insuficiente" : `Comprar · ${L(e.value)}`)
