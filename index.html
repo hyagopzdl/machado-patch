@@ -1584,22 +1584,92 @@
             });
           }
 
-          function createAdminTournament() {
+          function createAdminTournament(options = {}) {
             let name = adminTournamentName.trim();
             if (!name) return;
             if (m.some((item) => String(item.name || "").trim().toLowerCase() === name.toLowerCase())) {
               window.alert("Já existe um campeonato com este nome.");
               return;
             }
+            let mode = options.mode === "continue" ? "continue" : "new";
+            let source = mode === "continue" ? m.find((item) => item && String(item.id) === String(options.sourceTournamentId)) : null;
+            if (mode === "continue" && !source) {
+              window.alert("Selecione um campeonato-base válido.");
+              return;
+            }
+            let inheritance = {
+              participants: options.inheritance ? options.inheritance.participants !== false : true,
+              balances: options.inheritance ? options.inheritance.balances !== false : true,
+              rosters: options.inheritance ? options.inheritance.rosters !== false : true,
+              teamNames: options.inheritance ? options.inheritance.teamNames !== false : true,
+            };
+            let overrides = options.participantOverrides && typeof options.participantOverrides === "object" ? options.participantOverrides : {};
+            let teams = [];
+            let participants = [];
+            let ownership = {};
+            let financialTransactions = [];
+            if (source) {
+              let sourceContext = source.context || {};
+              let sourceTeams = Array.isArray(sourceContext.teams) ? sourceContext.teams.filter((team) => team && team.active !== false && team.profileId) : [];
+              let sourceParticipants = Array.isArray(source.participants) ? source.participants.map(String) : sourceTeams.map((team) => String(team.profileId));
+              let selectedSourceTeams = sourceTeams.filter((team) => {
+                let override = overrides[String(team.profileId)] || {};
+                let hasGlobalProfile = x.some((profile) => profile && typeof profile === "object" && String(profile.id) === String(team.profileId) && profile.active !== false);
+                return hasGlobalProfile && override.include !== false && sourceParticipants.includes(String(team.profileId));
+              });
+              if (selectedSourceTeams.length < 2) {
+                window.alert("Selecione pelo menos dois participantes para a nova temporada.");
+                return;
+              }
+              let oldToNewTeamId = {};
+              selectedSourceTeams.forEach((oldTeam, index) => {
+                let profileId = String(oldTeam.profileId);
+                let override = overrides[profileId] || {};
+                let newTeamId = _();
+                oldToNewTeamId[String(oldTeam.id)] = newTeamId;
+                let profile = x.find((item) => item && typeof item === "object" && String(item.id) === profileId);
+                let inheritedName = inheritance.teamNames ? oldTeam.name : (profile && profile.name ? profile.name : oldTeam.name);
+                let teamName = String(override.teamName || inheritedName || "Time").trim();
+                let inheritedBudget = inheritance.balances ? Number(oldTeam.budget) || 0 : Math.max(0, Number(adminProfileBudget) || 300);
+                let budget = Number.isFinite(Number(override.budget)) ? Math.max(0, Number(override.budget)) : inheritedBudget;
+                teams.push({
+                  ...oldTeam,
+                  id: newTeamId,
+                  profileId,
+                  name: teamName,
+                  budget,
+                  active: true,
+                  inheritedFromTeamId: oldTeam.id,
+                  inheritedFromChampionshipId: source.id,
+                  createdAt: Date.now(),
+                });
+                participants.push(profileId);
+                financialTransactions.unshift(financeEntry("initial_balance", newTeamId, budget, `Saldo inicial herdado de ${source.name}`, { sourceChampionshipId: source.id }));
+              });
+              if (inheritance.rosters) {
+                let sourceOwnership = sourceContext.ownership && typeof sourceContext.ownership === "object" ? sourceContext.ownership : {};
+                Object.keys(sourceOwnership).forEach((playerId) => {
+                  let owner = sourceOwnership[playerId];
+                  let newTeamId = owner && oldToNewTeamId[String(owner.teamId)];
+                  if (!newTeamId) return;
+                  let oldTeam = sourceTeams.find((team) => String(team.id) === String(owner.teamId));
+                  let override = oldTeam ? (overrides[String(oldTeam.profileId)] || {}) : {};
+                  if (override.inheritRoster === false) return;
+                  ownership[playerId] = { ...owner, teamId: newTeamId, forSale: false, price: null };
+                });
+              }
+            }
             let tournament = {
-              id: _(), name, format: "liga", season: B.seasonCounter,
-              teamIds: [], participants: [], groups: null, matches: [], status: "ongoing",
+              id: _(), name, format: source ? (source.format || "liga") : "liga", season: B.seasonCounter,
+              teamIds: teams.map((team) => team.id), participants, groups: null, matches: [], status: "ongoing",
               champion: null, createdAt: Date.now(),
-              marketSettings: { depreciationPct: 10 },
-              rosterSettings: { minPlayers: 23, maxPlayers: 30 },
-              economySettings: { winReward: 2, drawReward: 1 },
-              finalPrizeSettings: { firstPlacePrize: 20, lastPlacePercentage: 50 },
-              context: { teams: [], ownership: {}, playerStats: {}, transfers: [], tradeOffers: {}, financialTransactions: [] },
+              sourceChampionshipId: source ? source.id : null,
+              inheritance: source ? inheritance : null,
+              marketSettings: source && source.marketSettings ? { ...source.marketSettings } : { depreciationPct: 10 },
+              rosterSettings: source && source.rosterSettings ? { ...source.rosterSettings } : { minPlayers: 23, maxPlayers: 30 },
+              economySettings: source && source.economySettings ? { ...source.economySettings } : { winReward: 2, drawReward: 1 },
+              finalPrizeSettings: source && source.finalPrizeSettings ? { ...source.finalPrizeSettings } : { firstPlacePrize: 20, lastPlacePercentage: 50 },
+              context: { teams, ownership, playerStats: {}, transfers: [], tradeOffers: {}, financialTransactions },
             };
             ae([...m, tournament]);
             setAdminTournamentName("");
@@ -4604,6 +4674,38 @@
           let [importText, setImportText] = b("");
           let [importMode, setImportMode] = b("replace");
           let [importPreview, setImportPreview] = b(null);
+          let sourceCandidates = [...(tournaments || [])].sort((a, b) => (Number(b.finishedAt || b.createdAt) || 0) - (Number(a.finishedAt || a.createdAt) || 0));
+          let [creationMode, setCreationMode] = b(sourceCandidates.length ? "continue" : "new");
+          let [sourceTournamentId, setSourceTournamentId] = b(sourceCandidates[0] ? sourceCandidates[0].id : "");
+          let [inheritance, setInheritance] = b({ participants: true, balances: true, rosters: true, teamNames: true });
+          let [participantOverrides, setParticipantOverrides] = b({});
+          let sourceTournament = sourceCandidates.find((item) => item && String(item.id) === String(sourceTournamentId)) || null;
+          He(() => {
+            if (!sourceTournament) { setParticipantOverrides({}); return; }
+            let sourceTeams = Array.isArray(sourceTournament.context && sourceTournament.context.teams) ? sourceTournament.context.teams.filter((team) => team && team.active !== false && team.profileId) : [];
+            let next = {};
+            sourceTeams.forEach((team) => {
+              next[String(team.profileId)] = { include: true, teamName: team.name || "", budget: Number(team.budget) || 0, inheritRoster: true };
+            });
+            setParticipantOverrides(next);
+          }, [sourceTournamentId]);
+          function toggleInheritanceOption(key, checked) {
+            let nextInheritance = { ...inheritance, [key]: checked };
+            setInheritance(nextInheritance);
+            if (!sourceTournament) return;
+            let sourceTeams = Array.isArray(sourceTournament.context && sourceTournament.context.teams) ? sourceTournament.context.teams.filter((team) => team && team.active !== false && team.profileId) : [];
+            let nextOverrides = { ...participantOverrides };
+            sourceTeams.forEach((team) => {
+              let profile = globalProfiles.find((item) => String(item.id) === String(team.profileId));
+              let current = nextOverrides[String(team.profileId)] || { include:true, teamName:team.name || "", budget:Number(team.budget) || 0, inheritRoster:true };
+              if (key === "participants") current = { ...current, include: checked };
+              if (key === "balances") current = { ...current, budget: checked ? (Number(team.budget) || 0) : Math.max(0, Number(profileBudget) || 300) };
+              if (key === "teamNames") current = { ...current, teamName: checked ? (team.name || "") : (profile && profile.name ? profile.name : team.name || "Time") };
+              if (key === "rosters") current = { ...current, inheritRoster: checked };
+              nextOverrides[String(team.profileId)] = current;
+            });
+            setParticipantOverrides(nextOverrides);
+          }
           function readImportFile(event) {
             let file = event.target.files && event.target.files[0];
             if (!file) return;
@@ -4642,9 +4744,38 @@
               globalProfiles.length ? React.createElement("div", { style: { marginTop: 18, display: "grid", gap: 8 } }, globalProfiles.map((profile) => React.createElement("div", { key: profile.id, style: { display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 10, background: "var(--surface-soft)" } }, React.createElement("div", { style: { width: 34, height: 34, borderRadius: 999, background: profile.color, overflow: "hidden", display: "grid", placeItems: "center", fontWeight: 700 } }, profile.avatar ? React.createElement("img", { src: profile.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } }) : profile.name.charAt(0).toUpperCase()), React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0 } }, React.createElement("strong", { style: { overflow: "hidden", textOverflow: "ellipsis" } }, profile.name), profile.role === "admin" ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "var(--green)", border: "1px solid color-mix(in srgb, var(--green) 45%, transparent)", background: "color-mix(in srgb, var(--green) 10%, transparent)", borderRadius: 999, padding: "4px 7px", textTransform: "uppercase", letterSpacing: ".05em" } }, "Admin") : null), profile.role !== "admin" ? React.createElement("button", { onClick: () => onDeleteProfile(profile.id), style: { background: "transparent", color: "var(--danger)", border: "1px solid var(--danger)", borderRadius: 999, padding: "7px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700 } }, "Excluir") : null))) : null
             ),
             React.createElement("div", { style: E },
-              React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 14 } }, "Criar campeonato"),
-              React.createElement("input", { style: q, placeholder: "Nome do campeonato", value: tournamentName, onChange: (event) => setTournamentName(event.target.value) }),
-              React.createElement("button", { style: { ...M, ...W }, disabled: !tournamentName.trim(), onClick: onCreateTournament }, "Criar campeonato")
+              React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Criar campeonato"),
+              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", lineHeight: 1.45, marginBottom: 14 } }, "Comece uma disputa do zero ou continue uma temporada anterior preservando a evolução dos times."),
+              React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 } },
+                [["new","Nova disputa"],["continue","Continuar temporada"]].map(([value,label]) => React.createElement("button", { key:value, onClick:()=>setCreationMode(value), disabled:value === "continue" && !sourceCandidates.length, style:{ padding:"11px 12px", borderRadius:999, border:"1px solid var(--border)", background:creationMode===value?"var(--ink)":"var(--surface-soft)", color:creationMode===value?"var(--surface)":"var(--heading)", fontWeight:750, cursor:value === "continue" && !sourceCandidates.length?"not-allowed":"pointer", opacity:value === "continue" && !sourceCandidates.length?.45:1 } }, label))
+              ),
+              React.createElement("label", { style: P }, "Nome do novo campeonato"),
+              React.createElement("input", { style: q, placeholder: "Ex: Temporada 2", value: tournamentName, onChange: (event) => setTournamentName(event.target.value) }),
+              creationMode === "continue" && sourceTournament && React.createElement(React.Fragment, null,
+                React.createElement("label", { style: { ...P, marginTop: 14 } }, "Campeonato-base"),
+                React.createElement("select", { style:q, value:sourceTournamentId, onChange:(event)=>setSourceTournamentId(event.target.value) }, sourceCandidates.map((item)=>React.createElement("option", { key:item.id, value:item.id }, `${item.name} · ${item.status === "finished" ? "Encerrado" : "Em andamento"}`))),
+                React.createElement("div", { style:{ marginTop:14, padding:14, borderRadius:14, background:"var(--surface-soft)", border:"1px solid var(--border)" } },
+                  React.createElement("strong", { style:{ display:"block", marginBottom:10 } }, "O que será herdado"),
+                  [["participants","Participantes"],["balances","Saldos finais"],["rosters","Elencos"],["teamNames","Nomes dos times"]].map(([key,label])=>React.createElement("label", { key, style:{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, padding:"8px 0", cursor:"pointer" } }, React.createElement("span", null, label), React.createElement("input", { type:"checkbox", checked:!!inheritance[key], onChange:(event)=>toggleInheritanceOption(key, event.target.checked) })))
+                ),
+                React.createElement("div", { style:{ marginTop:14 } },
+                  React.createElement("div", { style:{ fontWeight:750, marginBottom:4 } }, "Revisar participantes"),
+                  React.createElement("div", { style:{ fontSize:12, color:"var(--muted)", marginBottom:10 } }, "Edite o nome do time, o saldo inicial ou escolha começar sem o elenco anterior."),
+                  (Array.isArray(sourceTournament.context && sourceTournament.context.teams) ? sourceTournament.context.teams.filter((team)=>team && team.active !== false && team.profileId) : []).map((team)=>{
+                    let profile = globalProfiles.find((item)=>String(item.id)===String(team.profileId));
+                    let draft = participantOverrides[String(team.profileId)] || { include:true, teamName:team.name || "", budget:Number(team.budget)||0, inheritRoster:true };
+                    return React.createElement("div", { key:team.id, style:{ padding:12, border:"1px solid var(--border)", borderRadius:14, marginBottom:8, opacity:draft.include===false?.55:1 } },
+                      React.createElement("label", { style:{ display:"flex", alignItems:"center", gap:8, fontWeight:750, marginBottom:10 } }, React.createElement("input", { type:"checkbox", checked:draft.include!==false, onChange:(event)=>setParticipantOverrides({ ...participantOverrides, [String(team.profileId)]:{ ...draft, include:event.target.checked } }) }), profile ? profile.name : (team.archivedProfileName || team.name)),
+                      React.createElement("div", { style:{ display:"grid", gridTemplateColumns:"minmax(0,1fr) 110px", gap:8 } },
+                        React.createElement("input", { style:q, disabled:draft.include===false, value:draft.teamName, placeholder:"Nome do time", onChange:(event)=>setParticipantOverrides({ ...participantOverrides, [String(team.profileId)]:{ ...draft, teamName:event.target.value } }) }),
+                        React.createElement("input", { style:q, disabled:draft.include===false, type:"number", min:0, value:draft.budget, onChange:(event)=>setParticipantOverrides({ ...participantOverrides, [String(team.profileId)]:{ ...draft, budget:event.target.value } }) })
+                      ),
+                      inheritance.rosters && React.createElement("label", { style:{ display:"flex", alignItems:"center", gap:8, marginTop:10, fontSize:12, color:"var(--muted)" } }, React.createElement("input", { type:"checkbox", disabled:draft.include===false, checked:draft.inheritRoster!==false, onChange:(event)=>setParticipantOverrides({ ...participantOverrides, [String(team.profileId)]:{ ...draft, inheritRoster:event.target.checked } }) }), "Herdar elenco deste time")
+                    );
+                  })
+                )
+              ),
+              React.createElement("button", { style: { ...M, ...W, marginTop:14 }, disabled: !tournamentName.trim() || (creationMode === "continue" && !sourceTournament), onClick: () => onCreateTournament({ mode:creationMode, sourceTournamentId, inheritance, participantOverrides }) }, creationMode === "continue" ? "Criar nova temporada" : "Criar campeonato")
             ),
             React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 14 } }, "Campeonatos"),
