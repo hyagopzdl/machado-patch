@@ -484,7 +484,7 @@
             n = (r) => t(r.val());
           return (a.on("value", n), () => a.off("value", n));
         }
-        const IDENTITY_SCHEMA_VERSION = 2;
+        const IDENTITY_SCHEMA_VERSION = 3;
         let identityMigrationPromise = null;
         function normalizeIdentityText(value) {
           return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -506,7 +506,45 @@
             let root = rootValue && typeof rootValue === "object" ? { ...rootValue } : {};
             let meta = root.meta && typeof root.meta === "object" ? { ...root.meta } : {};
             if (Number(meta.identitySchemaVersion || 0) >= IDENTITY_SCHEMA_VERSION) return;
-            let rawProfiles = Array.isArray(root.profiles) ? root.profiles : [];
+            let rawProfiles = Array.isArray(root.profiles) ? root.profiles.filter(Boolean) : [];
+            let knownProfileIds = new Set(rawProfiles.filter((profile) => profile && typeof profile === "object" && profile.id).map((profile) => String(profile.id)));
+            let recoveryCandidates = new Map();
+            (Array.isArray(root.tournaments) ? root.tournaments : []).forEach((tournament) => {
+              if (!tournament || typeof tournament !== "object") return;
+              let context = tournament.context && typeof tournament.context === "object" ? tournament.context : {};
+              (Array.isArray(context.teams) ? context.teams : []).forEach((team) => {
+                if (!team || typeof team !== "object" || !team.profileId) return;
+                let profileId = String(team.profileId);
+                if (knownProfileIds.has(profileId) || recoveryCandidates.has(profileId)) return;
+                let recoveredName = String(team.archivedProfileName || team.profileName || team.ownerName || team.managerName || team.name || "Perfil recuperado").trim();
+                recoveryCandidates.set(profileId, {
+                  id: profileId,
+                  name: recoveredName,
+                  color: team.profileColor || team.color || "#58cc02",
+                  avatar: team.profileAvatar || team.avatar || null,
+                  role: team.profileRole === "admin" ? "admin" : "player",
+                  active: true,
+                  recoveredFromTournament: true,
+                  recoveredAt: Date.now(),
+                });
+              });
+              (Array.isArray(tournament.participants) ? tournament.participants : []).forEach((participant) => {
+                if (!participant || typeof participant !== "object" || !participant.id) return;
+                let profileId = String(participant.id);
+                if (knownProfileIds.has(profileId) || recoveryCandidates.has(profileId)) return;
+                recoveryCandidates.set(profileId, {
+                  id: profileId,
+                  name: String(participant.name || "Perfil recuperado").trim(),
+                  color: participant.color || "#58cc02",
+                  avatar: participant.avatar || null,
+                  role: participant.role === "admin" ? "admin" : "player",
+                  active: participant.active !== false,
+                  recoveredFromTournament: true,
+                  recoveredAt: Date.now(),
+                });
+              });
+            });
+            if (recoveryCandidates.size) rawProfiles = [...rawProfiles, ...recoveryCandidates.values()];
             let usedProfileIds = new Set();
             let profiles = rawProfiles.map((raw, index) => {
               let source = raw && typeof raw === "object" ? { ...raw } : { name: String(raw || "").trim() };
@@ -718,6 +756,8 @@
             [x, T] = b([]),
             [profileChampionshipPreferences, setProfileChampionshipPreferences] = b({}),
             [profilesLoaded, setProfilesLoaded] = b(!1),
+            [tournamentsLoaded, setTournamentsLoaded] = b(!1),
+            [identityReady, setIdentityReady] = b(!1),
             [te, me] = b(null),
             [selectedTournamentId, setSelectedTournamentId] = b(eo("pes-selected-tournament")),
             [lt, rt] = b(!1),
@@ -759,7 +799,12 @@
             [setupTournamentName, setSetupTournamentName] = b("Campeonato 1"),
             [setupSubmitting, setSetupSubmitting] = b(!1),
             [theme, setTheme] = b("dark"),
-            [presence, setPresence] = b({});
+            [presence, setPresence] = b({}),
+            [adminSecurity, setAdminSecurity] = b(null),
+            [adminUnlocked, setAdminUnlocked] = b(() => {
+              try { return sessionStorage.getItem("pes-admin-unlocked") === "1"; } catch (error) { return false; }
+            }),
+            [adminGate, setAdminGate] = b(null);
           He(() => {
             document.documentElement.setAttribute("data-theme", theme);
             localStorage.setItem("pes-theme", JSON.stringify(theme));
@@ -782,20 +827,27 @@
               (a(!0), t(!1));
               return;
             }
-            (me(eo("pes-my-profile")), rt(!0));
-            migrateStableIdentitySchema();
+            // A identidade ativa nunca deve ser restaurada automaticamente ao abrir o link.
+            // Cada nova carga começa na seleção de campeonato e perfil.
+            me(null);
+            qe("pes-my-profile", null);
+            try { sessionStorage.removeItem("pes-admin-unlocked"); } catch (error) {}
+            setAdminUnlocked(false);
+            rt(!0);
+            migrateStableIdentitySchema().finally(() => setIdentityReady(!0));
             let o = [
               Q("teams", (i) => {
                 (setBaseTeams(i || []), t(!1));
               }),
               Q("ownership", (i) => setBaseOwnership(i || {})),
               Q("playerStats", (i) => setBaseStats(i || {})),
-              Q("tournaments", (i) => g(i || [])),
+              Q("tournaments", (i) => { g(i || []); setTournamentsLoaded(!0); }),
               Q("transfers", (i) => setBaseTransfers(i || [])),
               Q("meta", (i) =>
                 u(i || { currentTournamentId: null, seasonCounter: 1 }),
               ),
               Q("presence", (i) => setPresence(i && typeof i === "object" ? i : {})),
+              Q("adminSecurity", (i) => setAdminSecurity(i && typeof i === "object" ? i : null)),
               Q("profileChampionshipPreferences", (i) => setProfileChampionshipPreferences(i && typeof i === "object" ? i : {})),
               Q("profiles", (i) => {
                 let list = Array.isArray(i) ? i : [];
@@ -1000,9 +1052,20 @@
                 avatar: null,
                 createdAt: Date.now(),
               };
-              let nextProfiles = [adminProfile];
-              T(nextProfiles);
-              U("profiles", nextProfiles);
+              let db = Ee();
+              if (!db) throw new Error("Firebase indisponível");
+              let createdAdmin = null;
+              let profileResult = await db.ref("pes/profiles").transaction((serverProfiles) => {
+                let current = Array.isArray(serverProfiles) ? serverProfiles.filter(Boolean) : [];
+                if (current.length > 0) return;
+                createdAdmin = adminProfile;
+                return [adminProfile];
+              });
+              if (!profileResult || !profileResult.committed || !createdAdmin) {
+                window.alert("Já existem perfis no app. A configuração inicial foi cancelada para preservar os dados.");
+                return;
+              }
+              T([createdAdmin]);
 
               let targetTournamentId = m[0] && m[0].id ? m[0].id : null;
               if (!targetTournamentId && tournamentName) {
@@ -1024,8 +1087,8 @@
                 targetTournamentId = tournament.id;
               }
 
-              me(adminProfile);
-              qe("pes-my-profile", adminProfile);
+              me(createdAdmin);
+              qe("pes-my-profile", createdAdmin);
               setSelectedTournamentId(targetTournamentId);
               qe("pes-selected-tournament", targetTournamentId);
               De(null);
@@ -1041,6 +1104,44 @@
           function isAdminProfile(profile) {
             let item = typeof profile === "object" && profile ? profile : { name: String(profile || "") };
             return item.role === "admin" || String(item.name || "").trim().toLowerCase() === "admin";
+          }
+          async function hashAdminPassword(value) {
+            let bytes = new TextEncoder().encode(String(value || ""));
+            let digest = await crypto.subtle.digest("SHA-256", bytes);
+            return Array.from(new Uint8Array(digest)).map((item) => item.toString(16).padStart(2, "0")).join("");
+          }
+          function requestAdminAccess() {
+            if (!isAdminProfile(te)) return;
+            let unlocked = false;
+            try { unlocked = sessionStorage.getItem("pes-admin-unlocked") === "1"; } catch (error) {}
+            if (unlocked) { setAdminUnlocked(true); oe("admin"); return; }
+            setAdminGate({ mode: adminSecurity && adminSecurity.passwordHash ? "verify" : "create", password: "", confirm: "", error: "", submitting: false });
+          }
+          async function submitAdminGate() {
+            if (!adminGate || adminGate.submitting) return;
+            let password = String(adminGate.password || "");
+            if (password.length < 6) { setAdminGate({ ...adminGate, error: "Use uma senha com pelo menos 6 caracteres." }); return; }
+            if (adminGate.mode === "create" && password !== String(adminGate.confirm || "")) { setAdminGate({ ...adminGate, error: "As senhas não coincidem." }); return; }
+            setAdminGate({ ...adminGate, submitting: true, error: "" });
+            try {
+              let passwordHash = await hashAdminPassword(password);
+              if (adminGate.mode === "verify" && (!adminSecurity || passwordHash !== adminSecurity.passwordHash)) {
+                setAdminGate({ ...adminGate, submitting: false, error: "Senha incorreta." });
+                return;
+              }
+              if (adminGate.mode === "create") {
+                let security = { passwordHash, updatedAt: Date.now(), updatedByProfileId: te && te.id ? te.id : null };
+                await Promise.resolve(U("adminSecurity", security));
+                setAdminSecurity(security);
+              }
+              try { sessionStorage.setItem("pes-admin-unlocked", "1"); } catch (error) {}
+              setAdminUnlocked(true);
+              setAdminGate(null);
+              oe("admin");
+            } catch (error) {
+              console.error("admin access error", error);
+              setAdminGate({ ...adminGate, submitting: false, error: "Não foi possível validar a senha. Tente novamente." });
+            }
           }
           function selectTournament(o) {
             let keepAdmin = isAdminProfile(te);
@@ -1103,6 +1204,9 @@
             (T(z), U("profiles", z), oe("table"), De(D.id));
           }
           function ht() {
+            try { sessionStorage.removeItem("pes-admin-unlocked"); } catch (error) {}
+            setAdminUnlocked(false);
+            setAdminGate(null);
             (me(null), qe("pes-my-profile", null), De(null), oe("table"));
           }
           let $ = H((o) => p.find((i) => i.id === o), [p]),
@@ -2084,7 +2188,7 @@
                   ),
                 ),
               )
-            : (e || (lt && !profilesLoaded))
+            : (e || (lt && (!profilesLoaded || !tournamentsLoaded || !identityReady)))
               ? React.createElement(
                   "div",
                   {
@@ -2235,7 +2339,7 @@
                           favoritePlayerIds: currentFavoriteIds,
                           onToggleFavorite: toggleFavoritePlayer,
                         }),
-                      Y === "admin" && isAdminProfile(te) &&
+                      Y === "admin" && isAdminProfile(te) && adminUnlocked &&
                         React.createElement(AdminArea, {
                           currentTournament: R, tournaments: m, teams: p, profiles: x,
                           profileName: adminProfileName, setProfileName: setAdminProfileName,
@@ -2263,7 +2367,22 @@
                     ),
                     Y === "table" && R && R.status !== "finished" && (ProfileTeam || isAdminProfile(te)) && p.filter((team) => team && team.active !== false).length >= 2 &&
                       React.createElement("button", { onClick: openMatchWizard, className: "tapbtn sports-fab", title: "Adicionar partida", "aria-label": "Adicionar partida", style: { position: "fixed", left: "50%", bottom: 62, transform: "translateX(-50%)", width: 58, height: 58, borderRadius: "50%", border: "5px solid var(--surface)", background: "var(--green)", color: "white", fontSize: 32, lineHeight: 1, display: "grid", placeItems: "center", cursor: "pointer", zIndex: 140, boxShadow: "0 8px 20px rgba(0,0,0,.18)" } }, "+"),
-                    React.createElement(mo, { tab: Y, setTab: oe, isAdmin: isAdminProfile(te), unreadOffers: unreadOfferCount, profile: te, presence }),
+                    React.createElement(mo, { tab: Y, setTab: (nextTab) => nextTab === "admin" ? requestAdminAccess() : oe(nextTab), isAdmin: isAdminProfile(te), unreadOffers: unreadOfferCount, profile: te, presence }),
+                    adminGate && React.createElement(ee, { title: adminGate.mode === "create" ? "Criar senha de administrador" : "Acessar administração", onClose: () => setAdminGate(null) },
+                      React.createElement("div", { style: { color: "var(--muted)", fontSize: 13.5, lineHeight: 1.55, marginBottom: 16 } }, adminGate.mode === "create" ? "Defina uma senha para proteger o painel administrativo neste app." : "Digite a senha de administrador para continuar."),
+                      React.createElement("label", { style: P }, "Senha"),
+                      React.createElement("input", { type: "password", autoFocus: true, value: adminGate.password, onChange: (event) => setAdminGate({ ...adminGate, password: event.target.value, error: "" }), onKeyDown: (event) => { if (event.key === "Enter" && adminGate.mode === "verify") submitAdminGate(); }, style: { ...q, marginBottom: adminGate.mode === "create" ? 12 : 4 }, placeholder: "Mínimo de 6 caracteres" }),
+                      adminGate.mode === "create" && React.createElement(React.Fragment, null,
+                        React.createElement("label", { style: P }, "Confirmar senha"),
+                        React.createElement("input", { type: "password", value: adminGate.confirm, onChange: (event) => setAdminGate({ ...adminGate, confirm: event.target.value, error: "" }), onKeyDown: (event) => { if (event.key === "Enter") submitAdminGate(); }, style: q, placeholder: "Digite novamente" })
+                      ),
+                      adminGate.error && React.createElement("div", { style: { color: "var(--danger)", fontSize: 12.5, marginTop: 10 } }, adminGate.error),
+                      React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 16 } },
+                        React.createElement("button", { onClick: () => setAdminGate(null), style: { ...M, marginTop: 0, background: "var(--surface-soft)", color: "var(--heading)" } }, "Cancelar"),
+                        React.createElement("button", { onClick: submitAdminGate, disabled: adminGate.submitting, style: { ...M, ...W, marginTop: 0, opacity: adminGate.submitting ? .55 : 1 } }, adminGate.submitting ? "Validando..." : adminGate.mode === "create" ? "Criar senha" : "Entrar")
+                      ),
+                      React.createElement("div", { style: { marginTop: 14, fontSize: 11.5, color: "var(--muted)", lineHeight: 1.45 } }, "A senha protege a interface administrativa. Para segurança completa dos dados, use Firebase Authentication e regras de acesso no banco.")
+                    ),
                     viewedTeamId && $(viewedTeamId) && React.createElement(TeamViewer, {
                       team: $(viewedTeamId),
                       squadOf: Oe,
