@@ -1167,7 +1167,7 @@
             }
             let id = _(), now = Date.now();
             let offer = {
-              id, playerId: player.id, playerName: player.name,
+              id, championshipId: R.id, playerId: player.id, playerName: player.name,
               buyerTeamId: ProfileTeam.id, sellerTeamId,
               status: "pending", currentAmount: value,
               marketValueAtCreation: player.value, createdAt: now, updatedAt: now,
@@ -1197,61 +1197,102 @@
           function acceptTradeOffer(offerId) {
             if (!R || !ProfileTeam) return;
             let localOffer = tradeOffers[offerId];
-            if (!localOffer || localOffer.lastActorTeamId === ProfileTeam.id || (localOffer.buyerTeamId !== ProfileTeam.id && localOffer.sellerTeamId !== ProfileTeam.id)) return;
+            if (!localOffer || localOffer.lastActorTeamId === ProfileTeam.id || (String(localOffer.buyerTeamId) !== String(ProfileTeam.id) && String(localOffer.sellerTeamId) !== String(ProfileTeam.id))) return;
+
+            // Fast UX validation. The same rules are checked again atomically in Firebase.
+            let localOwnership = c && typeof c === "object" ? c : {};
+            let localTeams = Array.isArray(p) ? p : [];
+            let localBuyer = localTeams.find((team) => team && String(team.id) === String(localOffer.buyerTeamId));
+            let localSeller = localTeams.find((team) => team && String(team.id) === String(localOffer.sellerTeamId));
+            let minPlayers = Math.max(0, Number(R.rosterSettings && R.rosterSettings.minPlayers != null ? R.rosterSettings.minPlayers : 23) || 0);
+            let maxPlayers = Math.max(minPlayers, Number(R.rosterSettings && R.rosterSettings.maxPlayers != null ? R.rosterSettings.maxPlayers : 30) || 30);
+            let localBuyerSize = Object.values(localOwnership).filter((item) => item && String(item.teamId) === String(localOffer.buyerTeamId)).length;
+            let localSellerSize = Object.values(localOwnership).filter((item) => item && String(item.teamId) === String(localOffer.sellerTeamId)).length;
+            if (!localBuyer || !localSeller) {
+              window.alert("Não foi possível localizar os times desta negociação no campeonato atual.");
+              return;
+            }
+            if (localBuyerSize >= maxPlayers) {
+              window.alert(`O comprador já possui ${maxPlayers} jogadores. A proposta continuará aberta até que haja espaço no elenco.`);
+              return;
+            }
+            if (localSellerSize <= minPlayers) {
+              window.alert(`Seu elenco possui o mínimo de ${minPlayers} jogadores. Contrate pelo menos mais um jogador antes de aceitar esta proposta.`);
+              return;
+            }
+            if ((Number(localBuyer.budget) || 0) < Number(localOffer.currentAmount || 0)) {
+              window.alert("O comprador não possui saldo suficiente neste momento. A proposta continuará aberta.");
+              return;
+            }
+
             let db = Ee();
             if (!db) return;
-            db.ref("pes/tournaments").transaction((list) => {
-              if (!Array.isArray(list)) return;
-              let index = list.findIndex((item) => item && item.id === R.id);
-              if (index < 0) return;
+            let failureReason = null;
+            db.ref("pes/tournaments").transaction((serverValue) => {
+              let isArray = Array.isArray(serverValue);
+              let list = isArray ? [...serverValue] : Object.values(serverValue || {});
+              let index = list.findIndex((item) => item && String(item.id) === String(R.id));
+              if (index < 0) { failureReason = "championship_not_found"; return; }
               let tournament = list[index], context = tournament.context || {};
-              let offers = context.tradeOffers || {}, offer = offers[offerId];
-              if (!offer || !isOfferOpen(offer)) return;
-              let ownership = { ...(context.ownership || {}) }, owner = ownership[offer.playerId];
-              if (!owner || owner.teamId !== offer.sellerTeamId) {
-                offers[offerId] = { ...offer, status: "invalid", updatedAt: Date.now() };
-                list[index] = { ...tournament, context: { ...context, tradeOffers: offers } };
-                return list;
+              let offers = { ...(context.tradeOffers || {}) }, offer = offers[offerId];
+              if (!offer || !isOfferOpen(offer)) { failureReason = "offer_unavailable"; return; }
+              if (offer.championshipId && String(offer.championshipId) !== String(tournament.id)) { failureReason = "wrong_championship"; return; }
+
+              let playerKey = Object.keys(context.ownership || {}).find((key) => String(key) === String(offer.playerId));
+              let ownership = { ...(context.ownership || {}) };
+              let owner = playerKey != null ? ownership[playerKey] : null;
+              if (!owner || String(owner.teamId) !== String(offer.sellerTeamId)) {
+                failureReason = "owner_changed";
+                return;
               }
+
               let teams = Array.isArray(context.teams) ? context.teams.map((team) => ({ ...team })) : [];
-              let buyer = teams.find((team) => team.id === offer.buyerTeamId), seller = teams.find((team) => team.id === offer.sellerTeamId);
-              if (!buyer || !seller) return;
+              let buyer = teams.find((team) => team && String(team.id) === String(offer.buyerTeamId));
+              let seller = teams.find((team) => team && String(team.id) === String(offer.sellerTeamId));
+              if (!buyer || !seller) { failureReason = "team_not_found"; return; }
+
               let minPlayers = Math.max(0, Number(tournament.rosterSettings && tournament.rosterSettings.minPlayers != null ? tournament.rosterSettings.minPlayers : 23) || 0);
               let maxPlayers = Math.max(minPlayers, Number(tournament.rosterSettings && tournament.rosterSettings.maxPlayers != null ? tournament.rosterSettings.maxPlayers : 30) || 30);
-              let buyerSize = Object.values(ownership).filter((item) => item && item.teamId === buyer.id).length;
-              let sellerSize = Object.values(ownership).filter((item) => item && item.teamId === seller.id).length;
-              if (buyerSize >= maxPlayers) {
-                offers[offerId] = { ...offer, status: "invalid", invalidReason: "buyer_roster_full", updatedAt: Date.now() };
-                list[index] = { ...tournament, context: { ...context, tradeOffers: offers } };
-                return list;
-              }
-              if (sellerSize <= minPlayers) {
-                offers[offerId] = { ...offer, status: "invalid", invalidReason: "seller_min_roster", updatedAt: Date.now() };
-                list[index] = { ...tournament, context: { ...context, tradeOffers: offers } };
-                return list;
-              }
-              if ((buyer.budget || 0) < offer.currentAmount) {
-                offers[offerId] = { ...offer, status: "insufficient_funds", updatedAt: Date.now() };
-                list[index] = { ...tournament, context: { ...context, tradeOffers: offers } };
-                return list;
-              }
-              buyer.budget -= offer.currentAmount;
-              seller.budget = (seller.budget || 0) + offer.currentAmount;
-              ownership[offer.playerId] = { teamId: buyer.id, forSale: false, price: null };
+              let buyerSize = Object.values(ownership).filter((item) => item && String(item.teamId) === String(buyer.id)).length;
+              let sellerSize = Object.values(ownership).filter((item) => item && String(item.teamId) === String(seller.id)).length;
+              if (buyerSize >= maxPlayers) { failureReason = "buyer_roster_full"; return; }
+              if (sellerSize <= minPlayers) { failureReason = "seller_min_roster"; return; }
+              if ((Number(buyer.budget) || 0) < Number(offer.currentAmount || 0)) { failureReason = "insufficient_funds"; return; }
+
+              buyer.budget = (Number(buyer.budget) || 0) - Number(offer.currentAmount || 0);
+              seller.budget = (Number(seller.budget) || 0) + Number(offer.currentAmount || 0);
+              ownership[playerKey] = { ...(owner || {}), teamId: buyer.id, forSale: false, price: null };
               let now = Date.now();
               Object.keys(offers).forEach((id) => {
                 let item = offers[id];
-                if (item.playerId === offer.playerId && isOfferOpen(item)) offers[id] = { ...item, status: id === offerId ? "accepted" : "invalid", updatedAt: now };
+                if (item && String(item.playerId) === String(offer.playerId) && isOfferOpen(item)) {
+                  offers[id] = { ...item, status: id === offerId ? "accepted" : "invalid", invalidReason: id === offerId ? null : "player_transferred", updatedAt: now };
+                }
               });
-              let transfers = [{ id: _(), playerId: offer.playerId, playerName: offer.playerName, fromTeamId: seller.id, toTeamId: buyer.id, price: offer.currentAmount, type: "user_transfer", createdAt: now, date: new Date().toLocaleDateString("pt-BR"), offerId }, ...(Array.isArray(context.transfers) ? context.transfers : [])];
+              let transfers = [{ id: _(), championshipId: tournament.id, playerId: offer.playerId, playerName: offer.playerName, fromTeamId: seller.id, toTeamId: buyer.id, price: Number(offer.currentAmount) || 0, type: "user_transfer", createdAt: now, date: new Date().toLocaleDateString("pt-BR"), offerId }, ...(Array.isArray(context.transfers) ? context.transfers : [])];
               let financialTransactions = Array.isArray(context.financialTransactions) ? [...context.financialTransactions] : [];
-              financialTransactions.unshift(financeEntry("player_purchase", buyer.id, -offer.currentAmount, `Compra de ${offer.playerName}`, offer.id, (Number(buyer.budget)||0) + offer.currentAmount, now));
-              financialTransactions.unshift(financeEntry("player_sale", seller.id, offer.currentAmount, `Venda de ${offer.playerName}`, offer.id, (Number(seller.budget)||0) - offer.currentAmount, now));
+              financialTransactions.unshift(financeEntry("player_purchase", buyer.id, -Number(offer.currentAmount || 0), `Compra de ${offer.playerName}`, offer.id, (Number(buyer.budget)||0) + Number(offer.currentAmount || 0), now));
+              financialTransactions.unshift(financeEntry("player_sale", seller.id, Number(offer.currentAmount || 0), `Venda de ${offer.playerName}`, offer.id, (Number(seller.budget)||0) - Number(offer.currentAmount || 0), now));
               list[index] = { ...tournament, context: { ...context, teams, ownership, tradeOffers: offers, transfers, financialTransactions } };
-              return list;
+              failureReason = null;
+              return isArray ? list : Object.fromEntries(list.map((item, idx) => [item.id || String(idx), item]));
             }, (error, committed) => {
-              if (error) window.alert("Não foi possível concluir a transferência. Tente novamente.");
-              else if (!committed) window.alert("A proposta não está mais disponível.");
+              if (error) {
+                window.alert("Não foi possível concluir a transferência. Tente novamente.");
+                return;
+              }
+              if (committed) return;
+              let messages = {
+                seller_min_roster: `O vendedor precisa manter pelo menos ${minPlayers} jogadores. A proposta continua aberta.`,
+                buyer_roster_full: `O comprador atingiu o máximo de ${maxPlayers} jogadores. A proposta continua aberta.`,
+                insufficient_funds: "O comprador não possui saldo suficiente. A proposta continua aberta.",
+                owner_changed: "O jogador não pertence mais ao vendedor neste campeonato.",
+                wrong_championship: "Esta proposta pertence a outro campeonato.",
+                team_not_found: "Um dos times da negociação não existe mais neste campeonato.",
+                championship_not_found: "O campeonato desta proposta não foi encontrado.",
+                offer_unavailable: "A proposta não está mais disponível."
+              };
+              window.alert(messages[failureReason] || "A transferência não pôde ser concluída.");
             });
           }
           function Ft(o, i, y) {
