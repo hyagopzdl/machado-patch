@@ -176,13 +176,19 @@
       .sports-tab-avatar img { width:100%; height:100%; object-fit:cover; }
       .sports-fab { position:fixed !important; z-index:45 !important; left:50% !important; bottom:72px !important; transform:translateX(-50%) !important; width:62px !important; height:62px !important; border:1px solid rgba(255,255,255,.3) !important; background:linear-gradient(145deg,#29ec9b,#00b968) !important; box-shadow:0 14px 38px rgba(0,201,120,.32),0 0 32px rgba(33,228,147,.18),inset 0 1px 0 rgba(255,255,255,.45) !important; }
       .sports-fab:hover { transform:translateX(-50%) translateY(-2px) scale(1.03) !important; }
-      .unified-player-grid { display:grid; grid-template-columns:repeat(2,minmax(0,176px)); justify-content:center; gap:12px; }
-      .unified-player-card { width:clamp(148px,43vw,176px); min-width:clamp(148px,43vw,176px); height:242px; padding:13px; border-radius:22px; display:grid; grid-template-rows:42px 98px 38px; row-gap:16px; }
+      .unified-player-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; gap:12px; }
+      .unified-player-card { width:100%; min-width:0; height:242px; padding:13px; border-radius:22px; display:grid; grid-template-rows:42px minmax(0,1fr) 38px; row-gap:16px; }
       .unified-player-action { width:100%; height:38px; border-radius:999px; padding:0 9px; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center; text-align:center; }
-      @media (min-width: 760px) { .unified-player-grid { grid-template-columns:repeat(3,176px); } .unified-player-card { width:176px; min-width:176px; } }
-      @media (min-width: 1120px) { .unified-player-grid { grid-template-columns:repeat(5,176px); } }
+      @media (min-width: 760px) { .unified-player-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+      @media (min-width: 1120px) { .unified-player-grid { grid-template-columns:repeat(5,minmax(0,1fr)); } }
       .sports-modal-overlay { animation: sportsFadeIn .2s ease both; z-index:1000 !important; backdrop-filter: blur(10px); -webkit-backdrop-filter:blur(10px); }
       .sports-modal { animation: sportsModalIn .28s cubic-bezier(.2,.9,.2,1) both; background:color-mix(in srgb,var(--surface) 94%,transparent) !important; border:1px solid var(--border) !important; box-shadow:var(--shadow-float) !important; backdrop-filter:blur(28px) saturate(145%); -webkit-backdrop-filter:blur(28px) saturate(145%); }
+
+      .player-detail-modal { padding:0 !important; overflow:hidden !important; display:flex; flex-direction:column; }
+      .player-detail-scroll { min-height:0; overflow-y:auto; padding:24px 24px 18px; overscroll-behavior:contain; }
+      .player-detail-footer { flex:0 0 auto; width:100%; padding:14px 24px calc(14px + env(safe-area-inset-bottom)); background:color-mix(in srgb,var(--surface) 96%,transparent); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid var(--border); }
+      .player-detail-close { position:fixed; top:max(16px,env(safe-area-inset-top)); right:16px; z-index:1002; width:42px; height:42px; border-radius:999px; border:1px solid var(--border); background:color-mix(in srgb,var(--surface) 88%,transparent); color:var(--heading); display:grid; place-items:center; box-shadow:var(--shadow-sm); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); cursor:pointer; }
+      @media (max-width:899px) { .player-detail-scroll { padding:22px 18px 16px; } .player-detail-footer { padding-left:18px; padding-right:18px; } }
       @keyframes sportsFadeIn { from { opacity:0 } to { opacity:1 } }
       @keyframes sportsModalIn { from { opacity:0; transform:translateY(24px) scale(.975) } to { opacity:1; transform:translateY(0) scale(1) } }
       @keyframes sportsPageIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
@@ -2906,9 +2912,9 @@
           },
             React.createElement("div", { style:{ position:"absolute", width:120, height:120, right:-45, top:-45, borderRadius:999, background:overallColor(player.overall), opacity:.12, filter:"blur(18px)" } }),
             React.createElement("div", { style:{ position:"relative", alignSelf:"start", fontSize:38, lineHeight:1, fontWeight:850, letterSpacing:"-1.8px", color:overallColor(player.overall) } }, player.overall),
-            React.createElement("div", { style:{ position:"relative", minWidth:0, display:"grid", gridTemplateRows:"22px 38px 16px 18px", alignContent:"start", rowGap:1 } },
+            React.createElement("div", { style:{ position:"relative", minWidth:0, display:"flex", flexDirection:"column", alignItems:"stretch", rowGap:3 } },
               React.createElement("span", { style:{ justifySelf:"start", alignSelf:"start", display:"inline-flex", alignItems:"center", minHeight:20, fontSize:10.5, fontWeight:800, background:positionColor(player.position), color:"white", padding:"3px 7px", borderRadius:7 } }, player.position),
-              React.createElement("div", { style:{ display:"flex", alignItems:"flex-start", gap:5, minWidth:0 } },
+              React.createElement("div", { style:{ display:"flex", alignItems:"flex-start", gap:5, minWidth:0, marginTop:1 } },
                 React.createElement("div", { style:{ minWidth:0, fontSize:17, fontWeight:800, lineHeight:1.08, letterSpacing:"-.4px", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" } }, player.name),
                 React.createElement("span", { title:player.nationality||"Nacionalidade não informada", style:{ flex:"0 0 auto", fontSize:14, lineHeight:1.1 } }, flag)
               ),
@@ -3395,126 +3401,78 @@
           e = detailContext.player;
           let l = e.attrs || {},
             attributes = [
-              ["Ataque", e.attack],
-              ["Defesa", e.defense],
-              ["Equilíbrio", l.balance],
-              ["Fôlego", l.stamina],
-              ["Velocidade máxima", l.topSpeed],
-              ["Aceleração", l.acceleration],
-              ["Resposta", l.response],
-              ["Agilidade", l.agility],
-              ["Precisão no drible", l.dribbleAccuracy],
-              ["Velocidade no drible", l.dribbleSpeed],
-              ["Precisão no passe curto", l.shortPassAccuracy],
-              ["Velocidade do passe curto", l.shortPassSpeed],
-              ["Precisão no passe longo", l.longPassAccuracy],
-              ["Velocidade do passe longo", l.longPassSpeed],
-              ["Precisão do chute", l.shotAccuracy],
-              ["Força do chute", l.shotPower],
-              ["Técnica de chute", l.shotTechnique],
-              ["Precisão em cobranças de falta", l.freeKickAccuracy],
-              ["Curva", l.curve],
-              ["Cabeceio", l.heading],
-              ["Impulsão", l.jump],
-              ["Técnica", l.technique],
-              ["Agressividade", l.aggression],
-              ["Mentalidade", l.mentality],
-              ["Habilidade de goleiro", l.goalKeepingSkills],
-              ["Trabalho em equipe", l.teamwork],
-              ["Consistência", l.consistency, 8],
-              ["Condição física", l.conditionFitness, 8],
-              ["Precisão com o pé ruim", l.weakFootAccuracy, 8],
-              ["Frequência de uso do pé ruim", l.weakFootFrequency, 8],
+              ["Ataque", e.attack], ["Defesa", e.defense], ["Equilíbrio", l.balance], ["Fôlego", l.stamina],
+              ["Velocidade máxima", l.topSpeed], ["Aceleração", l.acceleration], ["Resposta", l.response], ["Agilidade", l.agility],
+              ["Precisão no drible", l.dribbleAccuracy], ["Velocidade no drible", l.dribbleSpeed],
+              ["Precisão no passe curto", l.shortPassAccuracy], ["Velocidade do passe curto", l.shortPassSpeed],
+              ["Precisão no passe longo", l.longPassAccuracy], ["Velocidade do passe longo", l.longPassSpeed],
+              ["Precisão do chute", l.shotAccuracy], ["Força do chute", l.shotPower], ["Técnica de chute", l.shotTechnique],
+              ["Precisão em cobranças de falta", l.freeKickAccuracy], ["Curva", l.curve], ["Cabeceio", l.heading], ["Impulsão", l.jump],
+              ["Técnica", l.technique], ["Agressividade", l.aggression], ["Mentalidade", l.mentality],
+              ["Habilidade de goleiro", l.goalKeepingSkills], ["Trabalho em equipe", l.teamwork],
+              ["Consistência", l.consistency, 8], ["Condição física", l.conditionFitness, 8],
+              ["Precisão com o pé ruim", l.weakFootAccuracy, 8], ["Frequência de uso do pé ruim", l.weakFootFrequency, 8],
             ];
+          let flag = nationalityFlag(e.nationality);
+          let footLabel = e.foot === "Right" ? "Direito" : e.foot === "Left" ? "Esquerdo" : "Ambos";
+          let sideLabel = e.favouredSide === "Right" ? "Direito" : e.favouredSide === "Left" ? "Esquerdo" : (e.favouredSide || "—");
+          let footerAction = detailContext.canBuy
+            ? React.createElement("button", { className:"tapbtn", disabled: !activeTeam || Number(activeTeam.budget || 0) < Number(e.value || 0), onClick:()=>onBuy&&onBuy(e), style:{ ...M, ...W, width:"100%", margin:0, opacity: activeTeam && Number(activeTeam.budget || 0) >= Number(e.value || 0) ? 1 : .45, cursor: activeTeam && Number(activeTeam.budget || 0) >= Number(e.value || 0) ? "pointer" : "not-allowed" } }, activeTeam && Number(activeTeam.budget || 0) < Number(e.value || 0) ? "Saldo insuficiente" : `Comprar · ${L(e.value)}`)
+            : detailContext.fromOtherTeam && onOffer
+              ? React.createElement("button", { className:"tapbtn", onClick:()=>onOffer(e), style:{ ...M, ...W, width:"100%", margin:0 } }, "Fazer proposta")
+              : null;
           return React.createElement(
             ee,
-            { title: e.name, onClose: t },
+            { onClose:t, hideHeader:true, closeOutside:true, modalClassName:"player-detail-modal" },
             React.createElement(
-              "div",
-              {
-                style: {
-                  display: "flex",
-                  gap: 8,
-                  marginBottom: 14,
-                  flexWrap: "wrap",
-                },
-              },
-              React.createElement("span", { style: { fontSize: 11.5, color: "#fff", background: positionColor(e.position), borderRadius: 20, padding: "4px 10px", fontWeight: 700 } }, it[e.position] || e.position),
-              React.createElement(ie, { label: e.nationality || "Nacionalidade não informada" }),
-              React.createElement(ie, { label: `${e.age} anos` }),
-              React.createElement(ie, { label: `${e.height} cm / ${e.weight} kg` }),
-              React.createElement(ie, {
-                label: `Pé ${e.foot === "Right" ? "direito" : e.foot === "Left" ? "esquerdo" : "ambos"}`,
-              }),
-              e.favouredSide && React.createElement(ie, {
-                label: `Lado preferido: ${e.favouredSide === "Right" ? "direito" : e.favouredSide === "Left" ? "esquerdo" : e.favouredSide}`,
-              }),
-            ),
-            React.createElement(
-              "div",
-              {
-                style: {
-                  ...E,
-                  padding: 16,
-                  marginBottom: 12,
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-                  gap: 12,
-                },
-              },
-              [
-                ["Overall", e.overall, overallColor(e.overall)],
-                ["Valor", L(e.value), "var(--heading)"],
-                ["Clube", e.club || "—", "var(--heading)"],
-                ["ID", e.id || "—", "var(--muted)"],
-              ].map((s) =>
-                React.createElement(
-                  "div",
-                  { key: s[0], style: { minWidth: 0 } },
-                  React.createElement(
-                    "div",
-                    {
-                      style: {
-                        fontSize: s[0] === "Overall" || s[0] === "Valor" ? 22 : 13,
-                        lineHeight: 1.25,
-                        fontWeight: 800,
-                        color: s[2],
-                        overflowWrap: "anywhere",
-                      },
-                    },
-                    s[1],
-                  ),
-                  React.createElement(
-                    "div",
-                    {
-                      style: {
-                        fontSize: 10.5,
-                        color: "var(--muted)",
-                        textTransform: "uppercase",
-                        marginTop: 3,
-                      },
-                    },
-                    s[0],
-                  ),
-                ),
-              ),
-            ),
-            React.createElement(
-              "section",
-              { style: { ...E, padding: "8px 16px 10px", marginBottom: 12 } },
+              React.Fragment,
+              null,
               React.createElement(
                 "div",
-                { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 2px 10px", borderBottom: "1px solid var(--border)" } },
-                React.createElement("strong", { style: { fontSize: 14, color: "var(--heading)" } }, "Atributos"),
-                React.createElement("span", { style: { fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em" } }, "Ordem do PES 2007"),
+                { className:"player-detail-scroll" },
+                React.createElement(
+                  "header",
+                  { style:{ textAlign:"center", padding:"4px 8px 20px" } },
+                  React.createElement("div", { style:{ display:"flex", alignItems:"center", justifyContent:"center", gap:9, minWidth:0 } },
+                    React.createElement("h2", { style:{ margin:0, fontSize:"clamp(26px,5vw,36px)", lineHeight:1.08, letterSpacing:"-.045em", color:"var(--heading)", overflowWrap:"anywhere" } }, e.name),
+                    React.createElement("span", { title:e.nationality||"Nacionalidade não informada", style:{ fontSize:24, lineHeight:1, flex:"0 0 auto" } }, flag)
+                  ),
+                  React.createElement("span", { style:{ display:"inline-flex", marginTop:12, alignItems:"center", justifyContent:"center", minHeight:27, padding:"5px 11px", borderRadius:9, background:positionColor(e.position), color:"#fff", fontSize:12, fontWeight:850, letterSpacing:".04em" } }, e.position || "—")
+                ),
+                React.createElement("section", { style:{ ...E, padding:16, marginBottom:12 } },
+                  React.createElement("div", { style:{ display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:"14px 18px" } },
+                    [["Idade", e.age ? `${e.age} anos` : "—"], ["Altura", e.height ? `${e.height} cm` : "—"], ["Peso", e.weight ? `${e.weight} kg` : "—"], ["Pé preferido", footLabel], ["Lado preferido", sideLabel]].map(item => React.createElement("div", { key:item[0], style:{ minWidth:0 } },
+                      React.createElement("div", { style:{ fontSize:10.5, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em", marginBottom:4 } }, item[0]),
+                      React.createElement("strong", { style:{ display:"block", fontSize:14, color:"var(--heading)", overflowWrap:"anywhere" } }, item[1])
+                    ))
+                  )
+                ),
+                React.createElement("section", { style:{ ...E, padding:16, marginBottom:12, display:"grid", gridTemplateColumns:"86px minmax(90px,.7fr) minmax(0,1.5fr)", gap:14, alignItems:"stretch" } },
+                  React.createElement("div", { style:{ display:"grid", placeItems:"center", border:`1.5px solid ${overallColor(e.overall)}`, borderRadius:16, minHeight:78, background:`color-mix(in srgb, ${overallColor(e.overall)} 10%, var(--surface-soft))` } },
+                    React.createElement("div", { style:{ textAlign:"center" } },
+                      React.createElement("strong", { style:{ display:"block", fontSize:30, lineHeight:1, color:overallColor(e.overall), fontVariantNumeric:"tabular-nums" } }, e.overall),
+                      React.createElement("span", { style:{ display:"block", marginTop:5, fontSize:9.5, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".07em" } }, "Overall")
+                    )
+                  ),
+                  React.createElement("div", { style:{ display:"flex", flexDirection:"column", justifyContent:"center", minWidth:0 } },
+                    React.createElement("span", { style:{ fontSize:10.5, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em", marginBottom:5 } }, "Valor"),
+                    React.createElement("strong", { style:{ fontSize:20, color:"var(--heading)" } }, L(e.value))
+                  ),
+                  React.createElement("div", { style:{ display:"flex", flexDirection:"column", justifyContent:"center", minWidth:0 } },
+                    React.createElement("span", { style:{ fontSize:10.5, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em", marginBottom:5 } }, "Clube"),
+                    React.createElement("strong", { style:{ fontSize:14, color:"var(--heading)", overflowWrap:"anywhere" } }, e.club || "—")
+                  )
+                ),
+                React.createElement("section", { style:{ ...E, padding:"8px 16px 10px" } },
+                  React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, padding:"8px 2px 10px", borderBottom:"1px solid var(--border)" } },
+                    React.createElement("strong", { style:{ fontSize:14, color:"var(--heading)" } }, "Atributos"),
+                    React.createElement("span", { style:{ fontSize:10.5, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".06em" } }, "Ordem do PES 2007")
+                  ),
+                  attributes.map(attribute => React.createElement(N, { key:attribute[0], label:attribute[0], value:attribute[1], max:attribute[2] || 99 }))
+                )
               ),
-              attributes.map((attribute) => React.createElement(N, { key: attribute[0], label: attribute[0], value: attribute[1], max: attribute[2] || 99 })),
-            ),
-            (detailContext.fromOtherTeam || detailContext.canBuy) && React.createElement("div", { style:{ position:"sticky", bottom:-20, margin:"4px -20px -20px", padding:"14px 20px calc(14px + env(safe-area-inset-bottom))", background:"color-mix(in srgb, var(--surface) 94%, transparent)", backdropFilter:"blur(18px)", borderTop:"1px solid var(--border)", zIndex:5 } },
-              detailContext.canBuy
-                ? React.createElement("button", { className:"tapbtn", disabled: !activeTeam || Number(activeTeam.budget || 0) < Number(e.value || 0), onClick:()=>onBuy&&onBuy(e), style:{ ...M, ...W, width:"100%", margin:0, opacity: activeTeam && Number(activeTeam.budget || 0) >= Number(e.value || 0) ? 1 : .45, cursor: activeTeam && Number(activeTeam.budget || 0) >= Number(e.value || 0) ? "pointer" : "not-allowed" } }, activeTeam && Number(activeTeam.budget || 0) < Number(e.value || 0) ? "Saldo insuficiente" : `Comprar · ${L(e.value)}`)
-                : onOffer && React.createElement("button", { className:"tapbtn", onClick:()=>onOffer(e), style:{ ...M, ...W, width:"100%", margin:0 } }, "Fazer proposta")
-            ),
+              footerAction && React.createElement("footer", { className:"player-detail-footer" }, footerAction)
+            )
           );
         }
         function ie({ label: e }) {
@@ -4853,68 +4811,20 @@
             })
           );
         }
-        function ee({ title: e, onClose: t, children: l }) {
+        function ee({ title: e, onClose: t, children: l, hideHeader = false, closeOutside = false, modalClassName = "" }) {
           return React.createElement(
             "div",
-            {
-              className: "sports-modal-overlay",
-              style: {
-                position: "fixed",
-                inset: 0,
-                background: "var(--overlay)",
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "center",
-                zIndex: 220,
-              },
-              onClick: t,
-            },
+            { className:"sports-modal-overlay", style:{ position:"fixed", inset:0, background:"var(--overlay)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:220 }, onClick:t },
+            closeOutside && React.createElement("button", { className:"tapbtn player-detail-close", onClick:t, "aria-label":"Fechar detalhes" }, React.createElement(Ye,{size:21})),
             React.createElement(
               "div",
-              {
-                className: "sports-modal",
-                onClick: (a) => a.stopPropagation(),
-                style: {
-                  background: "var(--surface)",
-                  borderRadius: "24px 24px 0 0",
-                  padding: 20,
-                  width: "100%",
-                  maxWidth: 720,
-                  maxHeight: "88vh",
-                  overflowY: "auto",
-                },
-              },
-              React.createElement(
-                "div",
-                {
-                  style: {
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 16,
-                  },
-                },
-                React.createElement(
-                  "span",
-                  { style: { fontWeight: 800, fontSize: 16 } },
-                  e,
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    onClick: t,
-                    style: {
-                      background: "none",
-                      border: "none",
-                      color: "var(--muted)",
-                      cursor: "pointer",
-                    },
-                  },
-                  React.createElement(Ye, { size: 20 }),
-                ),
+              { className:`sports-modal ${modalClassName}`.trim(), onClick:(a)=>a.stopPropagation(), style:{ background:"var(--surface)", borderRadius:"24px 24px 0 0", padding:20, width:"100%", maxWidth:720, maxHeight:"88vh", overflowY:"auto" } },
+              !hideHeader && React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 } },
+                React.createElement("span", { style:{ fontWeight:800, fontSize:16 } }, e),
+                React.createElement("button", { onClick:t, style:{ background:"none", border:"none", color:"var(--muted)", cursor:"pointer" } }, React.createElement(Ye,{size:20}))
               ),
-              l,
-            ),
+              l
+            )
           );
         }
         function go({
