@@ -716,6 +716,7 @@
             [baseTransfers, setBaseTransfers] = b([]),
             [B, u] = b({ currentTournamentId: null, seasonCounter: 1 }),
             [x, T] = b([]),
+            [profileChampionshipPreferences, setProfileChampionshipPreferences] = b({}),
             [profilesLoaded, setProfilesLoaded] = b(!1),
             [te, me] = b(null),
             [selectedTournamentId, setSelectedTournamentId] = b(eo("pes-selected-tournament")),
@@ -795,6 +796,7 @@
                 u(i || { currentTournamentId: null, seasonCounter: 1 }),
               ),
               Q("presence", (i) => setPresence(i && typeof i === "object" ? i : {})),
+              Q("profileChampionshipPreferences", (i) => setProfileChampionshipPreferences(i && typeof i === "object" ? i : {})),
               Q("profiles", (i) => {
                 let list = Array.isArray(i) ? i : [];
                 T(list);
@@ -828,8 +830,39 @@
           let R = X(
               () => m.find((o) => o.id === selectedTournamentId) || null,
               [m, selectedTournamentId],
-            ),
-            p = R && R.context ? (Array.isArray(R.context.teams) ? R.context.teams : []) : (Array.isArray(baseTeams) ? baseTeams : []),
+            );
+          He(() => {
+            if (!R || !R.id || !te || typeof te !== "object" || !te.id || !Array.isArray(te.favoritePlayerIds) || te.favoritePlayerIds.length === 0) return;
+            let db = Ee();
+            if (!db) return;
+            db.ref("pes").transaction((rootValue) => {
+              if (!rootValue || typeof rootValue !== "object") return rootValue;
+              let root = { ...rootValue };
+              let profiles = Array.isArray(root.profiles) ? root.profiles.map((profile) => profile && typeof profile === "object" ? { ...profile } : profile) : [];
+              let profileIndex = profiles.findIndex((profile) => profile && typeof profile === "object" && String(profile.id) === String(te.id));
+              if (profileIndex < 0 || !Array.isArray(profiles[profileIndex].favoritePlayerIds) || profiles[profileIndex].favoritePlayerIds.length === 0) return;
+              let legacyIds = profiles[profileIndex].favoritePlayerIds.map((id) => String(id));
+              let preferences = root.profileChampionshipPreferences && typeof root.profileChampionshipPreferences === "object" ? { ...root.profileChampionshipPreferences } : {};
+              let tournamentPreferences = preferences[R.id] && typeof preferences[R.id] === "object" ? { ...preferences[R.id] } : {};
+              let profilePreferences = tournamentPreferences[te.id] && typeof tournamentPreferences[te.id] === "object" ? { ...tournamentPreferences[te.id] } : {};
+              let favorites = profilePreferences.favorites && typeof profilePreferences.favorites === "object" ? { ...profilePreferences.favorites } : {};
+              legacyIds.forEach((id) => { favorites[id] = true; });
+              tournamentPreferences[te.id] = { ...profilePreferences, favorites, migratedFromGlobalAt: Date.now() };
+              preferences[R.id] = tournamentPreferences;
+              let nextProfile = { ...profiles[profileIndex] };
+              delete nextProfile.favoritePlayerIds;
+              profiles[profileIndex] = nextProfile;
+              root.profiles = profiles;
+              root.profileChampionshipPreferences = preferences;
+              return root;
+            }).catch((error) => console.error("favorite migration failed", error));
+          }, [R && R.id, te && te.id, te && Array.isArray(te.favoritePlayerIds) ? te.favoritePlayerIds.join("|") : ""]);
+          let currentFavoriteIds = X(() => {
+            if (!R || !R.id || !te || !te.id) return [];
+            let favorites = profileChampionshipPreferences && profileChampionshipPreferences[R.id] && profileChampionshipPreferences[R.id][te.id] && profileChampionshipPreferences[R.id][te.id].favorites;
+            return favorites && typeof favorites === "object" ? Object.keys(favorites).filter((id) => favorites[id]) : [];
+          }, [profileChampionshipPreferences, R && R.id, te && te.id]);
+          let p = R && R.context ? (Array.isArray(R.context.teams) ? R.context.teams : []) : (Array.isArray(baseTeams) ? baseTeams : []),
             c = R && R.context ? (R.context.ownership && typeof R.context.ownership === "object" ? R.context.ownership : {}) : (baseOwnership && typeof baseOwnership === "object" ? baseOwnership : {}),
             s = R && R.context ? (R.context.playerStats && typeof R.context.playerStats === "object" ? R.context.playerStats : {}) : (baseStats && typeof baseStats === "object" ? baseStats : {}),
             k = R && R.context ? (Array.isArray(R.context.transfers) ? R.context.transfers : []) : (Array.isArray(baseTransfers) ? baseTransfers : []),
@@ -1529,6 +1562,16 @@
             let updated = { ...R, participants, teamIds: teams.filter((item) => item.active !== false && participants.includes(item.profileId)).map((item) => item.id), context: { ...(R.context || {}), teams } };
             ae(m.map((item) => item.id === R.id ? updated : item));
           }
+          function toggleFavoritePlayer(player) {
+            if (!te || typeof te !== "object" || !te.id || !R || !R.id || !player || player.id == null) return;
+            let db = Ee();
+            if (!db) return;
+            let playerId = String(player.id);
+            db.ref(`pes/profileChampionshipPreferences/${R.id}/${te.id}/favorites/${playerId}`).transaction((current) => current ? null : true).catch((error) => {
+              console.error("favorite update failed", error);
+              window.alert("Não foi possível atualizar o favorito agora.");
+            });
+          }
           function updateGlobalProfile(profileId, updates) {
             let updatedProfiles = x.map((profile) => profile && typeof profile === "object" && profile.id === profileId ? { ...profile, ...updates } : profile);
             T(updatedProfiles); U("profiles", updatedProfiles);
@@ -2189,6 +2232,8 @@
                           onAcceptOffer: acceptTradeOffer,
                           onUpdateOffer: updateTradeOffer,
                           onOpenBalanceHistory: () => setBalanceHistoryOpen(true),
+                          favoritePlayerIds: currentFavoriteIds,
+                          onToggleFavorite: toggleFavoritePlayer,
                         }),
                       Y === "admin" && isAdminProfile(te) &&
                         React.createElement(AdminArea, {
@@ -2947,7 +2992,7 @@
           let code = codes[normalized];
           return code ? code.replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt())) : "🌐";
         }
-        function UnifiedPlayerCard({ player, actionLabel, actionDisabled=false, onAction=null, onOpen=null, className="" }) {
+        function UnifiedPlayerCard({ player, actionLabel, actionDisabled=false, onAction=null, onOpen=null, className="", isFavorite=false, onToggleFavorite=null }) {
           let flag = nationalityFlag(player.nationality);
           return React.createElement("article", {
             className:`tapbtn unified-player-card ${className}`.trim(),
@@ -2955,6 +3000,11 @@
             style:{ position:"relative", cursor:onOpen?"pointer":"default", overflow:"hidden", background:`linear-gradient(155deg, color-mix(in srgb, ${overallColor(player.overall)} 19%, var(--surface)) 0%, var(--surface-soft) 52%, var(--surface) 100%)`, border:`1px solid color-mix(in srgb, ${overallColor(player.overall)} 45%, var(--border))`, boxShadow:`0 18px 44px color-mix(in srgb, ${overallColor(player.overall)} 10%, transparent)`, textAlign:"left", color:"var(--heading)" }
           },
             React.createElement("div", { style:{ position:"absolute", width:120, height:120, right:-45, top:-45, borderRadius:999, background:overallColor(player.overall), opacity:.12, filter:"blur(18px)" } }),
+            onToggleFavorite && React.createElement("button", {
+              className:"tapbtn", title:isFavorite?"Remover dos favoritos":"Adicionar aos favoritos", "aria-label":isFavorite?"Remover dos favoritos":"Adicionar aos favoritos",
+              onClick:(event)=>{event.stopPropagation();onToggleFavorite(player)},
+              style:{ position:"absolute", zIndex:3, top:10, right:10, width:32, height:32, padding:0, borderRadius:999, display:"grid", placeItems:"center", cursor:"pointer", border:isFavorite?"1px solid rgba(255,205,108,.55)":"1px solid var(--border)", background:isFavorite?"rgba(255,187,38,.16)":"color-mix(in srgb, var(--surface) 82%, transparent)", color:isFavorite?"#ffbb26":"var(--muted)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)" }
+            }, React.createElement("svg", { width:17,height:17,viewBox:"0 0 24 24",fill:isFavorite?"currentColor":"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":"true" }, React.createElement("path", { d:"m12 2.8 2.8 5.68 6.27.91-4.54 4.42 1.07 6.24L12 17.1l-5.6 2.95 1.07-6.24-4.54-4.42 6.27-.91L12 2.8Z" }))),
             React.createElement("div", { style:{ position:"relative", alignSelf:"start", fontSize:38, lineHeight:1, fontWeight:850, letterSpacing:"-1.8px", color:overallColor(player.overall) } }, player.overall),
             React.createElement("div", { style:{ position:"relative", minWidth:0, display:"flex", flexDirection:"column", alignItems:"stretch", rowGap:3 } },
               React.createElement("span", { style:{ justifySelf:"start", alignSelf:"start", display:"inline-flex", alignItems:"center", minHeight:20, fontSize:10.5, fontWeight:800, background:positionColor(player.position), color:"white", padding:"3px 7px", borderRadius:7 } }, player.position),
@@ -3073,6 +3123,8 @@
           onAcceptOffer: onAcceptOffer,
           onUpdateOffer: onUpdateOffer,
           onOpenBalanceHistory: onOpenBalanceHistory,
+          favoritePlayerIds: favoritePlayerIds = [],
+          onToggleFavorite: onToggleFavorite,
         }) {
           let [marketSection, setMarketSection] = b("recommended"),
             [clubQuery, setClubQuery] = b(""),
@@ -3084,6 +3136,10 @@
             [overallMax, setOverallMax] = b(99),
             [valueMin, setValueMin] = b(0),
             [valueMax, setValueMax] = b(999);
+
+          let favoriteSet = X(() => new Set((Array.isArray(favoritePlayerIds) ? favoritePlayerIds : []).map((id) => String(id))), [favoritePlayerIds]);
+          let favoritePlayers = X(() => e.filter((player) => favoriteSet.has(String(player.id))), [e, favoriteSet]);
+          He(() => { if (marketSection === "favorites" && favoritePlayers.length === 0) setMarketSection("recommended"); }, [marketSection, favoritePlayers.length]);
 
           let positions = X(() => [...new Set(e.map((u) => u.position).filter(Boolean))].sort(), [e]);
           let activeSquad = X(
@@ -3185,7 +3241,8 @@
           }
 
           let segmentStyle = (active) => ({
-            flex: 1,
+            flex: "0 0 auto",
+            minWidth: 112,
             border: 0,
             borderRadius: 999,
             padding: "10px 12px",
@@ -3241,6 +3298,7 @@
             return React.createElement(UnifiedPlayerCard, {
               key:player.id, player, onOpen:f, className:"market-highlight-card",
               actionLabel:label, actionDisabled:insufficient,
+              isFavorite:favoriteSet.has(String(player.id)), onToggleFavorite,
               onAction:()=>{ activeOffer ? setMarketSection("negotiations") : r(player); }
             });
           }
@@ -3284,6 +3342,7 @@
               { style: { display: "flex", gap: 4, padding: 4, marginBottom: 18, background: "var(--surface-soft)", border: "1px solid var(--border)", borderRadius: 999, overflowX: "auto" } },
               React.createElement("button", { className: "tapbtn", onClick: () => setMarketSection("recommended"), style: segmentStyle(marketSection === "recommended") }, React.createElement(Star, { size: 15 }), "Recomendados"),
               React.createElement("button", { className: "tapbtn", onClick: () => setMarketSection("all"), style: segmentStyle(marketSection === "all") }, React.createElement(Xe, { size: 15 }), "Todos"),
+              favoritePlayers.length > 0 && React.createElement("button", { className: "tapbtn", onClick: () => setMarketSection("favorites"), style: segmentStyle(marketSection === "favorites") }, React.createElement("svg", { width:15,height:15,viewBox:"0 0 24 24",fill:"currentColor",stroke:"currentColor",strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":"true" }, React.createElement("path", { d:"m12 2.8 2.8 5.68 6.27.91-4.54 4.42 1.07 6.24L12 17.1l-5.6 2.95 1.07-6.24-4.54-4.42 6.27-.91L12 2.8Z" })), "Favoritos"),
               React.createElement(
                 "button",
                 { className: "tapbtn", onClick: () => setMarketSection("negotiations"), style: segmentStyle(marketSection === "negotiations") },
@@ -3293,6 +3352,18 @@
             ),
             marketSection === "negotiations"
               ? React.createElement(TradeOffersArea, { offers, catalog: catalogMap, teamById: l, activeTeam, transfers: d, onAccept: onAcceptOffer, onUpdate: onUpdateOffer, onOpenDetail: f, onExplorePlayers: () => setMarketSection("all") })
+              : marketSection === "favorites"
+                ? React.createElement(React.Fragment, null,
+                    React.createElement("div", { style:{ display:"flex",justifyContent:"space-between",alignItems:"end",gap:12,marginBottom:14 } },
+                      React.createElement("div", null, React.createElement("h2", { style:{ margin:0,fontSize:20,letterSpacing:"-.45px" } }, "Seus favoritos"), React.createElement("div", { style:{ marginTop:4,fontSize:12,color:"var(--muted)" } }, `${favoritePlayers.length} jogador${favoritePlayers.length===1?"":"es"} salvo${favoritePlayers.length===1?"":"s"}`))),
+                    React.createElement("div", { className:"unified-player-grid" }, favoritePlayers.map((player) => {
+                      let status=n(player); let activeOffer=Object.values(offers||{}).find((offer)=>isOfferOpen(offer)&&offer.playerId===player.id&&activeTeam&&offer.buyerTeamId===activeTeam.id);
+                      let price=status.kind==="listed"&&status.price?status.price:player.value;
+                      let insufficient=status.kind==="free"&&activeTeam&&Number(activeTeam.budget||0)<Number(price||0);
+                      let own=!!(activeTeam&&status.teamId===activeTeam.id);
+                      let label=own?null:status.kind==="free"?(insufficient?"Saldo insuficiente":`Comprar · ${L(price)}`):activeOffer?"Ver negociação":`Ofertar · ${L(price)}`;
+                      return React.createElement(UnifiedPlayerCard,{ key:player.id,player,onOpen:f,actionLabel:label,actionDisabled:insufficient,isFavorite:true,onToggleFavorite,onAction:()=>{activeOffer?setMarketSection("negotiations"):r(player)}});
+                    })))
               : marketSection === "recommended"
                 ? React.createElement(
                     React.Fragment,
@@ -3383,6 +3454,7 @@
                       let label = status.kind === "free" ? (insufficient ? "Saldo insuficiente" : `Comprar · ${L(price)}`) : activeOffer ? "Ver negociação" : `Ofertar · ${L(price)}`;
                       return React.createElement(UnifiedPlayerCard, {
                         key:player.id, player, onOpen:f, actionLabel:label, actionDisabled:insufficient,
+                        isFavorite:favoriteSet.has(String(player.id)), onToggleFavorite,
                         onAction:()=>{ activeOffer ? setMarketSection("negotiations") : r(player); }
                       });
                     })),
@@ -3640,7 +3712,7 @@
                   React.createElement("strong", { style: { color: "var(--heading)" } }, L(player.value)),
                 ),
                 React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 16, padding: "12px 0", borderTop: "1px solid var(--border)" } },
-                  React.createElement("span", { style: { color: "var(--muted)", fontSize: 13 } }, "Depreciação"),
+                  React.createElement("span", { style: { color: "var(--muted)", fontSize: 13 } }, "Taxa do Lobo Pidão 🐺"),
                   React.createElement("strong", { style: { color: "var(--danger)" } }, "−", data.depreciationPct, "%"),
                 ),
                 React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, paddingTop: 14, borderTop: "1px solid var(--border)" } },
