@@ -484,7 +484,7 @@
             n = (r) => t(r.val());
           return (a.on("value", n), () => a.off("value", n));
         }
-        const IDENTITY_SCHEMA_VERSION = 3;
+        const IDENTITY_SCHEMA_VERSION = 4;
         let identityMigrationPromise = null;
         function normalizeIdentityText(value) {
           return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -509,42 +509,32 @@
             let rawProfiles = Array.isArray(root.profiles) ? root.profiles.filter(Boolean) : [];
             let knownProfileIds = new Set(rawProfiles.filter((profile) => profile && typeof profile === "object" && profile.id).map((profile) => String(profile.id)));
             let recoveryCandidates = new Map();
-            (Array.isArray(root.tournaments) ? root.tournaments : []).forEach((tournament) => {
-              if (!tournament || typeof tournament !== "object") return;
-              let context = tournament.context && typeof tournament.context === "object" ? tournament.context : {};
-              (Array.isArray(context.teams) ? context.teams : []).forEach((team) => {
-                if (!team || typeof team !== "object" || !team.profileId) return;
-                let profileId = String(team.profileId);
-                if (knownProfileIds.has(profileId) || recoveryCandidates.has(profileId)) return;
-                let recoveredName = String(team.archivedProfileName || team.profileName || team.ownerName || team.managerName || team.name || "Perfil recuperado").trim();
-                recoveryCandidates.set(profileId, {
-                  id: profileId,
-                  name: recoveredName,
-                  color: team.profileColor || team.color || "#58cc02",
-                  avatar: team.profileAvatar || team.avatar || null,
-                  role: team.profileRole === "admin" ? "admin" : "player",
-                  active: true,
-                  recoveredFromTournament: true,
-                  recoveredAt: Date.now(),
+            // Perfis ausentes não são mais recriados automaticamente a partir de times.
+            // A recuperação só roda quando explicitamente habilitada no meta pelo administrador.
+            if (meta.recoverMissingProfiles === true) {
+              (Array.isArray(root.tournaments) ? root.tournaments : []).forEach((tournament) => {
+                if (!tournament || typeof tournament !== "object") return;
+                let context = tournament.context && typeof tournament.context === "object" ? tournament.context : {};
+                (Array.isArray(context.teams) ? context.teams : []).forEach((team) => {
+                  if (!team || typeof team !== "object" || !team.profileId) return;
+                  let profileId = String(team.profileId);
+                  if (knownProfileIds.has(profileId) || recoveryCandidates.has(profileId)) return;
+                  let recoveredName = String(team.archivedProfileName || team.profileName || team.ownerName || team.managerName || team.name || "Perfil recuperado").trim();
+                  recoveryCandidates.set(profileId, {
+                    id: profileId,
+                    name: recoveredName,
+                    color: team.profileColor || team.color || "#58cc02",
+                    avatar: team.profileAvatar || team.avatar || null,
+                    role: team.profileRole === "admin" ? "admin" : "player",
+                    active: true,
+                    recoveredFromTournament: true,
+                    recoveredAt: Date.now(),
+                  });
                 });
               });
-              (Array.isArray(tournament.participants) ? tournament.participants : []).forEach((participant) => {
-                if (!participant || typeof participant !== "object" || !participant.id) return;
-                let profileId = String(participant.id);
-                if (knownProfileIds.has(profileId) || recoveryCandidates.has(profileId)) return;
-                recoveryCandidates.set(profileId, {
-                  id: profileId,
-                  name: String(participant.name || "Perfil recuperado").trim(),
-                  color: participant.color || "#58cc02",
-                  avatar: participant.avatar || null,
-                  role: participant.role === "admin" ? "admin" : "player",
-                  active: participant.active !== false,
-                  recoveredFromTournament: true,
-                  recoveredAt: Date.now(),
-                });
-              });
-            });
-            if (recoveryCandidates.size) rawProfiles = [...rawProfiles, ...recoveryCandidates.values()];
+              if (recoveryCandidates.size) rawProfiles = [...rawProfiles, ...recoveryCandidates.values()];
+              meta.recoverMissingProfiles = false;
+            }
             let usedProfileIds = new Set();
             let profiles = rawProfiles.map((raw, index) => {
               let source = raw && typeof raw === "object" ? { ...raw } : { name: String(raw || "").trim() };
@@ -1715,6 +1705,34 @@
             T(updatedProfiles); U("profiles", updatedProfiles);
             ae(updatedTournaments);
           }
+          function removeOrphanParticipant(teamId) {
+            if (!R) return;
+            let team = p.find((item) => item && String(item.id) === String(teamId));
+            if (!team) return;
+            let confirmation = window.confirm(`Remover ${team.archivedProfileName || team.name || "este participante"} da classificação ativa? Partidas e histórico serão preservados.`);
+            if (!confirmation) return;
+            let participants = Array.isArray(R.participants) ? R.participants.filter((id) => String(id) !== String(team.profileId)) : [];
+            let teams = p.map((item) => item && String(item.id) === String(teamId) ? { ...item, active: false, archivedProfileName: item.archivedProfileName || item.name } : item);
+            let context = R.context || {};
+            let updated = { ...R, participants, teamIds: (R.teamIds || []).filter((id) => String(id) !== String(teamId)), context: { ...context, teams } };
+            ae(m.map((item) => item.id === R.id ? updated : item));
+          }
+          function restoreOrphanProfile(teamId) {
+            if (!R) return;
+            let team = p.find((item) => item && String(item.id) === String(teamId));
+            if (!team || !team.profileId) return;
+            if (x.some((profile) => profile && String(profile.id) === String(team.profileId))) return;
+            let name = window.prompt("Nome do perfil que será restaurado:", team.archivedProfileName || team.profileName || team.name || "Perfil recuperado");
+            if (!name || !name.trim()) return;
+            let profile = { id: String(team.profileId), name: name.trim(), color: team.profileColor || team.color || se[x.length % se.length], avatar: team.profileAvatar || team.avatar || null, role: team.profileRole === "admin" ? "admin" : "player", active: true, restoredAt: Date.now() };
+            let updatedProfiles = [...x, profile];
+            T(updatedProfiles); U("profiles", updatedProfiles);
+            let participants = Array.isArray(R.participants) ? Array.from(new Set([...R.participants, profile.id])) : [profile.id];
+            let teams = p.map((item) => item && String(item.id) === String(teamId) ? { ...item, active: true, archivedProfileName: name.trim() } : item);
+            let context = R.context || {};
+            let updated = { ...R, participants, teamIds: Array.from(new Set([...(R.teamIds || []), team.id])), context: { ...context, teams } };
+            ae(m.map((item) => item.id === R.id ? updated : item));
+          }
           function resetCurrentTournament() {
             if (!R) return;
             let confirmation = window.prompt(`Esta ação apagará partidas, elencos, mercado, propostas, transferências e estatísticas de ${R.name}. Os participantes serão mantidos. Digite RESETAR para continuar.`);
@@ -2349,7 +2367,7 @@
                           onCreateProfile: createAdminProfile, onCreateTournament: createAdminTournament,
                           onDeleteTournament: deleteAdminTournament, onSelectTournament: selectTournament,
                           onUpdateBudget: updateAdminBudget, onToggleParticipant: toggleTournamentParticipant,
-                          onDeleteProfile: deleteGlobalProfile, onResetTournament: resetCurrentTournament,
+                          onDeleteProfile: deleteGlobalProfile, onResetTournament: resetCurrentTournament, onRemoveOrphanParticipant: removeOrphanParticipant, onRestoreOrphanProfile: restoreOrphanProfile,
                           onUpdateMarketDepreciation: updateMarketDepreciation,
                           onUpdateRosterRules: updateRosterRules,
                           onUpdateEconomyRules: updateEconomyRules,
@@ -4578,9 +4596,11 @@
           return { owners, entries, total: entries.length };
         }
 
-        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onUpdateMarketDepreciation, onUpdateRosterRules, onUpdateEconomyRules, onFinishTournament, catalog, onImportRosters }) {
+        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onRemoveOrphanParticipant, onRestoreOrphanProfile, onUpdateMarketDepreciation, onUpdateRosterRules, onUpdateEconomyRules, onFinishTournament, catalog, onImportRosters }) {
           let globalProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.active !== false);
           let participants = currentTournament && Array.isArray(currentTournament.participants) ? currentTournament.participants : [];
+          let globalProfileIds = new Set(globalProfiles.map((profile) => String(profile.id)));
+          let orphanTeams = currentTournament ? (teams || []).filter((team) => team && team.active !== false && team.profileId && !globalProfileIds.has(String(team.profileId))) : [];
           let [importText, setImportText] = b("");
           let [importMode, setImportMode] = b("replace");
           let [importPreview, setImportPreview] = b(null);
@@ -4642,6 +4662,15 @@
                 let checked = participants.includes(profile.id) || (!Array.isArray(currentTournament.participants) && ((Array.isArray(profile.tournamentIds) && profile.tournamentIds.includes(currentTournament.id)) || teams.some((team) => team.profileId === profile.id || team.id === profile.teamId || String(team.name || "").trim().toLowerCase() === String(profile.name || "").trim().toLowerCase())));
                 return React.createElement("button", { key: profile.id, onClick: () => onToggleParticipant(profile.id), style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--border)", background: checked ? "var(--surface-soft)" : "var(--surface)", color: "var(--heading)", cursor: "pointer" } }, React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 10 } }, React.createElement("span", { style: { width: 30, height: 30, borderRadius: 999, background: profile.color, display: "grid", placeItems: "center", fontWeight: 700 } }, profile.name.charAt(0).toUpperCase()), React.createElement("strong", null, profile.name)), React.createElement("span", { style: { fontWeight: 700, color: checked ? "var(--green)" : "var(--muted)" } }, checked ? "Participando" : "Adicionar"));
               })) : React.createElement("div", { style: { color: "var(--muted)" } }, "Crie um perfil global primeiro.")
+            ),
+            currentTournament && orphanTeams.length > 0 && React.createElement("div", { style: { ...E, border: "1px solid color-mix(in srgb, var(--danger) 35%, var(--border))" } },
+              React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Participantes órfãos"),
+              React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 } }, "Estes times ainda existem no campeonato, mas o perfil global correspondente foi removido. Você pode restaurar o perfil ou retirar o time da classificação ativa sem apagar partidas antigas."),
+              React.createElement("div", { style: { display: "grid", gap: 8 } }, orphanTeams.map((team) => React.createElement("div", { key: team.id, style: { display: "grid", gridTemplateColumns: "1fr auto auto", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, background: "var(--surface-soft)" } },
+                React.createElement("div", { style: { minWidth: 0 } }, React.createElement("strong", { style: { display: "block", overflow: "hidden", textOverflow: "ellipsis" } }, team.archivedProfileName || team.profileName || team.name || "Perfil removido"), React.createElement("span", { style: { fontSize: 11, color: "var(--muted)" } }, team.name || "Time sem nome")),
+                React.createElement("button", { onClick: () => onRestoreOrphanProfile(team.id), style: { background: "transparent", color: "var(--heading)", border: "1px solid var(--border)", borderRadius: 999, padding: "7px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700 } }, "Restaurar"),
+                React.createElement("button", { onClick: () => onRemoveOrphanParticipant(team.id), style: { background: "transparent", color: "var(--danger)", border: "1px solid var(--danger)", borderRadius: 999, padding: "7px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700 } }, "Remover")
+              )))
             ),
             currentTournament && React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Configurações do mercado"),
@@ -4897,17 +4926,11 @@
           if (!tournament) return React.createElement("div", { style: E }, React.createElement("div", { style: { fontWeight: 700, marginBottom: 6 } }, "Nenhum campeonato selecionado"), React.createElement("div", { style: { color: "var(--muted)", fontSize: 14 } }, "Selecione um campeonato para visualizar a tabela."));
           let participantIds = Array.isArray(tournament.participants) ? tournament.participants : [];
           let declaredTeamIds = Array.isArray(tournament.teamIds) ? tournament.teamIds : [];
+          let existingProfileIds = new Set((profiles || []).filter((item) => item && typeof item === "object" && item.active !== false && item.id).map((item) => String(item.id)));
           let activeIds = Array.from(new Set([
             ...declaredTeamIds,
-            ...teams.filter((team) => {
-              if (!team || team.active === false) return false;
-              let linkedProfile = (profiles || []).find((item) => item && typeof item === "object" && item.id === team.profileId);
-              let isLinkedParticipant = team.profileId && participantIds.includes(team.profileId);
-              let isLegacyAdminParticipant = linkedProfile && (linkedProfile.role === "admin" || String(linkedProfile.name || "").trim().toLowerCase() === "admin");
-              return isLinkedParticipant || isLegacyAdminParticipant || (!participantIds.length && declaredTeamIds.includes(team.id));
-            }).map((team) => team.id),
-          ])).filter((id) => teams.some((team) => team && team.id === id && team.active !== false));
-          if (!activeIds.length) activeIds = teams.filter((team) => team && team.active !== false).map((team) => team.id);
+            ...teams.filter((team) => team && team.active !== false && team.profileId && existingProfileIds.has(String(team.profileId)) && participantIds.includes(team.profileId)).map((team) => team.id),
+          ])).filter((id) => teams.some((team) => team && team.id === id && team.active !== false && team.profileId && existingProfileIds.has(String(team.profileId)) && participantIds.includes(team.profileId)));
           let standings = we(activeIds, allMatches);
           function avatarForTeam(team, size) {
             let profile = team && (profiles || []).find((item) => item && typeof item === "object" && item.id === team.profileId);
