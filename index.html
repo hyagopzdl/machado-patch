@@ -324,6 +324,7 @@
           OfferIcon = SvgIcon(["M21 15a4 4 0 0 1-4 4H8l-5 3V8a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v7Z", "M8 10h8", "M8 14h5"]),
           Star = SvgIcon(["m12 3 2.78 5.63 6.22.9-4.5 4.39 1.06 6.2L12 17.2l-5.56 2.92 1.06-6.2L3 9.53l6.22-.9L12 3Z"]),
           FilterIcon = SvgIcon(["M4 6h16", "M7 12h10", "M10 18h4"]),
+          FlagIcon = SvgIcon(["M5 21V4", "M5 5h10l-1.5 3L15 11H5"]),
           BankIcon = function ({ size = 14, color = "currentColor", style = {} }) {
             return React.createElement("svg", { width:size, height:size, viewBox:"0 0 24 24", fill:color, style, "aria-hidden":"true" },
               React.createElement("path", { d:"M12 2.8 2.5 7.6v2.1h19V7.6L12 2.8Zm-7.2 8.6v6.4H3v2.4h18v-2.4h-1.8v-6.4h-2.4v6.4h-2.3v-6.4h-2.4v6.4H9.8v-6.4H7.4v6.4H5.2v-6.4H4.8Z" })
@@ -744,7 +745,9 @@
         function to() {
           let [e, t] = b(!0),
             [l, a] = b(!1),
-            [n, r] = b([]),
+            [baseCatalog, setBaseCatalog] = b([]),
+            [playerCatalogOverrides, setPlayerCatalogOverrides] = b({}),
+            [playerReviews, setPlayerReviews] = b({}),
             [f, d] = b(!1),
             [baseTeams, setBaseTeams] = b([]),
             [baseOwnership, setBaseOwnership] = b({}),
@@ -805,7 +808,9 @@
             [adminUnlocked, setAdminUnlocked] = b(() => {
               try { return sessionStorage.getItem("pes-admin-unlocked") === "1"; } catch (error) { return false; }
             }),
-            [adminGate, setAdminGate] = b(null);
+            [adminGate, setAdminGate] = b(null),
+            [playerReportModal, setPlayerReportModal] = b(null),
+            [playerReviewsOpen, setPlayerReviewsOpen] = b(false);
           He(() => {
             document.documentElement.setAttribute("data-theme", theme);
             localStorage.setItem("pes-theme", JSON.stringify(theme));
@@ -816,9 +821,15 @@
                 if (!o.ok) throw new Error("fail");
                 return o.json();
               })
-              .then((o) => r(o))
+              .then((o) => setBaseCatalog(Array.isArray(o) ? o : []))
               .catch(() => d(!0));
           }, []);
+          let n = X(() => (Array.isArray(baseCatalog) ? baseCatalog : []).map((player) => {
+            if (!player || typeof player !== "object") return player;
+            let override = playerCatalogOverrides && playerCatalogOverrides[player.id];
+            if (!override || typeof override !== "object") return player;
+            return { ...player, overall: override.overall != null ? Number(override.overall) : player.overall, value: override.value != null ? Number(override.value) : player.value };
+          }), [baseCatalog, playerCatalogOverrides]);
           let xe = X(() => {
             let o = new Map();
             return (n.forEach((i) => o.set(i.id, i)), o);
@@ -849,6 +860,8 @@
               ),
               Q("presence", (i) => setPresence(i && typeof i === "object" ? i : {})),
               Q("adminSecurity", (i) => setAdminSecurity(i && typeof i === "object" ? i : null)),
+              Q("playerCatalogOverrides", (i) => setPlayerCatalogOverrides(i && typeof i === "object" ? i : {})),
+              Q("playerReviews", (i) => setPlayerReviews(i && typeof i === "object" ? i : {})),
               Q("profileChampionshipPreferences", (i) => setProfileChampionshipPreferences(i && typeof i === "object" ? i : {})),
               Q("profiles", (i) => {
                 let list = Array.isArray(i) ? i : [];
@@ -1178,6 +1191,69 @@
               console.error("admin access error", error);
               setAdminGate({ ...gate, password, submitting: false, error: "Não foi possível validar a senha. Tente novamente." });
             }
+          }
+          function pendingPlayerReviews() {
+            return Object.values(playerReviews && typeof playerReviews === "object" ? playerReviews : {}).filter((review) => review && review.status === "pending");
+          }
+          function submitPlayerReview(player, values) {
+            if (!player || !te || !te.id) return;
+            let overallText = String(values && values.overall != null ? values.overall : "").trim();
+            let valueText = String(values && values.value != null ? values.value : "").trim();
+            let proposedOverall = overallText === "" ? null : Number(overallText);
+            let proposedValue = valueText === "" ? null : Number(valueText);
+            if (proposedOverall == null && proposedValue == null) { window.alert("Preencha pelo menos um novo valor."); return; }
+            if (proposedOverall != null && (!Number.isInteger(proposedOverall) || proposedOverall < 1 || proposedOverall > 99)) { window.alert("O overall deve ser um número inteiro entre 1 e 99."); return; }
+            if (proposedValue != null && (!Number.isFinite(proposedValue) || proposedValue <= 0)) { window.alert("O valor de mercado deve ser maior que zero."); return; }
+            if ((proposedOverall == null || proposedOverall === Number(player.overall)) && (proposedValue == null || proposedValue === Number(player.value))) { window.alert("Informe pelo menos um valor diferente do atual."); return; }
+            let duplicate = pendingPlayerReviews().find((review) => String(review.playerId) === String(player.id) && String(review.createdByProfileId) === String(te.id));
+            if (duplicate) { window.alert("Você já possui uma revisão pendente para este jogador."); return; }
+            let id = _(), now = Date.now();
+            let review = { id, playerId:player.id, playerNameSnapshot:player.name, original:{ overall:Number(player.overall)||0, value:Number(player.value)||0 }, proposed:{ overall:proposedOverall, value:proposedValue }, createdByProfileId:te.id, createdByNameSnapshot:te.name||"Perfil", createdAt:now, status:"pending", votes:{} };
+            let db = Ee();
+            if (!db) { setPlayerReviews({ ...playerReviews, [id]:review }); setPlayerReportModal(null); return; }
+            db.ref("pes/playerReviews/" + id).set(review).then(() => setPlayerReportModal(null)).catch((error) => { console.error("player review submit failed", error); window.alert("Não foi possível enviar a revisão. Tente novamente."); });
+          }
+          function votePlayerReview(reviewId, decision) {
+            if (!te || !te.id || !["approve","reject"].includes(decision)) return;
+            let db = Ee();
+            if (!db) return;
+            let failureReason = null;
+            db.ref("pes").transaction((rootValue) => {
+              let root = rootValue && typeof rootValue === "object" ? { ...rootValue } : {};
+              let reviews = root.playerReviews && typeof root.playerReviews === "object" ? { ...root.playerReviews } : {};
+              let review = reviews[reviewId];
+              if (!review || review.status !== "pending") { failureReason="unavailable"; return; }
+              if (String(review.createdByProfileId) === String(te.id)) { failureReason="own_review"; return; }
+              let profiles = Array.isArray(root.profiles) ? root.profiles : [];
+              let voter = profiles.find((profile) => profile && String(profile.id) === String(te.id));
+              if (!voter || voter.active === false) { failureReason="inactive_profile"; return; }
+              let votes = review.votes && typeof review.votes === "object" ? { ...review.votes } : {};
+              votes[te.id] = { decision, profileNameSnapshot:voter.name||te.name||"Perfil", avatarSnapshot:voter.avatar||null, colorSnapshot:voter.color||null, createdAt:Date.now() };
+              let approvals = Object.values(votes).filter((vote) => vote && vote.decision === "approve").length;
+              let rejections = Object.values(votes).filter((vote) => vote && vote.decision === "reject").length;
+              let nextReview = { ...review, votes, updatedAt:Date.now() };
+              if (approvals >= 3) {
+                let basePlayer = (Array.isArray(baseCatalog) ? baseCatalog : []).find((player) => player && String(player.id) === String(review.playerId));
+                let overrides = root.playerCatalogOverrides && typeof root.playerCatalogOverrides === "object" ? { ...root.playerCatalogOverrides } : {};
+                let currentOverride = overrides[review.playerId] && typeof overrides[review.playerId] === "object" ? overrides[review.playerId] : {};
+                let currentOverall = currentOverride.overall != null ? Number(currentOverride.overall) : Number(basePlayer && basePlayer.overall);
+                let currentValue = currentOverride.value != null ? Number(currentOverride.value) : Number(basePlayer && basePlayer.value);
+                if (currentOverall !== Number(review.original && review.original.overall) || currentValue !== Number(review.original && review.original.value)) {
+                  nextReview = { ...nextReview, status:"outdated", resolvedAt:Date.now(), resolutionReason:"player_changed" };
+                } else {
+                  overrides[review.playerId] = { ...currentOverride, ...(review.proposed && review.proposed.overall != null ? { overall:Number(review.proposed.overall) } : {}), ...(review.proposed && review.proposed.value != null ? { value:Number(review.proposed.value) } : {}), updatedAt:Date.now(), approvedReviewId:review.id };
+                  root.playerCatalogOverrides = overrides;
+                  nextReview = { ...nextReview, status:"approved", resolvedAt:Date.now(), resolvedByProfileId:te.id };
+                }
+              } else if (rejections >= 3) nextReview = { ...nextReview, status:"rejected", resolvedAt:Date.now(), resolvedByProfileId:te.id };
+              reviews[reviewId] = nextReview;
+              root.playerReviews = reviews;
+              failureReason=null;
+              return root;
+            }, (error, committed) => {
+              if (error) { window.alert("Não foi possível registrar seu voto. Tente novamente."); return; }
+              if (!committed) { let messages={ own_review:"Você não pode votar na própria sugestão.", inactive_profile:"Este perfil não pode votar.", unavailable:"Esta revisão não está mais disponível." }; window.alert(messages[failureReason]||"O voto não pôde ser registrado."); }
+            });
           }
           function selectTournament(o) {
             let keepAdmin = isAdminProfile(te);
@@ -2803,6 +2879,8 @@
                           favoritePlayerIds: currentFavoriteIds,
                           onToggleFavorite: toggleFavoritePlayer,
                           balanceCheckFor: (player) => ProfileTeam ? evaluateMarketBalance(player, ProfileTeam.id) : { allowed:true },
+                          pendingReviews: pendingPlayerReviews(),
+                          onOpenReviews: () => setPlayerReviewsOpen(true),
                         }),
                       Y === "admin" && isAdminProfile(te) && adminUnlocked &&
                         React.createElement(AdminArea, {
@@ -2965,7 +3043,10 @@
                         onOffer: (player) => { be(null); kt(player); },
                         onBuy: (player) => { be(null); kt(player); },
                         activeTeam: ProfileTeam,
+                        onReport: (player) => setPlayerReportModal(player),
                       }),
+                    playerReportModal && React.createElement(PlayerReportModal, { player:playerReportModal, onClose:()=>setPlayerReportModal(null), onSubmit:submitPlayerReview }),
+                    playerReviewsOpen && React.createElement(PlayerReviewsModal, { reviews:pendingPlayerReviews(), catalogMap:xe, profiles:x, currentProfile:te, onClose:()=>setPlayerReviewsOpen(false), onVote:votePlayerReview }),
                     We &&
                       React.createElement(so, {
                         data: We,
@@ -3718,6 +3799,8 @@
           favoritePlayerIds: favoritePlayerIds = [],
           onToggleFavorite: onToggleFavorite,
           balanceCheckFor: balanceCheckFor,
+          pendingReviews: pendingReviews = [],
+          onOpenReviews: onOpenReviews,
         }) {
           let [marketSection, setMarketSection] = b("all"),
             [clubQuery, setClubQuery] = b(""),
@@ -3732,7 +3815,6 @@
 
           let favoriteSet = X(() => new Set((Array.isArray(favoritePlayerIds) ? favoritePlayerIds : []).map((id) => String(id))), [favoritePlayerIds]);
           let favoritePlayers = X(() => e.filter((player) => favoriteSet.has(String(player.id)) && !(activeTeam && t[player.id] && String(t[player.id].teamId) === String(activeTeam.id))), [e, favoriteSet, activeTeam, t]);
-          He(() => { if (marketSection === "favorites" && favoritePlayers.length === 0) setMarketSection("all"); }, [marketSection, favoritePlayers.length]);
 
           let positions = X(() => [...new Set(e.map((u) => u.position).filter(Boolean))].sort(), [e]);
           let activeSquad = X(
@@ -3947,7 +4029,7 @@
               "div",
               { style: { display: "flex", gap: 4, padding: 4, marginBottom: 18, background: "var(--surface-soft)", border: "1px solid var(--border)", borderRadius: 999, overflowX: "auto" } },
               React.createElement("button", { className: "tapbtn", onClick: () => setMarketSection("all"), style: segmentStyle(marketSection === "all") }, React.createElement(Xe, { size: 15 }), "Jogadores"),
-              favoritePlayers.length > 0 && React.createElement("button", { className: "tapbtn", onClick: () => setMarketSection("favorites"), style: segmentStyle(marketSection === "favorites") }, React.createElement("svg", { width:15,height:15,viewBox:"0 0 24 24",fill:"currentColor",stroke:"currentColor",strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":"true" }, React.createElement("path", { d:"m12 2.8 2.8 5.68 6.27.91-4.54 4.42 1.07 6.24L12 17.1l-5.6 2.95 1.07-6.24-4.54-4.42 6.27-.91L12 2.8Z" })), "Favoritos"),
+              React.createElement("button", { className: "tapbtn", onClick: () => setMarketSection("favorites"), style: segmentStyle(marketSection === "favorites") }, React.createElement("svg", { width:15,height:15,viewBox:"0 0 24 24",fill:"currentColor",stroke:"currentColor",strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":"true" }, React.createElement("path", { d:"m12 2.8 2.8 5.68 6.27.91-4.54 4.42 1.07 6.24L12 17.1l-5.6 2.95 1.07-6.24-4.54-4.42 6.27-.91L12 2.8Z" })), "Favoritos"),
               React.createElement("button", { className: "tapbtn", onClick: () => setMarketSection("recommended"), style: segmentStyle(marketSection === "recommended") }, React.createElement(Star, { size: 15 }), "Recomendados"),
             ),
             marketSection === "negotiations"
@@ -4013,6 +4095,9 @@
                 : React.createElement(
                     React.Fragment,
                     null,
+                    pendingReviews.length > 0 && React.createElement("button", { className:"tapbtn family-card", onClick:onOpenReviews, style:{ width:"100%", marginBottom:14, padding:16, border:"1px solid color-mix(in srgb, var(--yellow) 38%, var(--border))", background:"linear-gradient(135deg, color-mix(in srgb, var(--yellow) 15%, var(--surface)), var(--surface))", color:"var(--heading)", display:"flex", alignItems:"center", justifyContent:"space-between", gap:14, cursor:"pointer", textAlign:"left" } },
+                      React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:12, minWidth:0 } }, React.createElement("span", { style:{ width:42,height:42,borderRadius:14,display:"grid",placeItems:"center",background:"color-mix(in srgb, var(--yellow) 22%, var(--surface-soft))",color:"var(--yellow)",flex:"0 0 auto" } }, React.createElement(FlagIcon,{size:20})), React.createElement("div", { style:{ minWidth:0 } }, React.createElement("strong", { style:{ display:"block",fontSize:15 } }, `${pendingReviews.length} ${pendingReviews.length===1?"revisão pendente":"revisões pendentes"}`), React.createElement("span", { style:{ display:"block",fontSize:11.5,color:"var(--muted)",marginTop:3 } }, "Ajude a revisar correções sugeridas pela comunidade."))), React.createElement(ue,{size:22,color:"var(--muted)"})
+                    ),
                     React.createElement(
                       "div",
                       { style: { display: "flex", gap: 8, marginBottom: 12, alignItems: "stretch" } },
@@ -4130,7 +4215,41 @@
             ),
           );
         }
-        function ro({ player: e, onClose: t, onOffer, onBuy, activeTeam }) {
+        function ProfileVoteAvatar({ vote }) {
+          let label=String(vote&&vote.profileNameSnapshot||"?");
+          return React.createElement("span", { title:label, style:{ width:30,height:30,borderRadius:"50%",overflow:"hidden",display:"grid",placeItems:"center",background:vote&&vote.colorSnapshot||"var(--surface-soft)",color:"white",fontSize:11,fontWeight:850,border:"2px solid var(--surface)",marginLeft:-6 } }, vote&&vote.avatarSnapshot?React.createElement("img",{src:vote.avatarSnapshot,alt:"",style:{width:"100%",height:"100%",objectFit:"cover"}}):label.charAt(0).toUpperCase());
+        }
+        function PlayerReportModal({ player, onClose, onSubmit }) {
+          let [overall,setOverall]=b(""),[value,setValue]=b("");
+          return React.createElement(ee,{title:"Sugerir correção",onClose},
+            React.createElement("div",{style:{...E,padding:16,marginBottom:14}},React.createElement("strong",{style:{fontSize:17}},player.name),React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginTop:4}},"A sugestão será analisada por outros usuários.")),
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}},
+              React.createElement("div",null,React.createElement("label",{style:P},"Novo overall"),React.createElement("input",{type:"number",min:1,max:99,step:1,value:overall,placeholder:`Atual: ${player.overall}`,onChange:(ev)=>setOverall(ev.target.value),style:q})),
+              React.createElement("div",null,React.createElement("label",{style:P},"Novo valor de mercado"),React.createElement("input",{type:"number",min:1,step:1,value:value,placeholder:`Atual: ${L(player.value)}`,onChange:(ev)=>setValue(ev.target.value),style:q}))
+            ),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted)",lineHeight:1.5,marginTop:12}},"Você pode preencher apenas um dos campos. O valor de mercado é informado em milhões."),
+            React.createElement("button",{className:"tapbtn",onClick:()=>onSubmit(player,{overall,value}),style:{...M,...W,width:"100%",marginTop:18}},"Enviar para revisão")
+          );
+        }
+        function PlayerReviewsModal({ reviews, catalogMap, currentProfile, onClose, onVote }) {
+          let ordered=[...(reviews||[])].sort((a,b)=>Number(a.createdAt||0)-Number(b.createdAt||0));
+          let [index,setIndex]=b(0); He(()=>{if(index>=ordered.length)setIndex(Math.max(0,ordered.length-1));},[ordered.length,index]);
+          if(!ordered.length) return React.createElement(ee,{title:"Revisões",onClose},React.createElement("div",{style:{...E,textAlign:"center",color:"var(--muted)"}},"Nenhuma revisão pendente."));
+          let review=ordered[index], player=catalogMap.get(review.playerId)||{name:review.playerNameSnapshot};
+          let votes=Object.values(review.votes||{}), approvals=votes.filter(v=>v&&v.decision==="approve"), rejections=votes.filter(v=>v&&v.decision==="reject"), own=String(review.createdByProfileId)===String(currentProfile&&currentProfile.id), myVote=review.votes&&currentProfile&&review.votes[currentProfile.id];
+          let row=(label,oldValue,newValue,format=(v)=>v)=>React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr auto auto",gap:12,alignItems:"center",padding:"13px 0",borderBottom:"1px solid var(--border)"}},React.createElement("strong",{style:{fontSize:13}},label),React.createElement("span",{style:{color:"var(--muted)",textDecoration:newValue!=null?"line-through":"none"}},format(oldValue)),React.createElement("strong",{style:{color:newValue!=null?"var(--green)":"var(--muted)"}},newValue!=null?format(newValue):"Sem alteração"));
+          return React.createElement(ee,{title:`Revisões · ${index+1} de ${ordered.length}`,onClose},
+            React.createElement("div",{style:{...E,padding:16,marginBottom:12}},React.createElement("div",{style:{fontSize:20,fontWeight:850}},player.name||review.playerNameSnapshot),React.createElement("div",{style:{fontSize:11.5,color:"var(--muted)",marginTop:4}},`Sugestão de ${review.createdByNameSnapshot||"um usuário"}`),row("Overall",review.original&&review.original.overall,review.proposed&&review.proposed.overall),row("Valor",review.original&&review.original.value,review.proposed&&review.proposed.value,L)),
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
+              React.createElement("div",{style:{padding:12,borderRadius:14,background:"color-mix(in srgb,var(--green) 9%,var(--surface-soft))"}},React.createElement("div",{style:{fontSize:10,color:"var(--muted)",marginBottom:8}},`${approvals.length} de 3 aprovações`),React.createElement("div",{style:{display:"flex",paddingLeft:6,minHeight:30}},approvals.map((vote,i)=>React.createElement(ProfileVoteAvatar,{key:i,vote})))),
+              React.createElement("div",{style:{padding:12,borderRadius:14,background:"color-mix(in srgb,var(--danger) 8%,var(--surface-soft))"}},React.createElement("div",{style:{fontSize:10,color:"var(--muted)",marginBottom:8}},`${rejections.length} de 3 recusas`),React.createElement("div",{style:{display:"flex",paddingLeft:6,minHeight:30}},rejections.map((vote,i)=>React.createElement(ProfileVoteAvatar,{key:i,vote}))))
+            ),
+            own&&React.createElement("div",{style:{fontSize:12,color:"var(--muted)",textAlign:"center",marginBottom:12}},"Você enviou esta sugestão e não pode votar nela."),
+            !own&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},React.createElement("button",{className:"tapbtn",onClick:()=>onVote(review.id,"reject"),style:{...M,margin:0,background:myVote&&myVote.decision==="reject"?"var(--danger)":"color-mix(in srgb,var(--danger) 12%,var(--surface))",color:myVote&&myVote.decision==="reject"?"white":"var(--danger)",border:"1px solid color-mix(in srgb,var(--danger) 38%,var(--border))"}},"Recusar"),React.createElement("button",{className:"tapbtn",onClick:()=>onVote(review.id,"approve"),style:{...M,...W,margin:0}},"Aprovar")),
+            ordered.length>1&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",gap:10,marginTop:14}},React.createElement("button",{className:"tapbtn",disabled:index===0,onClick:()=>setIndex(i=>Math.max(0,i-1)),style:{...M,width:"auto",margin:0,background:"var(--surface-soft)",color:"var(--heading)",opacity:index===0?.4:1}},"Anterior"),React.createElement("button",{className:"tapbtn",disabled:index===ordered.length-1,onClick:()=>setIndex(i=>Math.min(ordered.length-1,i+1)),style:{...M,width:"auto",margin:0,background:"var(--surface-soft)",color:"var(--heading)",opacity:index===ordered.length-1?.4:1}},"Próxima"))
+          );
+        }
+        function ro({ player: e, onClose: t, onOffer, onBuy, activeTeam, onReport }) {
           let detailContext = e && e.player ? e : { player:e, fromOtherTeam:false };
           e = detailContext.player;
           let l = e.attrs || {},
@@ -4166,6 +4285,7 @@
               React.createElement(
                 "div",
                 { className:"player-detail-scroll" },
+                React.createElement("button", { className:"tapbtn", onClick:()=>onReport&&onReport(e), title:"Reportar problema", "aria-label":"Reportar problema no jogador", style:{ position:"fixed", top:"max(16px,env(safe-area-inset-top))", right:68, zIndex:1002, width:42, height:42, borderRadius:999, border:"1px solid var(--border)", background:"color-mix(in srgb,var(--surface) 88%,transparent)", color:"var(--yellow)", display:"grid", placeItems:"center", boxShadow:"var(--shadow-soft)", backdropFilter:"blur(18px)", cursor:"pointer" } }, React.createElement(FlagIcon,{size:20})),
                 React.createElement(
                   "header",
                   { style:{ textAlign:"center", padding:"4px 8px 20px" } },
