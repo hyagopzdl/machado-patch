@@ -341,6 +341,7 @@
           TeamIcon = Vt,
           DatabaseIcon = ze,
           TrashIcon = SvgIcon(["M4 7h16", "M9 7V4h6v3", "M7 7l1 13h8l1-13", "M10 11v5", "M14 11v5"]),
+          BaseRosterIcon = SvgIcon(["M12 3 4.5 6v5.5c0 4.7 3.2 7.9 7.5 9.5 4.3-1.6 7.5-4.8 7.5-9.5V6L12 3Z", "m12 7 .9 1.82 2.01.29-1.45 1.42.34 2-1.8-.95-1.8.95.34-2-1.45-1.42 2.01-.29L12 7Z"]),
           it = {
             GK: "Goleiro",
             CWP: "Goleiro",
@@ -975,6 +976,30 @@
             tradeOffers = effectiveContext && effectiveContext.tradeOffers && typeof effectiveContext.tradeOffers === "object" ? effectiveContext.tradeOffers : {};
 
           He(() => {
+            if (!R || !R.id || R.type === "cup" || !R.context || R.context.originSchemaVersion >= 1) return;
+            let db = Ee();
+            if (!db) return;
+            db.ref("pes/tournaments").transaction((serverValue) => {
+              let isArray = Array.isArray(serverValue);
+              let list = isArray ? [...serverValue] : Object.values(serverValue || {});
+              let index = list.findIndex((item) => item && String(item.id) === String(R.id));
+              if (index < 0) return;
+              let tournament = list[index], context = tournament.context && typeof tournament.context === "object" ? { ...tournament.context } : {};
+              if (Number(context.originSchemaVersion || 0) >= 1) return serverValue;
+              let ownership = context.ownership && typeof context.ownership === "object" ? { ...context.ownership } : {};
+              let transfers = Array.isArray(context.transfers) ? context.transfers : [];
+              Object.keys(ownership).forEach((playerId) => {
+                let item = ownership[playerId];
+                if (!item || typeof item !== "object" || item.acquisitionSource) return;
+                let origin = inferPlayerAcquisition(playerId, item, transfers);
+                ownership[playerId] = { ...item, acquisitionSource:origin.acquisitionSource, initialTeamId:origin.initialTeamId || null, originMigratedAt:Date.now() };
+              });
+              list[index] = { ...tournament, context:{ ...context, ownership, originSchemaVersion:1, originMigratedAt:Date.now() } };
+              return isArray ? list : Object.fromEntries(list.map((item,idx) => [item.id || String(idx), item]));
+            }).catch((error) => console.error("player origin migration failed", error));
+          }, [R && R.id]);
+
+          He(() => {
             if (!R || R.type !== "cup" || !R.id) return;
             let linked = R.linkedLeagueId ? m.find((item) => item && String(item.id) === String(R.linkedLeagueId)) : null;
             let linkedTeams = linked && linked.context && Array.isArray(linked.context.teams) ? linked.context.teams.filter(Boolean) : [];
@@ -1156,7 +1181,7 @@
                   participants: [],
                   teamIds: [],
                   createdAt: Date.now(),
-                  marketSettings: { depreciationPct: 10, isOpen: true, freePlayerOverallLimit: { enabled:false, maxOverall:99 } },
+                  marketSettings: { depreciationPct: 10, initialRosterDepreciationPct: 50, isOpen: true, freePlayerOverallLimit: { enabled:false, maxOverall:99 } },
                   rosterSettings: { minPlayers: 23, maxPlayers: 30 },
                   economySettings: { winReward: 2, drawReward: 1 },
                   finalPrizeSettings: { firstPlacePrize: 20, lastPlacePercentage: 50 },
@@ -1489,6 +1514,30 @@
             let limit = settings.freePlayerOverallLimit && typeof settings.freePlayerOverallLimit === "object" ? settings.freePlayerOverallLimit : {};
             return { isOpen: settings.isOpen !== false, freePlayerOverallLimit: { enabled: limit.enabled === true, maxOverall: Math.min(99, Math.max(1, Number(limit.maxOverall != null ? limit.maxOverall : 99) || 99)) } };
           }
+          function inferPlayerAcquisition(playerId, ownershipItem, transfersValue = k) {
+            let item = ownershipItem && typeof ownershipItem === "object" ? ownershipItem : {};
+            if (item.acquisitionSource) return { acquisitionSource:item.acquisitionSource, initialTeamId:item.initialTeamId || null };
+            let history = (Array.isArray(transfersValue) ? transfersValue : []).filter((entry) => entry && String(entry.playerId) === String(playerId)).slice().sort((a,b) => (Number(a.createdAt)||0) - (Number(b.createdAt)||0));
+            let first = history[0] || null;
+            if (item.squadRole) return { acquisitionSource:"initial_roster", initialTeamId:item.initialTeamId || (first && first.fromTeamId) || item.teamId || null };
+            if (first && first.type === "market_purchase") return { acquisitionSource:"market_purchase", initialTeamId:null };
+            if (first && first.type === "user_transfer") return { acquisitionSource:"user_transfer", initialTeamId:null };
+            return { acquisitionSource:"unknown", initialTeamId:null };
+          }
+          function isInitialRosterPlayer(playerId, teamId, ownershipValue = c, transfersValue = k) {
+            let item = ownershipValue && typeof ownershipValue === "object" ? ownershipValue[playerId] : null;
+            if (!item || String(item.teamId) !== String(teamId)) return false;
+            let origin = inferPlayerAcquisition(playerId, item, transfersValue);
+            return origin.acquisitionSource === "initial_roster" && String(origin.initialTeamId || "") === String(teamId);
+          }
+          function marketSaleDepreciation(tournament, playerId, teamId, ownershipValue = c, transfersValue = k) {
+            let settings = tournament && tournament.marketSettings && typeof tournament.marketSettings === "object" ? tournament.marketSettings : {};
+            let initialRoster = isInitialRosterPlayer(playerId, teamId, ownershipValue, transfersValue);
+            let pct = initialRoster
+              ? Number(settings.initialRosterDepreciationPct != null ? settings.initialRosterDepreciationPct : 50)
+              : Number(settings.depreciationPct != null ? settings.depreciationPct : 10);
+            return { depreciationPct:Math.min(100,Math.max(0,pct||0)), initialRoster };
+          }
           function marketOperationBlock(player, status, tournament = R) {
             let settings = marketAccessSettings(tournament);
             if (!settings.isOpen) return { blocked:true, reason:"market_closed", message:"O mercado está fechado pela administração." };
@@ -1683,7 +1732,7 @@
 
               buyer.budget = (Number(buyer.budget) || 0) - Number(offer.currentAmount || 0);
               seller.budget = (Number(seller.budget) || 0) + Number(offer.currentAmount || 0);
-              ownership[playerKey] = { ...(owner || {}), teamId: buyer.id, forSale: false, price: null };
+              ownership[playerKey] = { ...(owner || {}), teamId: buyer.id, forSale: false, price: null, acquisitionSource:"user_transfer", acquiredAt:Date.now() };
               let now = Date.now();
               Object.keys(offers).forEach((id) => {
                 let item = offers[id];
@@ -1751,9 +1800,9 @@
               let atomicCheck = evaluateMarketBalance(o, buyer.id, tournament, teams, ownership, n);
               if (!atomicCheck.allowed) { failureReason="market_balance_lock"; return null; }
               buyer.budget = (Number(buyer.budget)||0) - price;
-              ownership[playerKey] = { ...(currentOwner||{}), teamId:buyer.id, forSale:false, price:null };
+              ownership[playerKey] = { ...(currentOwner||{}), teamId:buyer.id, forSale:false, price:null, acquisitionSource:i.kind === "free" ? "market_purchase" : "user_transfer", acquiredAt:Date.now() };
               let now=Date.now();
-              let transfers=[{ id:_(), championshipId:tournament.id, playerId:o.id, playerName:o.name, fromTeamId:currentOwner&&currentOwner.teamId?currentOwner.teamId:null, toTeamId:buyer.id, price, type:"market_purchase", createdAt:now, date:new Date().toLocaleDateString("pt-BR") }, ...(Array.isArray(context.transfers)?context.transfers:[])];
+              let transfers=[{ id:_(), championshipId:tournament.id, playerId:o.id, playerName:o.name, fromTeamId:currentOwner&&currentOwner.teamId?currentOwner.teamId:null, toTeamId:buyer.id, price, type:i.kind === "free" ? "market_purchase" : "user_transfer", createdAt:now, date:new Date().toLocaleDateString("pt-BR") }, ...(Array.isArray(context.transfers)?context.transfers:[])];
               let financialTransactions=Array.isArray(context.financialTransactions)?[...context.financialTransactions]:[];
               financialTransactions.unshift(financeEntry("market_purchase",buyer.id,-price,`Compra de ${o.name}`,o.id,(Number(buyer.budget)||0)+price,now));
               failureReason=null;
@@ -1788,12 +1837,12 @@
           function wt(o, i, y) {
             if (!marketAccessSettings(R).isOpen) { window.alert("O mercado está fechado pela administração."); return; }
             let D = Math.max(1, Number(y) || o.value);
-            (ne({ ...c, [o.id]: { teamId: i, forSale: !0, price: D } }),
+            (ne({ ...c, [o.id]: { ...(c[o.id] || {}), teamId: i, forSale: !0, price: D } }),
               Ae(null));
           }
           function zt(o, i) {
             if (!marketAccessSettings(R).isOpen) { window.alert("O mercado está fechado pela administração."); return; }
-            ne({ ...c, [o.id]: { teamId: i, forSale: !1, price: null } });
+            ne({ ...c, [o.id]: { ...(c[o.id] || {}), teamId: i, forSale: !1, price: null } });
           }
           function It(o) {
             if (!R || !ProfileTeam || !o) return;
@@ -1803,21 +1852,26 @@
               window.alert(`Você precisa manter no mínimo ${minPlayers} jogadores no elenco.`);
               return;
             }
-            let depreciationPct = Math.min(100, Math.max(0, Number(R.marketSettings && R.marketSettings.depreciationPct != null ? R.marketSettings.depreciationPct : 10) || 0));
-            let amount = Math.ceil((Number(o.value) || 0) * (1 - depreciationPct / 100));
-            setSaleModal({ player: o, depreciationPct, amount });
+            let saleRule = marketSaleDepreciation(R, o.id, ProfileTeam.id);
+            let amount = Math.ceil((Number(o.value) || 0) * (1 - saleRule.depreciationPct / 100));
+            setSaleModal({ player: o, depreciationPct:saleRule.depreciationPct, amount, initialRoster:saleRule.initialRoster });
           }
           function confirmMarketSale(o) {
             if (!R || !ProfileTeam || !o) return;
             if (!marketAccessSettings(R).isOpen) { window.alert("O mercado está fechado pela administração."); return; }
-            let depreciationPct = Math.min(100, Math.max(0, Number(R.marketSettings && R.marketSettings.depreciationPct != null ? R.marketSettings.depreciationPct : 10) || 0));
-            let amount = Math.ceil((Number(o.value) || 0) * (1 - depreciationPct / 100));
+            let localSaleRule = marketSaleDepreciation(R, o.id, ProfileTeam.id);
+            let amount = Math.ceil((Number(o.value) || 0) * (1 - localSaleRule.depreciationPct / 100));
+            let depreciationPct = localSaleRule.depreciationPct;
             let tournamentId = R.id, teamId = ProfileTeam.id, now = Date.now();
             let applySale = (tournament) => {
               let context = { ...(tournament.context || {}) };
               let ownership = { ...(context.ownership || {}) };
               let current = ownership[o.id];
               if (!current || current.teamId !== teamId) return null;
+              let serverTransfers = Array.isArray(context.transfers) ? context.transfers : [];
+              let serverRule = marketSaleDepreciation(tournament, o.id, teamId, ownership, serverTransfers);
+              depreciationPct = serverRule.depreciationPct;
+              amount = Math.ceil((Number(o.value) || 0) * (1 - depreciationPct / 100));
               let minPlayers = Math.max(0, Number(tournament.rosterSettings && tournament.rosterSettings.minPlayers != null ? tournament.rosterSettings.minPlayers : 23) || 0);
               let rosterSize = Object.values(ownership).filter((item) => item && item.teamId === teamId).length;
               if (rosterSize <= minPlayers) return null;
@@ -1876,7 +1930,7 @@
                 if (current && current.teamId && current.teamId !== entry.teamId && !targetTeamIds.includes(current.teamId)) {
                   return null;
                 }
-                ownership[entry.playerId] = { teamId: entry.teamId, forSale: false, price: null, squadRole: entry.squadRole || null };
+                ownership[entry.playerId] = { teamId: entry.teamId, forSale: false, price: null, squadRole: entry.squadRole || null, acquisitionSource:"initial_roster", initialTeamId:entry.teamId, importedAt:Date.now() };
               }
               let imports = Array.isArray(context.adminImports) ? [...context.adminImports] : [];
               imports.unshift({ id: _(), type: "roster_txt", importedAt: Date.now(), importedByProfileId: te && te.id ? te.id : null, mode, playerCount: plan.entries.length, teamCount: targetTeamIds.length });
@@ -2197,7 +2251,7 @@
               champion: null, createdAt: Date.now(),
               sourceChampionshipId: source ? source.id : null,
               inheritance: source ? inheritance : null,
-              marketSettings: source && source.marketSettings ? { ...source.marketSettings } : { depreciationPct: 10, isOpen:true, freePlayerOverallLimit:{enabled:false,maxOverall:99} },
+              marketSettings: source && source.marketSettings ? { ...source.marketSettings } : { depreciationPct: 10, initialRosterDepreciationPct:50, isOpen:true, freePlayerOverallLimit:{enabled:false,maxOverall:99} },
               rosterSettings: source && source.rosterSettings ? { ...source.rosterSettings } : { minPlayers: 23, maxPlayers: 30 },
               economySettings: source && source.economySettings ? { ...source.economySettings } : { winReward: 2, drawReward: 1 },
               finalPrizeSettings: source && source.finalPrizeSettings ? { ...source.finalPrizeSettings } : { firstPlacePrize: 20, lastPlacePercentage: 50 },
@@ -2409,10 +2463,11 @@
             });
             ae(m.map((item)=>item.id===R.id?{...item,status:"finished",champion:rows[0].id,finishedAt:now,finalAwards:awards,finalStandings,context:{...(item.context||{}),teams,playerStats:nextStats,financialTransactions:transactions}}:item));
           }
-          function updateMarketDepreciation(value) {
+          function updateMarketDepreciation(value, field = "depreciationPct") {
             if (!R) return;
             let pct = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
-            ae(m.map((item) => item.id === R.id ? { ...item, marketSettings: { ...(item.marketSettings || {}), depreciationPct: pct } } : item));
+            let safeField = field === "initialRosterDepreciationPct" ? "initialRosterDepreciationPct" : "depreciationPct";
+            ae(m.map((item) => item.id === R.id ? { ...item, marketSettings: { ...(item.marketSettings || {}), [safeField]: pct } } : item));
           }
           function updateMarketAccessRules(isOpen, limitEnabled, maxOverall) {
             if (!R) return;
@@ -2979,6 +3034,7 @@
                           onGoMarket: () => oe("market"),
                           rosterSettings: R && R.rosterSettings ? R.rosterSettings : { minPlayers: 23, maxPlayers: 30 },
                           readOnly: !!(R && (R.status === "finished" || R.type === "cup")),
+                          baseRosterPlayerIds: ProfileTeam ? Oe(ProfileTeam.id).filter((player) => isInitialRosterPlayer(player.id, ProfileTeam.id)).map((player) => String(player.id)) : [],
                         }),
 
                       Y === "market" &&
@@ -3017,6 +3073,7 @@
                           onUpdateBudget: updateAdminBudget, onToggleParticipant: toggleTournamentParticipant,
                           onDeleteProfile: deleteGlobalProfile, onResetTournament: resetCurrentTournament, onRemoveOrphanParticipant: removeOrphanParticipant, onRestoreOrphanProfile: restoreOrphanProfile,
                           onUpdateMarketDepreciation: updateMarketDepreciation,
+                          onUpdateInitialRosterDepreciation: (value) => updateMarketDepreciation(value, "initialRosterDepreciationPct"),
                           onUpdateMarketBalanceRules: updateMarketBalanceRules,
                           onUpdateMarketAccessRules: updateMarketAccessRules,
                           onUpdateRosterRules: updateRosterRules,
@@ -3788,7 +3845,7 @@
           let code = codes[normalized];
           return code ? code.replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt())) : "🌐";
         }
-        function UnifiedPlayerCard({ player, actionLabel, actionDisabled=false, onAction=null, onOpen=null, className="", isFavorite=false, onToggleFavorite=null, dimmed=false }) {
+        function UnifiedPlayerCard({ player, actionLabel, actionDisabled=false, onAction=null, onOpen=null, className="", isFavorite=false, onToggleFavorite=null, dimmed=false, isInitialRoster=false }) {
           let flag = nationalityFlag(player.nationality);
           return React.createElement("article", {
             className:`tapbtn unified-player-card ${className}`.trim(),
@@ -3796,6 +3853,7 @@
             style:{ position:"relative", cursor:onOpen?"pointer":"default", overflow:"hidden", background:`linear-gradient(155deg, color-mix(in srgb, ${overallColor(player.overall)} 19%, var(--surface)) 0%, var(--surface-soft) 52%, var(--surface) 100%)`, border:`1px solid color-mix(in srgb, ${overallColor(player.overall)} 45%, var(--border))`, boxShadow:`0 18px 44px color-mix(in srgb, ${overallColor(player.overall)} 10%, transparent)`, textAlign:"left", color:"var(--heading)", opacity:dimmed?.62:1, filter:dimmed?"saturate(.65)":undefined }
           },
             React.createElement("div", { style:{ position:"absolute", width:120, height:120, right:-45, top:-45, borderRadius:999, background:overallColor(player.overall), opacity:.12, filter:"blur(18px)" } }),
+            isInitialRoster && React.createElement("span", { title:"Elenco-base · jogador do elenco inicial", style:{ position:"absolute", zIndex:3, top:10, right:onToggleFavorite?48:10, width:30, height:30, borderRadius:999, display:"grid", placeItems:"center", border:"1px solid color-mix(in srgb, var(--yellow) 45%, var(--border))", background:"color-mix(in srgb, var(--yellow) 14%, var(--surface))", color:"var(--yellow)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)" } }, React.createElement(BaseRosterIcon,{ size:16,color:"currentColor" })),
             onToggleFavorite && React.createElement("button", {
               className:"tapbtn", title:isFavorite?"Remover dos favoritos":"Adicionar aos favoritos", "aria-label":isFavorite?"Remover dos favoritos":"Adicionar aos favoritos",
               onClick:(event)=>{event.stopPropagation();onToggleFavorite(player)},
@@ -3837,6 +3895,7 @@
           viewerTrophies = null,
           readOnlyActionLabel = null,
           onReadOnlyAction = null,
+          baseRosterPlayerIds = [],
         }) {
           let s = e.find((h) => h.id === t);
           if (!s) return React.createElement("div", { style: E }, "Nenhum time selecionado.");
@@ -3875,6 +3934,7 @@
               key:player.id, player, onOpen:c,
               actionLabel:readOnly?readOnlyActionLabel:"Vender ao mercado",
               actionDisabled:readOnly?!onReadOnlyAction:cannotSell,
+              isInitialRoster:baseRosterPlayerIds.includes(String(player.id)),
               onAction:()=>{ if(readOnly){ if(onReadOnlyAction) onReadOnlyAction(player); } else if(!cannotSell) p(player); }
             });
           }
@@ -4381,25 +4441,13 @@
         }
         function PlayerReportModal({ player, onClose, onSubmit }) {
           let [overall,setOverall]=b(""),[value,setValue]=b("");
-          let color=overallColor(player.overall), flag=nationalityFlag(player.nationality);
           return React.createElement(ee,{title:"Sugerir correção",onClose},
-            React.createElement("div",{style:{...E,padding:16,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:16}},
-              React.createElement("div",{style:{minWidth:0}},
-                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,minWidth:0}},
-                  React.createElement("strong",{style:{fontSize:17,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},player.name),
-                  React.createElement("span",{title:player.nationality||"Nacionalidade não informada",style:{flex:"0 0 auto",fontSize:15,lineHeight:1}},flag)
-                ),
-                React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginTop:5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},player.club||"Clube não informado")
-              ),
-              React.createElement("div",{style:{flex:"0 0 auto",display:"flex",alignItems:"center",gap:12}},
-                React.createElement("span",{style:{minWidth:48,height:42,padding:"0 10px",borderRadius:14,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:900,fontVariantNumeric:"tabular-nums",color,border:`2px solid ${color}`,background:`color-mix(in srgb, ${color} 10%, transparent)`}},player.overall),
-                React.createElement("span",{style:{height:42,padding:"0 11px",borderRadius:14,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,fontSize:14,fontWeight:850,fontVariantNumeric:"tabular-nums",color:"var(--heading)",border:"1px solid var(--border)",background:"var(--surface-soft)"}},React.createElement(BankIcon,{size:15,color:"currentColor"}),L(player.value))
-              )
-            ),
+            React.createElement("div",{style:{...E,padding:16,marginBottom:14}},React.createElement("strong",{style:{fontSize:17}},player.name),React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginTop:4}},"A sugestão será analisada por outros usuários.")),
             React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}},
-              React.createElement("div",null,React.createElement("label",{style:P},"Novo overall"),React.createElement("input",{type:"number",min:1,max:99,step:1,value:overall,placeholder:String(player.overall),onChange:(ev)=>setOverall(ev.target.value),style:q})),
-              React.createElement("div",null,React.createElement("label",{style:P},"Novo valor de mercado"),React.createElement("input",{type:"number",min:1,step:1,value:value,placeholder:String(player.value),onChange:(ev)=>setValue(ev.target.value),style:q}))
+              React.createElement("div",null,React.createElement("label",{style:P},"Novo overall"),React.createElement("input",{type:"number",min:1,max:99,step:1,value:overall,placeholder:`Atual: ${player.overall}`,onChange:(ev)=>setOverall(ev.target.value),style:q})),
+              React.createElement("div",null,React.createElement("label",{style:P},"Novo valor de mercado"),React.createElement("input",{type:"number",min:1,step:1,value:value,placeholder:`Atual: ${L(player.value)}`,onChange:(ev)=>setValue(ev.target.value),style:q}))
             ),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted)",lineHeight:1.5,marginTop:12}},"Você pode preencher apenas um dos campos. O valor de mercado é informado em milhões."),
             React.createElement("button",{className:"tapbtn",onClick:()=>onSubmit(player,{overall,value}),style:{...M,...W,width:"100%",marginTop:18}},"Enviar para revisão")
           );
         }
@@ -4583,7 +4631,7 @@
         }
         function ChampionshipRulesModal({ tournament, onClose }) {
           let economy=economySettingsOf(tournament), prize=prizeSettingsOf(tournament), roster=tournament.rosterSettings||{minPlayers:23,maxPlayers:30}, depreciation=tournament.marketSettings&&tournament.marketSettings.depreciationPct!=null?tournament.marketSettings.depreciationPct:10;
-          return React.createElement(ee, { title:"Regras do campeonato",onClose }, [["Vitória",`3 pontos · ${L(economy.winReward)}`],["Empate",`1 ponto · ${L(economy.drawReward)}`],["Derrota","0 pontos · 0M"],["Premiação final",`${L(prize.firstPlacePrize)} no 1º · último recebe ${prize.lastPlacePercentage}%`],["Elenco",`${roster.minPlayers} a ${roster.maxPlayers} jogadores`],["Venda ao mercado",`${depreciation}% de depreciação`],["Status do mercado", tournament&&tournament.marketSettings&&tournament.marketSettings.isOpen===false?"fechado":"aberto"],["Limite de overall", tournament&&tournament.marketSettings&&tournament.marketSettings.freePlayerOverallLimit&&tournament.marketSettings.freePlayerOverallLimit.enabled?`até ${Number(tournament.marketSettings.freePlayerOverallLimit.maxOverall||99)} OVR para jogadores livres`:"desativado"],["Equilíbrio do mercado", tournament && tournament.marketBalanceSettings && tournament.marketBalanceSettings.enabled ? `máx. ${Number(tournament.marketBalanceSettings.maxDifference||0).toFixed(1)} OVR` : "desativado"]].map(([label,value])=>React.createElement("div", { key:label,style:{ display:"flex",justifyContent:"space-between",gap:14,padding:"12px 0",borderBottom:"1px solid var(--border)",fontSize:13 } }, React.createElement("span", { style:{ color:"var(--muted)" } }, label), React.createElement("strong", { style:{ textAlign:"right" } }, value))));
+          return React.createElement(ee, { title:"Regras do campeonato",onClose }, [["Vitória",`3 pontos · ${L(economy.winReward)}`],["Empate",`1 ponto · ${L(economy.drawReward)}`],["Derrota","0 pontos · 0M"],["Premiação final",`${L(prize.firstPlacePrize)} no 1º · último recebe ${prize.lastPlacePercentage}%`],["Elenco",`${roster.minPlayers} a ${roster.maxPlayers} jogadores`],["Venda ao mercado",`${depreciation}% de depreciação`],["Venda de elenco-base",`${tournament&&tournament.marketSettings&&tournament.marketSettings.initialRosterDepreciationPct!=null?tournament.marketSettings.initialRosterDepreciationPct:50}% de depreciação`],["Status do mercado", tournament&&tournament.marketSettings&&tournament.marketSettings.isOpen===false?"fechado":"aberto"],["Limite de overall", tournament&&tournament.marketSettings&&tournament.marketSettings.freePlayerOverallLimit&&tournament.marketSettings.freePlayerOverallLimit.enabled?`até ${Number(tournament.marketSettings.freePlayerOverallLimit.maxOverall||99)} OVR para jogadores livres`:"desativado"],["Equilíbrio do mercado", tournament && tournament.marketBalanceSettings && tournament.marketBalanceSettings.enabled ? `máx. ${Number(tournament.marketBalanceSettings.maxDifference||0).toFixed(1)} OVR` : "desativado"]].map(([label,value])=>React.createElement("div", { key:label,style:{ display:"flex",justifyContent:"space-between",gap:14,padding:"12px 0",borderBottom:"1px solid var(--border)",fontSize:13 } }, React.createElement("span", { style:{ color:"var(--muted)" } }, label), React.createElement("strong", { style:{ textAlign:"right" } }, value))));
         }
         function MarketAccessAdminForm({ tournament, onSave }) {
           let settings=tournament&&tournament.marketSettings&&typeof tournament.marketSettings==="object"?tournament.marketSettings:{};
@@ -4673,7 +4721,7 @@
                   React.createElement("strong", { style: { color: "var(--heading)" } }, L(player.value)),
                 ),
                 React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 16, padding: "12px 0", borderTop: "1px solid var(--border)" } },
-                  React.createElement("span", { style: { color: "var(--muted)", fontSize: 13 } }, "Taxa do Lobo Pidão 🐺"),
+                  React.createElement("span", { style: { color: "var(--muted)", fontSize: 13 } }, data.initialRoster ? "Depreciação do elenco-base" : "Taxa do Lobo Pidão 🐺"),
                   React.createElement("strong", { style: { color: "var(--danger)" } }, "−", data.depreciationPct, "%"),
                 ),
                 React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, paddingTop: 14, borderTop: "1px solid var(--border)" } },
@@ -4681,6 +4729,7 @@
                   React.createElement("strong", { style: { color: "var(--green)", fontSize: 26, lineHeight: 1 } }, L(data.amount)),
                 ),
               ),
+              data.initialRoster && React.createElement("div", { style:{ padding:"12px 14px", borderRadius:14, background:"color-mix(in srgb, var(--yellow) 10%, transparent)", border:"1px solid color-mix(in srgb, var(--yellow) 28%, var(--border))", color:"var(--body)", fontSize:12.5, lineHeight:1.45, marginBottom:10 } }, "Este jogador fazia parte do seu elenco inicial e possui uma taxa de venda diferente."),
               React.createElement("div", { style: { padding: "12px 14px", borderRadius: 14, background: "color-mix(in srgb, var(--danger) 9%, transparent)", color: "var(--muted)", fontSize: 12.5, lineHeight: 1.45, marginBottom: 20 } }, "A venda é imediata e não pode ser desfeita. Propostas abertas por este jogador serão encerradas."),
               React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
                 React.createElement("button", { className: "tapbtn", onClick: onClose, style: { ...M, margin: 0, background: "var(--surface-soft)", border: "1px solid var(--border)", color: "var(--heading)" } }, "Cancelar"),
@@ -5442,7 +5491,7 @@
           return {version,type,name,groups,matches,champion,runner,names};
         }
 
-        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onRemoveOrphanParticipant, onRestoreOrphanProfile, onUpdateMarketDepreciation, onUpdateMarketBalanceRules, onUpdateMarketAccessRules, onUpdateRosterRules, onUpdateEconomyRules, onFinishTournament, catalog, onImportRosters, onImportHistoricalCompetition }) {
+        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onRemoveOrphanParticipant, onRestoreOrphanProfile, onUpdateMarketDepreciation, onUpdateInitialRosterDepreciation, onUpdateMarketBalanceRules, onUpdateMarketAccessRules, onUpdateRosterRules, onUpdateEconomyRules, onFinishTournament, catalog, onImportRosters, onImportHistoricalCompetition }) {
           let globalProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.active !== false);
           let participants = currentTournament && Array.isArray(currentTournament.participants) ? currentTournament.participants : [];
           let globalProfileIds = new Set(globalProfiles.map((profile) => String(profile.id)));
@@ -5738,7 +5787,14 @@
                 React.createElement("input", { type: "range", min: 0, max: 100, step: 1, value: currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10, onChange: (event) => onUpdateMarketDepreciation(event.target.value), style: { width: "100%", accentColor: "var(--green)" } }),
                 React.createElement("div", { style: { minWidth: 68, textAlign: "center", padding: "9px 10px", borderRadius: 10, background: "var(--surface-soft)", fontWeight: 800 } }, (currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10), "%")
               ),
-              React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 10 } }, "Exemplo: um jogador de 15 moedas rende ", Math.ceil(15 * (1 - (currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10) / 100)), " moedas.")
+              React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 10 } }, "Exemplo: um jogador de 15 moedas rende ", Math.ceil(15 * (1 - (currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10) / 100)), " moedas."),
+              React.createElement("div", { style:{ height:1, background:"var(--border)", margin:"20px 0" } }),
+              React.createElement("label", { style: P }, "Depreciação do elenco-base"),
+              React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" } },
+                React.createElement("input", { type: "range", min: 0, max: 100, step: 1, value: currentTournament.marketSettings && currentTournament.marketSettings.initialRosterDepreciationPct != null ? currentTournament.marketSettings.initialRosterDepreciationPct : 50, onChange: (event) => onUpdateInitialRosterDepreciation(event.target.value), style: { width: "100%", accentColor: "var(--green)" } }),
+                React.createElement("div", { style: { minWidth: 68, textAlign: "center", padding: "9px 10px", borderRadius: 10, background: "var(--surface-soft)", fontWeight: 800 } }, (currentTournament.marketSettings && currentTournament.marketSettings.initialRosterDepreciationPct != null ? currentTournament.marketSettings.initialRosterDepreciationPct : 50), "%")
+              ),
+              React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 10, lineHeight:1.45 } }, "Aplicada somente ao vender para o mercado um jogador que ainda pertence ao time para o qual foi importado originalmente.")
             ),
             adminSection === "rules" && currentTournament && React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Regras do elenco"),
@@ -6024,6 +6080,7 @@
               React.createElement(io, {
                 teams:[team], activeTeamId:team.id, setActiveTeamId:()=>{}, onNewTeam:null, onDeleteTeam:()=>{},
                 squadOf, onSellToMarket:()=>{}, depreciationPct:0, ownership, onOpenDetail:(player)=>onOpenDetail({ player, fromOtherTeam:true }), onGoMarket:()=>{},
+                baseRosterPlayerIds:squadOf(team.id).filter((player)=>{ let item=ownership&&ownership[player.id]; return item&&item.acquisitionSource==="initial_roster"&&String(item.initialTeamId||"")===String(team.id); }).map((player)=>String(player.id)),
                 rosterSettings:tournament&&tournament.rosterSettings?tournament.rosterSettings:{minPlayers:23,maxPlayers:30},
                 readOnly:true, onBack:onClose, viewerProfile:profile,
                 readOnlyActionLabel:"Fazer oferta", onReadOnlyAction:onOfferPlayer,
