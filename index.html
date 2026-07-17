@@ -4381,13 +4381,25 @@
         }
         function PlayerReportModal({ player, onClose, onSubmit }) {
           let [overall,setOverall]=b(""),[value,setValue]=b("");
+          let color=overallColor(player.overall), flag=nationalityFlag(player.nationality);
           return React.createElement(ee,{title:"Sugerir correção",onClose},
-            React.createElement("div",{style:{...E,padding:16,marginBottom:14}},React.createElement("strong",{style:{fontSize:17}},player.name),React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginTop:4}},"A sugestão será analisada por outros usuários.")),
-            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}},
-              React.createElement("div",null,React.createElement("label",{style:P},"Novo overall"),React.createElement("input",{type:"number",min:1,max:99,step:1,value:overall,placeholder:`Atual: ${player.overall}`,onChange:(ev)=>setOverall(ev.target.value),style:q})),
-              React.createElement("div",null,React.createElement("label",{style:P},"Novo valor de mercado"),React.createElement("input",{type:"number",min:1,step:1,value:value,placeholder:`Atual: ${L(player.value)}`,onChange:(ev)=>setValue(ev.target.value),style:q}))
+            React.createElement("div",{style:{...E,padding:16,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:16}},
+              React.createElement("div",{style:{minWidth:0}},
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,minWidth:0}},
+                  React.createElement("strong",{style:{fontSize:17,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},player.name),
+                  React.createElement("span",{title:player.nationality||"Nacionalidade não informada",style:{flex:"0 0 auto",fontSize:15,lineHeight:1}},flag)
+                ),
+                React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginTop:5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},player.club||"Clube não informado")
+              ),
+              React.createElement("div",{style:{flex:"0 0 auto",display:"flex",alignItems:"center",gap:12}},
+                React.createElement("span",{style:{minWidth:48,height:42,padding:"0 10px",borderRadius:14,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:900,fontVariantNumeric:"tabular-nums",color,border:`2px solid ${color}`,background:`color-mix(in srgb, ${color} 10%, transparent)`}},player.overall),
+                React.createElement("span",{style:{height:42,padding:"0 11px",borderRadius:14,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,fontSize:14,fontWeight:850,fontVariantNumeric:"tabular-nums",color:"var(--heading)",border:"1px solid var(--border)",background:"var(--surface-soft)"}},React.createElement(BankIcon,{size:15,color:"currentColor"}),L(player.value))
+              )
             ),
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted)",lineHeight:1.5,marginTop:12}},"Você pode preencher apenas um dos campos. O valor de mercado é informado em milhões."),
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}},
+              React.createElement("div",null,React.createElement("label",{style:P},"Novo overall"),React.createElement("input",{type:"number",min:1,max:99,step:1,value:overall,placeholder:String(player.overall),onChange:(ev)=>setOverall(ev.target.value),style:q})),
+              React.createElement("div",null,React.createElement("label",{style:P},"Novo valor de mercado"),React.createElement("input",{type:"number",min:1,step:1,value:value,placeholder:String(player.value),onChange:(ev)=>setValue(ev.target.value),style:q}))
+            ),
             React.createElement("button",{className:"tapbtn",onClick:()=>onSubmit(player,{overall,value}),style:{...M,...W,width:"100%",marginTop:18}},"Enviar para revisão")
           );
         }
