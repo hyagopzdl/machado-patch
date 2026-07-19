@@ -2236,6 +2236,7 @@
                           rosterSettings: R && R.rosterSettings ? R.rosterSettings : { minPlayers: 23, maxPlayers: 30 },
                           readOnly: !!(R && (R.status === "finished" || R.type === "cup")),
                           baseRosterPlayerIds: ProfileTeam ? Oe(ProfileTeam.id).filter((player) => isInitialRosterPlayer(player.id, ProfileTeam.id)).map((player) => String(player.id)) : [],
+                          onSaveLineup: (teamId, lineup) => Se(p.map((team) => team && String(team.id) === String(teamId) ? { ...team, lineup } : team)),
                         }),
 
                       Y === "market" &&
@@ -3097,10 +3098,42 @@
           readOnlyActionLabel = null,
           onReadOnlyAction = null,
           baseRosterPlayerIds = [],
+          onSaveLineup = null,
         }) {
           let s = e.find((h) => h.id === t);
           if (!s) return React.createElement("div", { style: E }, "Nenhum time selecionado.");
           let squad = r(s.id).slice();
+          let [squadView, setSquadView] = b("roster");
+          let savedLineup = s.lineup && typeof s.lineup === "object" ? s.lineup : {};
+          let [formation, setFormation] = b(savedLineup.formation || "4-3-3");
+          let [assignments, setAssignments] = b(savedLineup.assignments && typeof savedLineup.assignments === "object" ? savedLineup.assignments : {});
+          let [lineupPicker, setLineupPicker] = b(null);
+          He(() => {
+            let current = s.lineup && typeof s.lineup === "object" ? s.lineup : {};
+            setFormation(current.formation || "4-3-3");
+            setAssignments(current.assignments && typeof current.assignments === "object" ? current.assignments : {});
+          }, [s.id, s.lineup && s.lineup.updatedAt]);
+          let lineupSlots = window.PESLineups ? window.PESLineups.slots(formation) : [];
+          let playerById = new Map(squad.map((player) => [String(player.id), player]));
+          let starterIds = new Set(Object.values(assignments || {}).filter(Boolean).map(String));
+          let benchPlayers = squad.filter((player) => !starterIds.has(String(player.id))).sort((x,y)=>(y.overall||0)-(x.overall||0));
+          function saveLineup(nextFormation = formation, nextAssignments = assignments) {
+            let payload = { formation:nextFormation, assignments:nextAssignments, updatedAt:Date.now() };
+            setFormation(nextFormation);
+            setAssignments(nextAssignments);
+            if (onSaveLineup) onSaveLineup(s.id, payload);
+          }
+          function autoOrganize(nextFormation = formation) {
+            let next = window.PESLineups ? window.PESLineups.autoAssign(squad, nextFormation) : {};
+            saveLineup(nextFormation, next);
+          }
+          function chooseLineupPlayer(slotId, playerId) {
+            let next = { ...(assignments || {}) };
+            Object.keys(next).forEach((key) => { if (String(next[key]) === String(playerId)) delete next[key]; });
+            if (playerId) next[slotId] = String(playerId); else delete next[slotId];
+            saveLineup(formation, next);
+            setLineupPicker(null);
+          }
           let minPlayers = Math.max(0, Number(rosterSettings && rosterSettings.minPlayers != null ? rosterSettings.minPlayers : 23) || 0);
           let maxPlayers = Math.max(minPlayers, Number(rosterSettings && rosterSettings.maxPlayers != null ? rosterSettings.maxPlayers : 30) || 30);
           let groups = {
@@ -3140,8 +3173,53 @@
               onAction:()=>{ if(readOnly){ if(onReadOnlyAction) onReadOnlyAction(player); } else if(!cannotSell) p(player); }
             });
           }
+          if (squadView === "formation") {
+            let selectedSlot = lineupPicker ? lineupSlots.find((slot)=>slot.id===lineupPicker.slotId) : null;
+            let recommended = selectedSlot && window.PESLineups ? squad.slice().sort((a,b)=>window.PESLineups.score(b,selectedSlot.position)-window.PESLineups.score(a,selectedSlot.position)) : squad;
+            return React.createElement("div", null,
+              onBack && React.createElement("button", { onClick:onBack, className:"tapbtn", style:{ marginBottom:16, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--heading)", borderRadius:999, padding:"9px 14px", fontWeight:750, cursor:"pointer" } }, "← Voltar para a tabela"),
+              React.createElement("div", { className:"squad-segmented" },
+                React.createElement("button", { onClick:()=>setSquadView("roster") }, "Elenco"),
+                React.createElement("button", { className:"is-active", onClick:()=>setSquadView("formation") }, "Formação")
+              ),
+              React.createElement("section", { style:{ ...E, padding:"clamp(16px,3vw,26px)" } },
+                React.createElement("div", { className:"lineup-toolbar" },
+                  React.createElement("div", null,
+                    React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em", fontWeight:800, marginBottom:5 } }, "Escalação"),
+                    React.createElement("h1", { style:{ margin:0, fontSize:24 } }, s.name)
+                  ),
+                  React.createElement("div", { style:{ display:"flex", gap:8, flexWrap:"wrap" } },
+                    React.createElement("select", { value:formation, disabled:readOnly, onChange:(event)=>{let value=event.target.value;autoOrganize(value)}, style:q }, Object.keys((window.PESLineups&&window.PESLineups.presets)||{}).map((name)=>React.createElement("option",{key:name,value:name},name))),
+                    React.createElement("button", { disabled:readOnly||!squad.length, onClick:()=>autoOrganize(), className:"family-pill-primary", style:{ padding:"10px 16px", cursor:readOnly?"default":"pointer", opacity:readOnly?.55:1 } }, "Auto organizar")
+                  )
+                ),
+                !squad.length ? React.createElement("div", { style:{ padding:30, textAlign:"center", color:"var(--muted)" } }, "Seu elenco está vazio.") : React.createElement(React.Fragment,null,
+                  React.createElement("div", { className:"lineup-field" }, lineupSlots.map((slot)=>{let player=playerById.get(String(assignments[slot.id]||""));return React.createElement("button", { key:slot.id, className:`lineup-slot${player?"":" is-empty"}`, disabled:readOnly, onClick:()=>setLineupPicker({slotId:slot.id}), style:{left:`${slot.x}%`,top:`${slot.y}%`} },
+                    React.createElement("span", { className:"lineup-slot-avatar" }, player&&player.photo?React.createElement("img",{src:player.photo,alt:""}):player?String(player.name||"?").slice(0,2).toUpperCase():slot.position),
+                    player&&React.createElement("span",{className:"lineup-slot-overall"},player.overall||"—"),
+                    React.createElement("span",{className:"lineup-slot-name"},player?(player.name||"Jogador"):slot.position)
+                  )})),
+                  React.createElement("div", { className:"lineup-bench" },
+                    React.createElement("div", { style:{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 } },React.createElement("h2",{style:{margin:0,fontSize:18}},"Reservas"),React.createElement("span",{style:{fontSize:12,color:"var(--muted)"}},benchPlayers.length)),
+                    React.createElement("div", { className:"lineup-bench-list" }, benchPlayers.map((player)=>React.createElement("div", { key:player.id, className:"lineup-bench-player" },player.photo&&React.createElement("img",{src:player.photo,alt:""}),React.createElement("div",{style:{fontSize:11,fontWeight:850,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:5}},player.name),React.createElement("div",{style:{fontSize:10,color:"var(--muted)",marginTop:3}},`${player.position} · ${player.overall}`))))
+                  )
+                )
+              ),
+              lineupPicker && selectedSlot && React.createElement("div", { className:"sports-modal-overlay", onClick:()=>setLineupPicker(null), style:{position:"fixed",inset:0,background:"var(--overlay)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:1000} },
+                React.createElement("div", { className:"sports-modal", onClick:(event)=>event.stopPropagation(), style:{width:"min(620px,100%)",maxHeight:"88vh",overflow:"hidden"} },
+                  React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},React.createElement("div",null,React.createElement("div",{style:{fontSize:11,color:"var(--green)",fontWeight:850,textTransform:"uppercase"}},selectedSlot.position),React.createElement("h2",{style:{margin:"4px 0 0"}},"Escolher titular")),React.createElement("button",{onClick:()=>setLineupPicker(null),style:{border:0,background:"transparent",color:"var(--heading)",fontSize:22,cursor:"pointer"}},"×")),
+                  assignments[selectedSlot.id]&&React.createElement("button",{onClick:()=>chooseLineupPlayer(selectedSlot.id,null),style:{...M,margin:"0 0 10px",background:"var(--surface-soft)",color:"var(--danger)"}},"Remover desta posição"),
+                  React.createElement("div",{className:"lineup-picker-list"},recommended.map((player,index)=>React.createElement("button",{key:player.id,className:"lineup-picker-item",onClick:()=>chooseLineupPlayer(selectedSlot.id,player.id)},player.photo?React.createElement("img",{src:player.photo,alt:""}):React.createElement("div",{style:{width:46,height:46,borderRadius:"50%",display:"grid",placeItems:"center",background:"var(--surface-soft)",fontWeight:900}},String(player.name||"?").slice(0,2)),React.createElement("div",null,React.createElement("div",{style:{fontWeight:850}},player.name),React.createElement("div",{style:{fontSize:11,color:"var(--muted)",marginTop:3}},`${player.position}${index<4?" · Recomendado":""}`)),React.createElement("strong",{style:{fontSize:16,color:overallColor(player.overall)}},player.overall))))
+                )
+              )
+            );
+          }
           return React.createElement("div", null,
             onBack && React.createElement("button", { onClick:onBack, className:"tapbtn", style:{ marginBottom:16, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--heading)", borderRadius:999, padding:"9px 14px", fontWeight:750, cursor:"pointer" } }, "← Voltar para a tabela"),
+            React.createElement("div", { className:"squad-segmented" },
+              React.createElement("button", { className:"is-active", onClick:()=>setSquadView("roster") }, "Elenco"),
+              React.createElement("button", { onClick:()=>setSquadView("formation") }, "Formação")
+            ),
             React.createElement("section", { style:{ ...E, padding:"clamp(18px,3vw,28px)", marginBottom:24, background:"linear-gradient(145deg, color-mix(in srgb, var(--green) 7%, var(--surface)), var(--surface) 44%, color-mix(in srgb, var(--accent) 5%, var(--surface)))" } },
               React.createElement("div", { style:{ textAlign:"center", padding:"4px 0 22px" } },
                 React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", marginBottom:7, textTransform:"uppercase", letterSpacing:".08em", fontWeight:750 } }, readOnly ? (viewerProfile ? `Time de ${viewerProfile.name}` : "Elenco do participante") : "Meu elenco"),

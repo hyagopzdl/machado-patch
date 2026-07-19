@@ -20,3 +20,13 @@ Acesse `http://localhost:8000`. Não abra o HTML diretamente via `file://`, pois
 - `js/utils.js`: utilitários puros.
 - `js/components/`: componentes visuais compartilhados.
 - `js/features/`: regras puras por domínio.
+
+## Escalacoes e formacoes - v1
+
+- Segmented control entre Elenco e Formacao.
+- Presets: 4-3-3, 4-2-3-1, 4-4-2, 4-1-2-1-2, 3-5-2, 5-4-1, 5-3-2 e 3-4-3.
+- Auto-organizacao por compatibilidade de posicao e overall.
+- Troca de titulares tocando em um slot do campo.
+- Banco de reservas calculado automaticamente.
+- Persistencia em `team.lineup`, dentro do contexto atual do campeonato.
+- Drag and drop e formacao personalizada ficam fora desta primeira iteracao.
