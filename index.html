@@ -4049,6 +4049,7 @@
           marketRules = { isOpen:true, freePlayerOverallLimit:{enabled:false,maxOverall:99} },
           onOpenReviews: onOpenReviews,
         }) {
+          let catalogValueCeiling = Math.max(333, ...(Array.isArray(e) ? e : []).map((player) => Number(player && player.value) || 0));
           let [marketSection, setMarketSection] = b("all"),
             [clubQuery, setClubQuery] = b(""),
             [positionFilter, setPositionFilter] = b("all"),
@@ -4058,7 +4059,7 @@
             [overallMin, setOverallMin] = b(70),
             [overallMax, setOverallMax] = b(99),
             [valueMin, setValueMin] = b(3),
-            [valueMax, setValueMax] = b(333),
+            [valueMax, setValueMax] = b(catalogValueCeiling),
             loadMoreSentinel = React.useRef(null);
 
           let favoriteSet = X(() => new Set((Array.isArray(favoritePlayerIds) ? favoritePlayerIds : []).map((id) => String(id))), [favoritePlayerIds]);
@@ -4091,7 +4092,7 @@
             () => activeTeam ? e.filter((player) => t[player.id] && t[player.id].teamId === activeTeam.id) : [],
             [e, t, activeTeam],
           );
-          let maxCatalogValue = X(() => Math.max(1, ...e.map((player) => Number(player.value) || 0)), [e]);
+          let maxCatalogValue = catalogValueCeiling;
 
           function positionGroup(position) {
             let value = String(position || "").toUpperCase();
@@ -4177,8 +4178,11 @@
           let activeFilterCount =
             (positionFilter !== "all" ? 1 : 0) +
             (Number(overallMin) > 70 || Number(overallMax) < 99 ? 1 : 0) +
-            (Number(valueMin) > 3 || Number(valueMax) < 333 ? 1 : 0) +
+            (Number(valueMin) > 3 || Number(valueMax) < maxCatalogValue ? 1 : 0) +
             (clubQuery.trim() ? 1 : 0);
+          He(() => {
+            setValueMax((current) => Number(current) === 333 && maxCatalogValue > 333 ? maxCatalogValue : Math.min(Number(current) || maxCatalogValue, maxCatalogValue));
+          }, [maxCatalogValue]);
           He(() => {
             let node = loadMoreSentinel.current;
             if (!node || visibleCount >= filteredPlayers.length || !window.IntersectionObserver) return;
@@ -4201,7 +4205,7 @@
             setOverallMin(70);
             setOverallMax(99);
             setValueMin(3);
-            setValueMax(333);
+            setValueMax(maxCatalogValue);
             setVisibleCount(36);
           }
 
@@ -4425,7 +4429,7 @@
                         ),
                         React.createElement("div", null,
                           React.createElement("div", { style:{ fontSize:10.5,color:"var(--muted)",marginBottom:7 } }, "Valor"),
-                          React.createElement(DualRange, { min:3,max:333,step:1,minValue:valueMin,maxValue:valueMax,formatValue:(value)=>`${value}M`,onChangeMin:(value)=>{setValueMin(Math.min(value,valueMax));setVisibleCount(36);},onChangeMax:(value)=>{setValueMax(Math.max(value,valueMin));setVisibleCount(36);} })
+                          React.createElement(DualRange, { min:3,max:maxCatalogValue,step:1,minValue:valueMin,maxValue:valueMax,formatValue:(value)=>`${value}M`,onChangeMin:(value)=>{setValueMin(Math.min(value,valueMax));setVisibleCount(36);},onChangeMax:(value)=>{setValueMax(Math.max(value,valueMin));setVisibleCount(36);} })
                         ),
                       ),
                     ),
