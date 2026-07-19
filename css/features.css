@@ -64,3 +64,36 @@
 .lineup-bench.is-drag-over { background:color-mix(in srgb,var(--green) 10%,var(--surface)); border-color:color-mix(in srgb,var(--green) 48%,var(--border)); transform:scale(1.01); }
 .lineup-drag-hint { position:sticky; bottom:86px; z-index:8; width:max-content; max-width:calc(100% - 24px); margin:-4px auto 10px; padding:8px 12px; border-radius:999px; background:rgba(6,18,12,.88); color:#fff; box-shadow:0 8px 28px rgba(0,0,0,.24); backdrop-filter:blur(12px); font-size:11px; font-weight:800; text-align:center; pointer-events:none; }
 @media (hover:none) and (pointer:coarse){ .lineup-slot,.lineup-bench-player{touch-action:none}.lineup-drag-hint{bottom:78px} }
+
+/* Lineup custom formation editor */
+.lineup-field.is-editing::before {
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,.5) calc(50% - 1px), rgba(255,255,255,.5) calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(90deg, transparent 0, transparent calc(4% - 1px), rgba(255,255,255,.075) calc(4% - 1px), rgba(255,255,255,.075) 4%),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(4% - 1px), rgba(255,255,255,.075) calc(4% - 1px), rgba(255,255,255,.075) 4%);
+}
+.lineup-field.is-editing .lineup-slot {
+  cursor: move;
+  touch-action: none;
+  transition: left .08s linear, top .08s linear, transform .16s ease;
+}
+.lineup-field.is-editing .lineup-slot.is-editable .lineup-slot-avatar {
+  border-color: #37f5a3;
+  box-shadow: 0 0 0 5px rgba(55,245,163,.17), 0 12px 28px rgba(0,0,0,.36);
+}
+.lineup-field.is-editing .lineup-slot.is-editable:active {
+  transform: translate(-50%,-50%) scale(1.08);
+  z-index: 8;
+}
+.lineup-edit-hint {
+  width: min(100%,620px);
+  margin: 10px auto 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb,var(--green) 10%,var(--surface));
+  border: 1px solid color-mix(in srgb,var(--green) 35%,var(--border));
+  color: var(--body);
+  font-size: 11px;
+  font-weight: 750;
+  text-align: center;
+}
