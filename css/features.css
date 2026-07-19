@@ -47,3 +47,20 @@
 .lineup-picker-item { display:grid; grid-template-columns:46px minmax(0,1fr) auto; gap:11px; align-items:center; padding:10px; border:1px solid var(--border); border-radius:15px; background:var(--surface); color:var(--heading); text-align:left; cursor:pointer; }
 .lineup-picker-item img { width:46px; height:46px; border-radius:50%; object-fit:cover; background:var(--surface-soft); }
 @media (max-width:560px){ .lineup-slot{width:62px}.lineup-slot-avatar{width:46px;height:46px}.lineup-slot-name{font-size:9px}.lineup-slot-overall{right:3px}.lineup-field{border-radius:20px} }
+
+/* Lineups v2: drag and drop */
+.is-lineup-dragging { user-select:none; -webkit-user-select:none; overscroll-behavior:none; }
+.lineup-slot { touch-action:pan-y; }
+.lineup-slot[draggable="true"], .lineup-bench-player[draggable="true"] { cursor:grab; }
+.lineup-slot[draggable="true"]:active, .lineup-bench-player[draggable="true"]:active { cursor:grabbing; }
+.lineup-field.is-drag-active .lineup-slot { transition:opacity .16s ease, transform .16s ease, filter .16s ease; }
+.lineup-field.is-drag-active .lineup-slot.is-compatible .lineup-slot-avatar { border-color:#37f5a3; box-shadow:0 0 0 5px rgba(55,245,163,.18),0 12px 28px rgba(0,0,0,.36); }
+.lineup-field.is-drag-active .lineup-slot.is-secondary .lineup-slot-avatar { border-color:#ffe082; box-shadow:0 0 0 4px rgba(255,224,130,.15),0 12px 28px rgba(0,0,0,.32); }
+.lineup-field.is-drag-active .lineup-slot.is-incompatible { opacity:.34; filter:saturate(.45); }
+.lineup-slot.is-drag-over { transform:translate(-50%,-50%) scale(1.13); z-index:5; }
+.lineup-slot.is-drag-over .lineup-slot-avatar { box-shadow:0 0 0 7px rgba(55,245,163,.24),0 16px 34px rgba(0,0,0,.42) !important; }
+.lineup-slot.is-drag-source, .lineup-bench-player.is-drag-source { opacity:.36; }
+.lineup-bench { padding:12px; margin-left:-12px; margin-right:-12px; border:1px solid transparent; border-radius:20px; transition:background .16s ease,border-color .16s ease,transform .16s ease; }
+.lineup-bench.is-drag-over { background:color-mix(in srgb,var(--green) 10%,var(--surface)); border-color:color-mix(in srgb,var(--green) 48%,var(--border)); transform:scale(1.01); }
+.lineup-drag-hint { position:sticky; bottom:86px; z-index:8; width:max-content; max-width:calc(100% - 24px); margin:-4px auto 10px; padding:8px 12px; border-radius:999px; background:rgba(6,18,12,.88); color:#fff; box-shadow:0 8px 28px rgba(0,0,0,.24); backdrop-filter:blur(12px); font-size:11px; font-weight:800; text-align:center; pointer-events:none; }
+@media (hover:none) and (pointer:coarse){ .lineup-slot,.lineup-bench-player{touch-action:none}.lineup-drag-hint{bottom:78px} }
