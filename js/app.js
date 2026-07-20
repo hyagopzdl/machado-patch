@@ -3245,6 +3245,29 @@
           let playerById = new Map(squad.map((player) => [String(player.id), player]));
           let starterIds = new Set(Object.values(assignments || {}).filter(Boolean).map(String));
           let benchPlayers = squad.filter((player) => !starterIds.has(String(player.id))).sort((x,y)=>(y.overall||0)-(x.overall||0));
+          function lineupAdjustedOverall(player, slotPosition) {
+            if (!player) return 0;
+            let overall = Number(player.overall) || 0;
+            if (!window.PESLineups || !slotPosition) return overall;
+            let scoreValue = Number(window.PESLineups.score(player, slotPosition)) || 0;
+            let fitLevel = Math.max(0, Math.floor(scoreValue / 1000));
+            let penaltyByFit = { 8:0, 7:1, 6:2, 5:3, 4:5, 3:7, 2:10, 1:13, 0:18 };
+            let penalty = penaltyByFit[fitLevel] != null ? penaltyByFit[fitLevel] : 18;
+            return Math.max(0, overall - penalty);
+          }
+          function lineupQuality(assignmentValue) {
+            let values = lineupSlots.map((slot) => {
+              let player = playerById.get(String(assignmentValue && assignmentValue[slot.id] || ""));
+              return player ? lineupAdjustedOverall(player, slot.position) : null;
+            }).filter((value) => value != null);
+            return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+          }
+          let currentLineupOverall = lineupQuality(assignments);
+          let maximumAssignments = window.PESLineups ? window.PESLineups.autoAssign(squad, presetFormation) : {};
+          let maximumLineupPotential = lineupQuality(maximumAssignments);
+          function positionTagStyle(position) {
+            return { background:positionColor(position), color:"white" };
+          }
           function saveLineup(nextFormation = formation, nextAssignments = assignments, nextCustomPositions = customPositions, nextBaseFormation = presetFormation) {
             let payload = { formation:nextFormation, assignments:nextAssignments, customPositions:nextCustomPositions || {}, baseFormation:nextBaseFormation || "4-3-3", updatedAt:Date.now() };
             setFormation(nextFormation);
@@ -3540,7 +3563,7 @@
                           React.createElement("span", { className:"lineup-slot-avatar" }, player&&player.photo?React.createElement("img",{src:player.photo,alt:""}):player?String(player.name||"?").slice(0,2).toUpperCase():slot.position),
                           player&&React.createElement("span",{className:"lineup-slot-overall",style:{color:overallColor(player.overall),borderColor:overallColor(player.overall)}},player.overall||"—"),
                           React.createElement("span",{className:"lineup-slot-name"},player?(player.name||"Jogador"):slot.position),
-                          player&&React.createElement("span",{className:"lineup-slot-position"},player.position||slot.position)
+                          player&&React.createElement("span",{className:"lineup-slot-position",style:positionTagStyle(player.position||slot.position)},player.position||slot.position)
                         )})
                       ),
                       lineupDrag && React.createElement("div",{className:"lineup-drag-hint"},"Solte em uma posição destacada ou arraste para Reservas")
@@ -3566,9 +3589,22 @@
                           React.createElement("span",{className:"lineup-slot-avatar"},player.photo?React.createElement("img",{src:player.photo,alt:""}):String(player.name||"?").slice(0,2).toUpperCase()),
                           React.createElement("span",{className:"lineup-slot-overall",style:{color:overallColor(player.overall),borderColor:overallColor(player.overall)}},player.overall||"—")
                         ),
-                        React.createElement("div",{className:"lineup-bench-player-name"},player.name),
-                        React.createElement("div",{className:"lineup-bench-player-position"},player.position||"—")
-                      )))
+                        React.createElement("div",{className:"lineup-bench-player-info"},
+                          React.createElement("div",{className:"lineup-bench-player-name"},player.name),
+                          React.createElement("div",{className:"lineup-bench-player-position",style:positionTagStyle(player.position||"—")},player.position||"—")
+                        )
+                      ))),
+                      React.createElement("div",{className:"lineup-team-quality"},
+                        React.createElement("div",null,
+                          React.createElement("span",null,"Overall escalado"),
+                          React.createElement("strong",null,currentLineupOverall?currentLineupOverall.toFixed(1):"—")
+                        ),
+                        React.createElement("div",null,
+                          React.createElement("span",null,"Potencial máximo"),
+                          React.createElement("strong",null,maximumLineupPotential?maximumLineupPotential.toFixed(1):"—")
+                        ),
+                        React.createElement("small",null,"Considera o encaixe de cada jogador na posição da formação atual.")
+                      )
                     )
                   ),
                   lineupDragGhost && React.createElement("div", { className:"lineup-pointer-ghost", style:{ left:lineupDragGhost.x, top:lineupDragGhost.y, borderColor:overallColor(lineupDragGhost.player.overall) } },
