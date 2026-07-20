@@ -7,6 +7,8 @@
           eo, qe, L, trophyAssetFor, TrophyAsset, economySettingsOf, matchEconomyForTeam, prizeSettingsOf, championshipPrizeLadder, financeEntry,
           positionColor, overallColor, offerStatusLabel, isOfferOpen
         } = window.ManchaApp;
+        const MagicWandIcon = SvgIcon(["M15 4l5 5", "M13.5 5.5 18.5 10.5", "M4 20l11-11", "M5 4v3", "M3.5 5.5h3", "M18 16v4", "M16 18h4"]);
+        const EraserIcon = SvgIcon(["m4 15 8-8a2.5 2.5 0 0 1 3.5 0l2.5 2.5a2.5 2.5 0 0 1 0 3.5L11 20H7l-3-3a1.4 1.4 0 0 1 0-2Z", "m9 10 6 6", "M11 20h9"]);
         function to() {
           let [e, t] = b(!0),
             [l, a] = b(!1),
@@ -3136,8 +3138,8 @@
           }, []);
           let presetFormation = formation === "Personalizada" ? (savedLineup.baseFormation || "4-3-3") : formation;
           let baseLineupSlots = window.PESLineups ? window.PESLineups.slots(presetFormation) : [];
-          const LINEUP_GRID_X = [10, 30, 50, 70, 90];
-          const LINEUP_GRID_Y = [7, 19, 31, 43, 57, 69, 81, 93];
+          const LINEUP_GRID_X = [16, 33, 50, 67, 84];
+          const LINEUP_GRID_Y = [11, 22, 33, 44, 56, 67, 78, 89];
           function nearestGridValue(value, grid) {
             let numeric = Number(value);
             return grid.reduce((closest, item) => Math.abs(item - numeric) < Math.abs(closest - numeric) ? item : closest, grid[0]);
@@ -3163,6 +3165,11 @@
             let next = window.PESLineups ? window.PESLineups.autoAssign(squad, targetFormation) : {};
             saveLineup(nextFormation, next, nextFormation === "Personalizada" ? customPositions : {}, targetFormation);
           }
+          function clearLineup() {
+            if (readOnly || !Object.keys(assignments || {}).length) return;
+            if (!window.confirm("Limpar todos os jogadores escalados?")) return;
+            saveLineup(formation, {});
+          }
           function startLineupEditor() {
             if (readOnly) return;
             let seeded = {};
@@ -3186,8 +3193,8 @@
             let isGoalkeeper = slot && slot.position === "GK";
             let nextX = nearestGridValue(x, LINEUP_GRID_X);
             let nextY = nearestGridValue(y, LINEUP_GRID_Y);
-            if (isGoalkeeper && nextY < 81) return null;
-            if (!isGoalkeeper && nextY > 81) nextY = 81;
+            if (isGoalkeeper && nextY < 78) return null;
+            if (!isGoalkeeper && nextY > 78) nextY = 78;
             let collision = lineupSlots.some((item) => item.id !== slotId && Number(item.x) === nextX && Number(item.y) === nextY);
             if (collision) return null;
             return { x:nextX, y:nextY };
@@ -3394,14 +3401,15 @@
               ),
               React.createElement("section", { style:{ ...E, padding:"clamp(16px,3vw,26px)" } },
                 React.createElement("div", { className:"lineup-toolbar" },
-                  React.createElement("div", null,
-                    React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", textTransform:"uppercase", letterSpacing:".08em", fontWeight:800, marginBottom:5 } }, "Escalação"),
-                    React.createElement("h1", { style:{ margin:0, fontSize:24 } }, s.name)
+                  React.createElement("div", { className:"lineup-toolbar-heading" },
+                    React.createElement("div", null, "Escalação"),
+                    React.createElement("h1", null, s.name)
                   ),
-                  React.createElement("div", { style:{ display:"flex", gap:8, flexWrap:"wrap" } },
-                    React.createElement("select", { value:formation === "Personalizada" ? presetFormation : formation, disabled:readOnly, onChange:(event)=>{let value=event.target.value;setLineupEditMode(false);saveLineup(value,window.PESLineups?window.PESLineups.autoAssign(squad,value):{}, {}, value)}, style:q }, Object.keys((window.PESLineups&&window.PESLineups.presets)||{}).map((name)=>React.createElement("option",{key:name,value:name},name))),
-                    React.createElement("button", { disabled:readOnly||!squad.length, onClick:()=>autoOrganize(), className:"family-pill-primary", style:{ padding:"10px 16px", cursor:readOnly?"default":"pointer", opacity:readOnly?.55:1 } }, "Auto organizar"),
-                    !readOnly && formation === "Personalizada" && React.createElement("button", { onClick:()=>{let reset={};baseLineupSlots.forEach((slot)=>{reset[slot.id]={x:Number(slot.x),y:Number(slot.y)}});saveLineup(presetFormation,assignments,{},presetFormation)}, className:"family-pill-secondary", style:{ padding:"10px 16px", cursor:"pointer" } }, "Restaurar posições")
+                  React.createElement("div", { className:"lineup-toolbar-controls" },
+                    React.createElement("select", { value:formation === "Personalizada" ? presetFormation : formation, disabled:readOnly, onChange:(event)=>{let value=event.target.value;setLineupEditMode(false);saveLineup(value,window.PESLineups?window.PESLineups.autoAssign(squad,value):{}, {}, value)}, style:q, "aria-label":"Selecionar formação" }, Object.keys((window.PESLineups&&window.PESLineups.presets)||{}).map((name)=>React.createElement("option",{key:name,value:name},name))),
+                    React.createElement("button", { type:"button", title:"Auto organizar", "aria-label":"Auto organizar", disabled:readOnly||!squad.length, onClick:()=>autoOrganize(), className:"lineup-icon-button family-pill-primary" }, React.createElement(MagicWandIcon,{size:19})),
+                    React.createElement("button", { type:"button", title:"Limpar escalação", "aria-label":"Limpar escalação", disabled:readOnly||!Object.keys(assignments||{}).length, onClick:clearLineup, className:"lineup-icon-button family-pill-secondary" }, React.createElement(EraserIcon,{size:19})),
+                    !readOnly && formation === "Personalizada" && React.createElement("button", { onClick:()=>{let reset={};baseLineupSlots.forEach((slot)=>{reset[slot.id]={x:Number(slot.x),y:Number(slot.y)}});saveLineup(presetFormation,assignments,{},presetFormation)}, className:"family-pill-secondary lineup-reset-button" }, "Restaurar posições")
                   )
                 ),
                 !squad.length ? React.createElement("div", { style:{ padding:30, textAlign:"center", color:"var(--muted)" } }, "Seu elenco está vazio.") : React.createElement(React.Fragment,null,
@@ -3437,7 +3445,8 @@
                         },
                           React.createElement("span", { className:"lineup-slot-avatar" }, player&&player.photo?React.createElement("img",{src:player.photo,alt:""}):player?String(player.name||"?").slice(0,2).toUpperCase():slot.position),
                           player&&React.createElement("span",{className:"lineup-slot-overall",style:{color:overallColor(player.overall),borderColor:overallColor(player.overall)}},player.overall||"—"),
-                          React.createElement("span",{className:"lineup-slot-name"},player?(player.name||"Jogador"):slot.position)
+                          React.createElement("span",{className:"lineup-slot-name"},player?(player.name||"Jogador"):slot.position),
+                          player&&React.createElement("span",{className:"lineup-slot-position"},player.position||slot.position)
                         )})
                       ),
                       lineupDrag && React.createElement("div",{className:"lineup-drag-hint"},"Solte em uma posição destacada ou arraste para Reservas")
@@ -3457,11 +3466,14 @@
                         onPointerDown:(event)=>beginLineupPointerDrag(event,{kind:"player",playerId:String(player.id),sourceSlotId:null}),
                         onPointerMove:moveLineupPointerDrag,
                         onPointerUp:endLineupPointerDrag,
-                        onPointerCancel:clearLineupDrag,
-                        style:{background:`linear-gradient(145deg,color-mix(in srgb,${overallColor(player.overall)} 10%,var(--surface)) 0%,var(--surface) 78%)`,borderColor:`color-mix(in srgb,${overallColor(player.overall)} 32%,var(--border))`}
+                        onPointerCancel:clearLineupDrag
                       },
-                        React.createElement("div",{className:"lineup-bench-player-overall",style:{color:overallColor(player.overall),borderColor:overallColor(player.overall)}},player.overall||"—"),
-                        React.createElement("div",{className:"lineup-bench-player-info"},React.createElement("div",{className:"lineup-bench-player-name"},player.name),React.createElement("div",{className:"lineup-bench-player-position"},player.position||"—"))
+                        React.createElement("div",{className:"lineup-bench-player-ball"},
+                          React.createElement("span",{className:"lineup-slot-avatar"},player.photo?React.createElement("img",{src:player.photo,alt:""}):String(player.name||"?").slice(0,2).toUpperCase()),
+                          React.createElement("span",{className:"lineup-slot-overall",style:{color:overallColor(player.overall),borderColor:overallColor(player.overall)}},player.overall||"—")
+                        ),
+                        React.createElement("div",{className:"lineup-bench-player-name"},player.name),
+                        React.createElement("div",{className:"lineup-bench-player-position"},player.position||"—")
                       )))
                     )
                   ),

@@ -389,3 +389,70 @@
 @media (max-width:899px){
   .lineup-pointer-ghost { width:146px; transform:translate(-50%,-70%); }
 }
+
+/* Lineups v3.4: compact controls, safer grid spacing and unified player balls */
+.lineup-toolbar { align-items:flex-end; }
+.lineup-toolbar-heading > div { margin-bottom:5px; color:var(--muted); font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.lineup-toolbar-heading h1 { margin:0; font-size:24px; }
+.lineup-toolbar-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-left:auto; }
+.lineup-toolbar-controls select { min-width:150px; }
+.lineup-icon-button { width:44px; height:44px; flex:0 0 44px; padding:0 !important; border:0; display:grid; place-items:center; cursor:pointer; }
+.lineup-icon-button:disabled { cursor:default; opacity:.42; }
+.lineup-reset-button { min-height:44px; padding:0 14px; border:0; cursor:pointer; }
+
+.lineup-slot-position,
+.lineup-bench-player-position {
+  width:max-content;
+  max-width:100%;
+  margin:4px auto 0;
+  padding:2px 6px;
+  border-radius:999px;
+  background:rgba(4,13,8,.72);
+  border:1px solid rgba(255,255,255,.24);
+  color:rgba(255,255,255,.9);
+  font-size:8px;
+  font-weight:900;
+  line-height:1.2;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  text-shadow:none;
+}
+.lineup-bench-player {
+  min-height:0;
+  padding:8px 6px 9px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:0;
+  border:0;
+  border-radius:16px;
+  background:transparent;
+  box-shadow:none;
+  text-align:center;
+  overflow:visible;
+}
+.lineup-bench-player:hover { box-shadow:none !important; transform:none !important; }
+.lineup-bench-player-ball { position:relative; width:76px; min-height:58px; display:grid; place-items:start center; }
+.lineup-bench-player .lineup-slot-avatar { width:54px; height:54px; margin:0; color:white; }
+.lineup-bench-player .lineup-slot-overall { top:-2px; right:2px; }
+.lineup-bench-player-name { width:100%; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--heading); font-size:10px; font-weight:850; }
+.lineup-bench-player-position { background:var(--surface-soft); border-color:var(--border); color:var(--muted); text-shadow:none; }
+
+@media (min-width:900px) {
+  .lineup-bench-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-content:start; gap:10px 4px; }
+  .lineup-bench-player { width:100%; }
+}
+@media (max-width:899px) {
+  .lineup-bench-player { flex:0 0 86px; width:86px; }
+  .lineup-bench-player-ball { width:72px; }
+}
+@media (max-width:560px) {
+  .lineup-toolbar { margin-bottom:10px; }
+  .lineup-toolbar-heading { display:none; }
+  .lineup-toolbar-controls { width:100%; flex-wrap:nowrap; margin-left:0; }
+  .lineup-toolbar-controls select { min-width:0; flex:1; }
+  .lineup-icon-button { width:42px; height:42px; flex-basis:42px; }
+  .lineup-reset-button { display:none; }
+  .lineup-slot-position { font-size:7.5px; padding:2px 5px; }
+}
