@@ -77,7 +77,38 @@
             }),
             [adminGate, setAdminGate] = b(null),
             [playerReportModal, setPlayerReportModal] = b(null),
-            [playerReviewsOpen, setPlayerReviewsOpen] = b(false);
+            [playerReviewsOpen, setPlayerReviewsOpen] = b(false),
+            lastSyncRevisionRef = Rf(null);
+          function refreshCriticalSnapshot() {
+            let db = Ee();
+            if (!db) return Promise.resolve(false);
+            return db.ref("pes").once("value").then((snapshot) => {
+              let root = snapshot.val();
+              if (!root || typeof root !== "object") return false;
+              let tournaments = Array.isArray(root.tournaments) ? root.tournaments.filter(Boolean) : (root.tournaments && typeof root.tournaments === "object" ? Object.values(root.tournaments).filter(Boolean) : []);
+              g(tournaments);
+              setTournamentsLoaded(true);
+              if (Array.isArray(root.teams)) setBaseTeams(root.teams.filter(Boolean));
+              if (root.ownership && typeof root.ownership === "object") setBaseOwnership(root.ownership);
+              if (Array.isArray(root.transfers)) setBaseTransfers(root.transfers.filter(Boolean));
+              if (root.meta && typeof root.meta === "object") u(root.meta);
+              return true;
+            }).catch((error) => {
+              console.error("critical snapshot refresh failed", error);
+              return false;
+            });
+          }
+          function signalImportantUpdate(type, tournamentId = null) {
+            let db = Ee();
+            if (!db) return Promise.resolve();
+            return db.ref("pes/sync/revision").set({
+              id: _(),
+              type: String(type || "update"),
+              tournamentId: tournamentId || null,
+              actorProfileId: te && te.id ? te.id : null,
+              updatedAt: firebase.database.ServerValue.TIMESTAMP,
+            }).catch((error) => console.error("sync revision signal failed", error));
+          }
           He(() => {
             document.documentElement.setAttribute("data-theme", theme);
             localStorage.setItem("pes-theme", JSON.stringify(theme));
@@ -121,6 +152,13 @@
               Q("ownership", (i) => setBaseOwnership(i || {})),
               Q("playerStats", (i) => setBaseStats(i || {})),
               Q("tournaments", (i) => { let list = Array.isArray(i) ? i.filter(Boolean) : (i && typeof i === "object" ? Object.values(i).filter(Boolean) : []); g(list); setTournamentsLoaded(!0); }),
+              Q("sync/revision", (revision) => {
+                if (!revision || !revision.id) return;
+                if (lastSyncRevisionRef.current == null) { lastSyncRevisionRef.current = revision.id; return; }
+                if (lastSyncRevisionRef.current === revision.id) return;
+                lastSyncRevisionRef.current = revision.id;
+                refreshCriticalSnapshot();
+              }),
               Q("transfers", (i) => setBaseTransfers(i || [])),
               Q("meta", (i) =>
                 u(i || { currentTournamentId: null, seasonCounter: 1 }),
@@ -310,6 +348,8 @@
                 context: { ...(tournament.context || {}), [field]: value },
               };
               return list;
+            }).then((result) => {
+              if (result && result.committed && ["teams","ownership","transfers","matches","tradeOffers","financialTransactions"].includes(field)) signalImportantUpdate(field, tournamentId);
             }).catch((error) => console.error("firebase context transaction failed", field, error));
             return true;
           }
@@ -386,7 +426,9 @@
             if (!db) return;
             db.ref("pes/tournaments").transaction((serverList) =>
               applySafeDiff(Array.isArray(serverList) ? serverList : [], previousList, nextList),
-            ).catch((error) => console.error("firebase tournament transaction failed", error));
+            ).then((result) => {
+              if (result && result.committed) signalImportantUpdate("tournaments", selectedTournamentId || null);
+            }).catch((error) => console.error("firebase tournament transaction failed", error));
           }, [m]);
           function vt(o) {
             if (!saveContextField("transfers", o)) {
@@ -944,7 +986,7 @@
                 window.alert("Não foi possível concluir a transferência. Tente novamente.");
                 return;
               }
-              if (committed) return;
+              if (committed) { signalImportantUpdate("player_transfer", R && R.id ? R.id : null); return; }
               let messages = {
                 seller_min_roster: `O vendedor precisa manter pelo menos ${minPlayers} jogadores. A proposta continua aberta.`,
                 buyer_roster_full: `O comprador atingiu o máximo de ${maxPlayers} jogadores. A proposta continua aberta.`,
@@ -1018,7 +1060,7 @@
               return isArray?list:Object.fromEntries(list.map((item,idx)=>[item.id||String(idx),item]));
             },(error,committed)=>{
               if(error){window.alert("Não foi possível concluir a compra. Tente novamente.");return;}
-              if(committed){he(null);return;}
+              if(committed){signalImportantUpdate("player_purchase", tournamentId);he(null);return;}
               let messages={market_closed:"O mercado está fechado pela administração.",overall_limit:"Este jogador está acima do limite de overall permitido para jogadores livres.",market_balance_lock:"Esta compra está bloqueada pela regra de equilíbrio do mercado.",insufficient_funds:"Saldo insuficiente para esta compra.",buyer_roster_full:"Seu elenco atingiu o limite máximo de jogadores.",player_unavailable:"Este jogador não está mais livre no mercado.",team_not_found:"Seu time não foi encontrado.",championship_not_found:"O campeonato não foi encontrado."};
               window.alert(messages[failureReason]||"A compra não pôde ser concluída.");
             });
@@ -1102,7 +1144,7 @@
             }, (error, committed) => {
               if (error) window.alert("Não foi possível concluir a venda. Tente novamente.");
               else if (!committed) window.alert("A venda foi cancelada porque o jogador não pertence mais ao seu elenco.");
-              else { setSaleModal(null); window.alert(`${o.name} foi vendido ao mercado por ${L(amount)}.`); }
+              else { signalImportantUpdate("player_sale", tournamentId); setSaleModal(null); window.alert(`${o.name} foi vendido ao mercado por ${L(amount)}.`); }
             });
           }
           function importRosterPlan(plan, mode) {
@@ -3049,7 +3091,7 @@
           let code = codes[normalized];
           return code ? code.replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt())) : "🌐";
         }
-        function UnifiedPlayerCard({ player, actionLabel, actionDisabled=false, onAction=null, onOpen=null, className="", isFavorite=false, onToggleFavorite=null, dimmed=false, isInitialRoster=false }) {
+        function UnifiedPlayerCard({ player, actionLabel, actionDisabled=false, onAction=null, onOpen=null, className="", isFavorite=false, onToggleFavorite=null, dimmed=false, isInitialRoster=false, currentTeamName=null }) {
           let flag = nationalityFlag(player.nationality);
           return React.createElement("article", {
             className:`tapbtn unified-player-card ${className}`.trim(),
@@ -3071,6 +3113,7 @@
                 React.createElement("span", { title:player.nationality||"Nacionalidade não informada", style:{ flex:"0 0 auto", fontSize:14, lineHeight:1.1 } }, flag)
               ),
               React.createElement("div", { style:{ fontSize:10.5, color:"var(--muted)", lineHeight:1.25, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, player.club || "Clube não informado"),
+              currentTeamName && React.createElement("div", { title:currentTeamName, style:{ fontSize:10.5, color:"var(--green)", fontWeight:800, lineHeight:1.25, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, `Time atual · ${currentTeamName}`),
               React.createElement("div", { style:{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, color:"var(--heading)", fontWeight:750 } }, React.createElement(BankIcon,{ size:13,color:"currentColor" }), L(player.value))
             ),
             actionLabel ? React.createElement("button", {
@@ -3387,6 +3430,7 @@
               actionLabel:readOnly?readOnlyActionLabel:"Vender ao mercado",
               actionDisabled:readOnly?!onReadOnlyAction:cannotSell,
               isInitialRoster:baseRosterPlayerIds.includes(String(player.id)),
+              currentTeamName:s && s.name ? s.name : null,
               onAction:()=>{ if(readOnly){ if(onReadOnlyAction) onReadOnlyAction(player); } else if(!cannotSell) p(player); }
             });
           }
@@ -3571,7 +3615,7 @@
             [clubQuery, setClubQuery] = b(""),
             [positionFilter, setPositionFilter] = b("all"),
             [sortBy, setSortBy] = b("overall"),
-            [visibleCount, setVisibleCount] = b(36),
+            [visibleCount, setVisibleCount] = b(24),
             [filtersOpen, setFiltersOpen] = b(false),
             [overallMin, setOverallMin] = b(70),
             [overallMax, setOverallMax] = b(99),
@@ -3580,6 +3624,19 @@
             loadMoreSentinel = React.useRef(null);
 
           let favoriteSet = X(() => new Set((Array.isArray(favoritePlayerIds) ? favoritePlayerIds : []).map((id) => String(id))), [favoritePlayerIds]);
+          let deferredClubQuery = React.useDeferredValue ? React.useDeferredValue(clubQuery) : clubQuery;
+          function normalizeMarketSearch(value) {
+            return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+          }
+          let marketSearchIndex = X(() => {
+            let index = new Map();
+            (Array.isArray(e) ? e : []).forEach((player) => {
+              let owner = t && t[player.id];
+              let ownerTeam = owner && owner.teamId ? l(owner.teamId) : null;
+              index.set(String(player.id), normalizeMarketSearch(`${player.name || ""} ${player.club || ""} ${ownerTeam && ownerTeam.name || ""}`));
+            });
+            return index;
+          }, [e, t, a]);
           let favoritePlayers = X(() => e.filter((player) => favoriteSet.has(String(player.id)) && !(activeTeam && t[player.id] && String(t[player.id].teamId) === String(activeTeam.id))), [e, favoriteSet, activeTeam, t]);
           function favoriteSectionOf(position) {
             let value = String(position || "").toUpperCase();
@@ -3638,7 +3695,7 @@
           }, [activeSquad]);
 
           let recommendationData = X(() => {
-            if (!activeTeam) return [];
+            if (marketSection !== "recommended" || !activeTeam) return [];
             return e
               .map((player) => {
                 let status = n(player);
@@ -3660,7 +3717,7 @@
               })
               .filter(Boolean)
               .sort((left, right) => right.score - left.score || right.player.overall - left.player.overall);
-          }, [e, n, activeTeam, squadAnalysis]);
+          }, [marketSection, e, n, activeTeam, squadAnalysis, marketRules]);
 
           let filteredPlayers = X(() => {
             let result = e.filter((player) => {
@@ -3668,20 +3725,9 @@
               if (positionFilter !== "all" && player.position !== positionFilter) return false;
               if (Number(player.overall || 0) < Number(overallMin || 0) || Number(player.overall || 0) > Number(overallMax || 99)) return false;
               if (Number(player.value || 0) < Number(valueMin || 0) || Number(player.value || 0) > Number(valueMax || 999)) return false;
-              if (clubQuery.trim()) {
-                let normalizeSearch = (value) => String(value || "")
-                  .normalize("NFD")
-                  .replace(/[\u0300-\u036f]/g, "")
-                  .toLowerCase()
-                  .replace(/\s+/g, " ")
-                  .trim();
-                let query = normalizeSearch(clubQuery);
-                let status = n(player);
-                let ownerTeam = status.teamId ? l(status.teamId) : null;
-                let matchesPlayer = normalizeSearch(player.name).includes(query);
-                let matchesClub = normalizeSearch(player.club).includes(query);
-                let matchesOwner = normalizeSearch(ownerTeam && ownerTeam.name).includes(query);
-                if (!matchesPlayer && !matchesClub && !matchesOwner) return false;
+              if (deferredClubQuery.trim()) {
+                let query = normalizeMarketSearch(deferredClubQuery);
+                if (!(marketSearchIndex.get(String(player.id)) || "").includes(query)) return false;
               }
               return true;
             });
@@ -3690,7 +3736,7 @@
             if (sortBy === "value") result.sort((left, right) => right.value - left.value);
             if (sortBy === "club") result.sort((left, right) => String(left.club || "").localeCompare(String(right.club || "")));
             return result;
-          }, [e, positionFilter, overallMin, overallMax, valueMin, valueMax, clubQuery, sortBy, n, l, activeTeam, t]);
+          }, [e, positionFilter, overallMin, overallMax, valueMin, valueMax, deferredClubQuery, sortBy, marketSearchIndex, activeTeam, t]);
 
           let activeFilterCount =
             (positionFilter !== "all" ? 1 : 0) +
@@ -3708,7 +3754,7 @@
               if (!entries[0].isIntersecting || loading) return;
               loading = true;
               window.requestAnimationFrame(() => {
-                setVisibleCount((count) => Math.min(count + 36, filteredPlayers.length));
+                setVisibleCount((count) => Math.min(count + 24, filteredPlayers.length));
                 loading = false;
               });
             }, { rootMargin:"500px 0px" });
@@ -3723,7 +3769,7 @@
             setOverallMax(99);
             setValueMin(3);
             setValueMax(maxCatalogValue);
-            setVisibleCount(36);
+            setVisibleCount(24);
           }
 
           let segmentStyle = (active) => ({
@@ -3788,6 +3834,7 @@
             let label = balanceBlocked ? "Bloqueado pelo equilíbrio" : status.kind === "free" ? (insufficient ? "Saldo insuficiente" : `Comprar · ${L(price)}`) : activeOffer ? "Ver negociação" : `Ofertar · ${L(price)}`;
             return React.createElement(UnifiedPlayerCard, {
               key:player.id, player, onOpen:f, className:"market-highlight-card",
+              currentTeamName:status.teamId && l(status.teamId) ? l(status.teamId).name : null,
               actionLabel:label, actionDisabled:insufficient || balanceBlocked,
               isFavorite:favoriteSet.has(String(player.id)), onToggleFavorite,
               onAction:()=>{ activeOffer ? setMarketSection("negotiations") : r(player); }
@@ -3862,7 +3909,7 @@
                         let overallBlocked=status.kind==="free"&&marketRules.freePlayerOverallLimit.enabled&&Number(player.overall||0)>marketRules.freePlayerOverallLimit.maxOverall;
                         let closed=!marketRules.isOpen;
                         let label=own?null:closed?"Mercado fechado":overallBlocked?"Acima do limite":balanceBlocked?"Bloqueado pelo equilíbrio":status.kind==="free"?(insufficient?"Saldo insuficiente":`Comprar · ${L(price)}`):activeOffer?"Ver negociação":`Ofertar · ${L(price)}`;
-                        return React.createElement(UnifiedPlayerCard,{ key:player.id,player,onOpen:f,actionLabel:label,actionDisabled:closed||insufficient||balanceBlocked||overallBlocked,dimmed:overallBlocked,isFavorite:true,onToggleFavorite,onAction:()=>{activeOffer?setMarketSection("negotiations"):r(player)}});
+                        return React.createElement(UnifiedPlayerCard,{ key:player.id,player,onOpen:f,currentTeamName:status.teamId&&l(status.teamId)?l(status.teamId).name:null,actionLabel:label,actionDisabled:closed||insufficient||balanceBlocked||overallBlocked,dimmed:overallBlocked,isFavorite:true,onToggleFavorite,onAction:()=>{activeOffer?setMarketSection("negotiations"):r(player)}});
                       }))
                     )) : React.createElement("div", { style:{ ...E,padding:24,textAlign:"center",color:"var(--muted)" } }, "Você ainda não adicionou jogadores aos favoritos."))
               : marketSection === "recommended"
@@ -3921,7 +3968,7 @@
                       React.createElement(
                         "div",
                         { style: { position: "relative", flex: 1 } },
-                        React.createElement("input", { style: { ...q, paddingLeft: 34 }, placeholder: "Buscar jogador, clube ou time...", value: clubQuery, onChange: (event) => { setClubQuery(event.target.value); setVisibleCount(36); } }),
+                        React.createElement("input", { style: { ...q, paddingLeft: 34 }, placeholder: "Buscar jogador, clube ou time...", value: clubQuery, onChange: (event) => { setClubQuery(event.target.value); setVisibleCount(24); } }),
                         React.createElement("span", { style: { position: "absolute", left: 10, top: 12 } }, React.createElement(Xt, { size: 15, color: "var(--muted)" })),
                       ),
                       React.createElement(
@@ -3936,17 +3983,17 @@
                       { style: { ...E, padding: 16, marginBottom: 14 } },
                       React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 13 } }, React.createElement("div", { style: { fontSize: 14, fontWeight: 800 } }, "Refinar mercado"), React.createElement("button", { className: "tapbtn", onClick: resetFilters, style: { border: 0, background: "none", color: "var(--green)", fontSize: 11.5, fontWeight: 750, cursor: "pointer" } }, "Limpar")),
                       React.createElement("div", { style: { fontSize: 10.5, color: "var(--muted)", marginBottom: 7 } }, "Posição"),
-                      React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 10 } }, React.createElement("span", { onClick: () => { setPositionFilter("all"); setVisibleCount(36); }, style: V(positionFilter === "all") }, "Todas"), positions.map((position) => React.createElement("span", { key: position, onClick: () => { setPositionFilter(position); setVisibleCount(36); }, style: V(positionFilter === position) }, position))),
+                      React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 10 } }, React.createElement("span", { onClick: () => { setPositionFilter("all"); setVisibleCount(24); }, style: V(positionFilter === "all") }, "Todas"), positions.map((position) => React.createElement("span", { key: position, onClick: () => { setPositionFilter(position); setVisibleCount(24); }, style: V(positionFilter === position) }, position))),
                       React.createElement(
                         "div",
                         { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 } },
                         React.createElement("div", null,
                           React.createElement("div", { style:{ fontSize:10.5,color:"var(--muted)",marginBottom:7 } }, "Overall"),
-                          React.createElement(DualRange, { min:70,max:99,step:1,minValue:overallMin,maxValue:overallMax,formatValue:(value)=>String(value),onChangeMin:(value)=>{setOverallMin(Math.min(value,overallMax));setVisibleCount(36);},onChangeMax:(value)=>{setOverallMax(Math.max(value,overallMin));setVisibleCount(36);} })
+                          React.createElement(DualRange, { min:70,max:99,step:1,minValue:overallMin,maxValue:overallMax,formatValue:(value)=>String(value),onChangeMin:(value)=>{setOverallMin(Math.min(value,overallMax));setVisibleCount(24);},onChangeMax:(value)=>{setOverallMax(Math.max(value,overallMin));setVisibleCount(24);} })
                         ),
                         React.createElement("div", null,
                           React.createElement("div", { style:{ fontSize:10.5,color:"var(--muted)",marginBottom:7 } }, "Valor"),
-                          React.createElement(DualRange, { min:3,max:maxCatalogValue,step:1,minValue:valueMin,maxValue:valueMax,formatValue:(value)=>`${value}M`,onChangeMin:(value)=>{setValueMin(Math.min(value,valueMax));setVisibleCount(36);},onChangeMax:(value)=>{setValueMax(Math.max(value,valueMin));setVisibleCount(36);} })
+                          React.createElement(DualRange, { min:3,max:maxCatalogValue,step:1,minValue:valueMin,maxValue:valueMax,formatValue:(value)=>`${value}M`,onChangeMin:(value)=>{setValueMin(Math.min(value,valueMax));setVisibleCount(24);},onChangeMax:(value)=>{setValueMax(Math.max(value,valueMin));setVisibleCount(24);} })
                         ),
                       ),
                     ),
@@ -3967,7 +4014,8 @@
                       let closed = !marketRules.isOpen;
                       let label = closed ? "Mercado fechado" : overallBlocked ? "Acima do limite" : balanceBlocked ? "Bloqueado pelo equilíbrio" : status.kind === "free" ? (insufficient ? "Saldo insuficiente" : `Comprar · ${L(price)}`) : activeOffer ? "Ver negociação" : `Ofertar · ${L(price)}`;
                       return React.createElement(UnifiedPlayerCard, {
-                        key:player.id, player, onOpen:f, actionLabel:label, actionDisabled:closed || insufficient || balanceBlocked || overallBlocked, dimmed:overallBlocked,
+                        key:player.id, player, onOpen:f, actionLabel:label,
+                        currentTeamName:status.teamId && l(status.teamId) ? l(status.teamId).name : null, actionDisabled:closed || insufficient || balanceBlocked || overallBlocked, dimmed:overallBlocked,
                         isFavorite:favoriteSet.has(String(player.id)), onToggleFavorite,
                         onAction:()=>{ activeOffer ? setMarketSection("negotiations") : r(player); }
                       });

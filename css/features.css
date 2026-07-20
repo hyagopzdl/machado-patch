@@ -456,3 +456,14 @@
   .lineup-reset-button { display:none; }
   .lineup-slot-position { font-size:7.5px; padding:2px 5px; }
 }
+
+
+/* Market rendering optimization */
+.unified-player-card {
+  content-visibility:auto;
+  contain:layout paint style;
+  contain-intrinsic-size:242px 180px;
+}
+.market-recommendation-rail {
+  contain:layout paint;
+}
