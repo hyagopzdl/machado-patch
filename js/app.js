@@ -78,7 +78,9 @@
             [adminGate, setAdminGate] = b(null),
             [playerReportModal, setPlayerReportModal] = b(null),
             [playerReviewsOpen, setPlayerReviewsOpen] = b(false),
-            lastSyncRevisionRef = Rf(null);
+            [marketActionKey, setMarketActionKey] = b(null),
+            lastSyncRevisionRef = Rf(null),
+            marketActionRef = Rf(null);
           function refreshCriticalSnapshot() {
             let db = Ee();
             if (!db) return Promise.resolve(false);
@@ -108,6 +110,30 @@
               actorProfileId: te && te.id ? te.id : null,
               updatedAt: firebase.database.ServerValue.TIMESTAMP,
             }).catch((error) => console.error("sync revision signal failed", error));
+          }
+          function beginMarketAction(key) {
+            if (marketActionRef.current) return false;
+            marketActionRef.current = key;
+            setMarketActionKey(key);
+            return true;
+          }
+          function endMarketAction(key) {
+            if (!key || marketActionRef.current === key) {
+              marketActionRef.current = null;
+              setMarketActionKey(null);
+            }
+          }
+          function applyConfirmedTournamentSnapshot(snapshot) {
+            if (!snapshot) return [];
+            let value = typeof snapshot.val === "function" ? snapshot.val() : snapshot;
+            let list = Array.isArray(value)
+              ? value.filter(Boolean)
+              : value && typeof value === "object"
+                ? Object.values(value).filter(Boolean)
+                : [];
+            g(list);
+            setTournamentsLoaded(true);
+            return list;
           }
           He(() => {
             document.documentElement.setAttribute("data-theme", theme);
@@ -928,6 +954,8 @@
 
             let db = Ee();
             if (!db) return;
+            let actionKey = `offer:${R.id}:${offerId}`;
+            if (!beginMarketAction(actionKey)) { window.alert("Aguarde a operação atual ser concluída."); return; }
             let failureReason = null;
             db.ref("pes/tournaments").transaction((serverValue) => {
               let isArray = Array.isArray(serverValue);
@@ -981,12 +1009,17 @@
               list[index] = { ...tournament, context: { ...context, teams, ownership, tradeOffers: offers, transfers, financialTransactions } };
               failureReason = null;
               return isArray ? list : Object.fromEntries(list.map((item, idx) => [item.id || String(idx), item]));
-            }, (error, committed) => {
+            }, (error, committed, snapshot) => {
+              endMarketAction(actionKey);
               if (error) {
                 window.alert("Não foi possível concluir a transferência. Tente novamente.");
                 return;
               }
-              if (committed) { signalImportantUpdate("player_transfer", R && R.id ? R.id : null); return; }
+              if (committed) {
+                applyConfirmedTournamentSnapshot(snapshot);
+                signalImportantUpdate("player_transfer", R && R.id ? R.id : null);
+                return;
+              }
               let messages = {
                 seller_min_roster: `O vendedor precisa manter pelo menos ${minPlayers} jogadores. A proposta continua aberta.`,
                 buyer_roster_full: `O comprador atingiu o máximo de ${maxPlayers} jogadores. A proposta continua aberta.`,
@@ -1000,7 +1033,7 @@
                 market_closed: "O mercado está fechado. A proposta continuará aberta até a reabertura."
               };
               window.alert(messages[failureReason] || "A transferência não pôde ser concluída.");
-            });
+            }, false);
           }
           function Ft(o, i, y) {
             if (!R || !o || !y) return;
@@ -1049,6 +1082,8 @@
               he(null);
               return;
             }
+            let actionKey = `purchase:${tournamentId}:${o.id}`;
+            if (!beginMarketAction(actionKey)) { window.alert("Aguarde a operação atual ser concluída."); return; }
             db.ref("pes/tournaments").transaction((serverValue)=>{
               let isArray=Array.isArray(serverValue);
               let list=isArray?[...serverValue]:Object.values(serverValue||{});
@@ -1058,12 +1093,18 @@
               if(!updated)return;
               list[index]=updated;
               return isArray?list:Object.fromEntries(list.map((item,idx)=>[item.id||String(idx),item]));
-            },(error,committed)=>{
+            },(error,committed,snapshot)=>{
+              endMarketAction(actionKey);
               if(error){window.alert("Não foi possível concluir a compra. Tente novamente.");return;}
-              if(committed){signalImportantUpdate("player_purchase", tournamentId);he(null);return;}
+              if(committed){
+                applyConfirmedTournamentSnapshot(snapshot);
+                he(null);
+                signalImportantUpdate("player_purchase", tournamentId);
+                return;
+              }
               let messages={market_closed:"O mercado está fechado pela administração.",overall_limit:"Este jogador está acima do limite de overall permitido para jogadores livres.",market_balance_lock:"Esta compra está bloqueada pela regra de equilíbrio do mercado.",insufficient_funds:"Saldo insuficiente para esta compra.",buyer_roster_full:"Seu elenco atingiu o limite máximo de jogadores.",player_unavailable:"Este jogador não está mais livre no mercado.",team_not_found:"Seu time não foi encontrado.",championship_not_found:"O campeonato não foi encontrado."};
               window.alert(messages[failureReason]||"A compra não pôde ser concluída.");
-            });
+            }, false);
           }
           function Ct(o, i) {
             Ae({ player: o, teamId: i, price: o.value });
@@ -1133,19 +1174,28 @@
               window.alert(`${o.name} foi vendido ao mercado por ${L(amount)}.`);
               return;
             }
+            let actionKey = `sale:${tournamentId}:${o.id}`;
+            if (!beginMarketAction(actionKey)) { window.alert("Aguarde a operação atual ser concluída."); return; }
             db.ref("pes/tournaments").transaction((serverList) => {
-              let list = Array.isArray(serverList) ? [...serverList] : [];
-              let index = list.findIndex((item) => item && item.id === tournamentId);
+              let isArray = Array.isArray(serverList);
+              let list = isArray ? [...serverList] : Object.values(serverList || {});
+              let index = list.findIndex((item) => item && String(item.id) === String(tournamentId));
               if (index < 0) return;
               let updated = applySale(list[index]);
               if (!updated) return;
               list[index] = updated;
-              return list;
-            }, (error, committed) => {
+              return isArray ? list : Object.fromEntries(list.map((item, index) => [item.id || String(index), item]));
+            }, (error, committed, snapshot) => {
+              endMarketAction(actionKey);
               if (error) window.alert("Não foi possível concluir a venda. Tente novamente.");
               else if (!committed) window.alert("A venda foi cancelada porque o jogador não pertence mais ao seu elenco.");
-              else { signalImportantUpdate("player_sale", tournamentId); setSaleModal(null); window.alert(`${o.name} foi vendido ao mercado por ${L(amount)}.`); }
-            });
+              else {
+                applyConfirmedTournamentSnapshot(snapshot);
+                setSaleModal(null);
+                signalImportantUpdate("player_sale", tournamentId);
+                window.alert(`${o.name} foi vendido ao mercado por ${L(amount)}.`);
+              }
+            }, false);
           }
           function importRosterPlan(plan, mode) {
             if (!R || !plan || !Array.isArray(plan.entries) || !plan.entries.length) return;
