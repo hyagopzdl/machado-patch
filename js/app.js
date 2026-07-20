@@ -2297,14 +2297,21 @@
                       submitting: setupSubmitting,
                       onSubmit: completeInitialSetup,
                     })
-                  : React.createElement(oo, {
-                    profiles: x,
-                    tournaments: m,
-                    selectedTournamentId,
-                    onSelectTournament: selectTournament,
-                    onPick: bt,
-                    belongsToTournament: profileBelongsToTournament,
-                  }))
+                  : React.createElement(React.Fragment, null,
+                    React.createElement(oo, {
+                      profiles: x,
+                      tournaments: m,
+                      selectedTournamentId,
+                      onSelectTournament: selectTournament,
+                      onPick: bt,
+                      belongsToTournament: profileBelongsToTournament,
+                    }),
+                    profilePinGate && React.createElement(ProfilePinLock, {
+                      gate: profilePinGate,
+                      onDigit: appendProfilePinDigit,
+                      onErase: eraseProfilePinDigit,
+                    })
+                  ))
                 : React.createElement(
                     "div",
                     {
