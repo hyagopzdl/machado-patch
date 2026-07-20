@@ -1635,12 +1635,24 @@
               window.alert("Não foi possível atualizar o favorito agora.");
             });
           }
-          function updateGlobalProfile(profileId, updates) {
+          async function updateGlobalProfile(profileId, updates) {
+            let previousProfiles = x;
+            let previousActiveProfile = te;
             let updatedProfiles = x.map((profile) => profile && typeof profile === "object" && profile.id === profileId ? { ...profile, ...updates } : profile);
-            T(updatedProfiles); U("profiles", updatedProfiles);
+            T(updatedProfiles);
             if (te && typeof te === "object" && te.id === profileId) {
               let next = { ...te, ...updates };
               me(next); qe("pes-my-profile", next);
+            }
+            try {
+              await U("profiles", updatedProfiles);
+              return updatedProfiles.find((profile) => profile && typeof profile === "object" && profile.id === profileId) || null;
+            } catch (error) {
+              T(previousProfiles);
+              if (previousActiveProfile && typeof previousActiveProfile === "object" && previousActiveProfile.id === profileId) {
+                me(previousActiveProfile); qe("pes-my-profile", previousActiveProfile);
+              }
+              throw error;
             }
           }
           function deleteGlobalProfile(profileId) {
@@ -5159,53 +5171,88 @@
             if (step === "create") { window.setTimeout(()=>{ setFirst(next); setDigits(""); setStep("confirm"); },180); return; }
             if (next !== first) { window.setTimeout(()=>{ setDigits(""); setFirst(""); setStep("create"); setError("Os PINs não coincidem. Tente novamente."); },220); return; }
             setSaving(true);
-            let pinHash=await hashAdminPassword(`profile-pin:${next}`);
-            await Promise.resolve(onSave(pinHash));
-            setSaving(false); onClose();
+            try {
+              let pinHash=await hashAdminPassword(`profile-pin:${next}`);
+              await onSave(pinHash);
+              onClose();
+            } catch (saveError) {
+              console.error("profile pin save failed", saveError);
+              setDigits(""); setFirst(""); setStep("create");
+              setError("Não foi possível salvar o PIN. Tente novamente.");
+            } finally {
+              setSaving(false);
+            }
           }
-          return React.createElement("div", { className:"profile-pin-overlay profile-pin-setup", role:"dialog", "aria-modal":"true" },
-            React.createElement("button", { type:"button", onClick:onClose, className:"profile-pin-setup-close", "aria-label":"Fechar" }, "×"),
-            React.createElement("div", { className:"profile-pin-lock" },
-              React.createElement("div", { className:"profile-pin-avatar", style:{ background:profile.color || "var(--green)" } }, profile.avatar ? React.createElement("img", { src:profile.avatar, alt:"" }) : String(profile.name || "?").charAt(0).toUpperCase()),
-              React.createElement("h2", null, step === "create" ? "Crie um PIN" : "Repita o PIN"),
-              React.createElement("p", null, error || "Use 4 dígitos para proteger seu perfil"),
-              React.createElement("div", { className:`profile-pin-dots${error ? " is-error" : ""}` }, [0,1,2,3].map((index)=>React.createElement("span", { key:index, className:index < digits.length ? "is-filled" : "" }))),
-              React.createElement("div", { className:"profile-pin-keypad" },
-                [1,2,3,4,5,6,7,8,9].map((digit)=>React.createElement("button", { key:digit, type:"button", disabled:saving, onClick:()=>addDigit(String(digit)), className:"profile-pin-key" }, digit)),
-                React.createElement("span", { className:"profile-pin-key-spacer" }),
-                React.createElement("button", { type:"button", disabled:saving, onClick:()=>addDigit("0"), className:"profile-pin-key" }, "0"),
-                React.createElement("button", { type:"button", disabled:saving || !digits.length, onClick:()=>setDigits(digits.slice(0,-1)), className:"profile-pin-delete", "aria-label":"Apagar último dígito" }, React.createElement("span", null, "⌫"))
+          return React.createElement("div", { className:"profile-modal-overlay profile-pin-modal-overlay", role:"dialog", "aria-modal":"true" },
+            React.createElement("div", { className:"profile-modal profile-pin-modal" },
+              React.createElement("button", { type:"button", onClick:onClose, className:"profile-modal-close", "aria-label":"Fechar" }, "×"),
+              React.createElement("div", { className:"profile-pin-lock" },
+                React.createElement("div", { className:"profile-pin-avatar", style:{ background:profile.color || "var(--green)" } }, profile.avatar ? React.createElement("img", { src:profile.avatar, alt:"" }) : String(profile.name || "?").charAt(0).toUpperCase()),
+                React.createElement("h2", null, step === "create" ? "Crie um PIN" : "Repita o PIN"),
+                React.createElement("p", null, saving ? "Salvando PIN..." : error || "Use 4 dígitos para proteger seu perfil"),
+                React.createElement("div", { className:`profile-pin-dots${error ? " is-error" : ""}` }, [0,1,2,3].map((index)=>React.createElement("span", { key:index, className:index < digits.length ? "is-filled" : "" }))),
+                React.createElement("div", { className:"profile-pin-keypad" },
+                  [1,2,3,4,5,6,7,8,9].map((digit)=>React.createElement("button", { key:digit, type:"button", disabled:saving, onClick:()=>addDigit(String(digit)), className:"profile-pin-key" }, digit)),
+                  React.createElement("span", { className:"profile-pin-key-spacer" }),
+                  React.createElement("button", { type:"button", disabled:saving, onClick:()=>addDigit("0"), className:"profile-pin-key" }, "0"),
+                  React.createElement("button", { type:"button", disabled:saving || !digits.length, onClick:()=>setDigits(digits.slice(0,-1)), className:"profile-pin-delete", "aria-label":"Apagar último dígito" }, React.createElement("span", null, "⌫"))
+                )
               )
+            )
+          );
+        }
+        function ProfileEditModal({ profile, team, onSave, onClose, onOpenPin }) {
+          let [name,setName]=b(profile.name || ""), [teamName,setTeamName]=b(team ? team.name : ""), [avatar,setAvatar]=b(profile.avatar || null), [saving,setSaving]=b(false), [error,setError]=b("");
+          function handleAvatar(event) {
+            let file=event.target.files && event.target.files[0];
+            if(!file) return;
+            if(!file.type.startsWith("image/")) { setError("Escolha um arquivo de imagem."); return; }
+            if(file.size > 4*1024*1024) { setError("Use uma imagem de até 4 MB."); return; }
+            let reader=new FileReader();
+            reader.onload=()=>{ setAvatar(reader.result); setError(""); };
+            reader.readAsDataURL(file);
+          }
+          async function submit() {
+            let cleanName=name.trim(), cleanTeam=teamName.trim();
+            if(!cleanName) { setError("Informe um nome para o perfil."); return; }
+            setSaving(true); setError("");
+            try { await onSave({ name:cleanName, avatar, teamName:cleanTeam }); onClose(); }
+            catch(saveError) { console.error("profile edit save failed",saveError); setError("Não foi possível salvar as alterações."); }
+            finally { setSaving(false); }
+          }
+          return React.createElement("div", { className:"profile-modal-overlay", role:"dialog", "aria-modal":"true" },
+            React.createElement("div", { className:"profile-modal" },
+              React.createElement("button", { type:"button", onClick:onClose, className:"profile-modal-close", "aria-label":"Fechar" }, "×"),
+              React.createElement("h2", null, "Editar perfil"),
+              React.createElement("div", { className:"profile-edit-avatar", style:{ background:profile.color || "var(--surface-soft)" } }, avatar ? React.createElement("img", { src:avatar, alt:"Avatar" }) : String(profile.name || "?").charAt(0).toUpperCase()),
+              React.createElement("label", { style:P }, "Avatar"),
+              React.createElement("input", { type:"file", accept:"image/*", onChange:handleAvatar, style:{ ...q, padding:"10px" } }),
+              React.createElement("label", { style:{ ...P, marginTop:14 } }, "Nome do perfil"),
+              React.createElement("input", { style:q, value:name, onChange:(event)=>setName(event.target.value), maxLength:30 }),
+              team && React.createElement(React.Fragment,null,
+                React.createElement("label", { style:{ ...P, marginTop:14 } }, "Nome do time neste campeonato"),
+                React.createElement("input", { style:q, value:teamName, onChange:(event)=>setTeamName(event.target.value), maxLength:40 })
+              ),
+              React.createElement("button", { type:"button", onClick:onOpenPin, className:"profile-edit-pin-button family-pill-secondary" }, profile.pinHash ? "Alterar PIN" : "Criar PIN"),
+              error && React.createElement("div", { className:"profile-modal-error" }, error),
+              React.createElement("button", { type:"button", onClick:submit, disabled:saving, style:{ ...M, ...W, marginTop:16 } }, saving ? "Salvando..." : "Salvar alterações")
             )
           );
         }
         function ProfileArea({ profile, team, tournament, squad, stats, matches, transfers, theme, setTheme, onUpdateProfile, onUpdateTeamName, onSwitchProfile, onOpenBalanceHistory, tournaments, onOpenChampionshipSummary }) {
           let item = typeof profile === "object" && profile ? profile : { name: String(profile || "") };
-          let [name, setName] = b(item.name || ""), [teamName, setTeamName] = b(team ? team.name : ""), [editing, setEditing] = b(false), [pinSetupOpen, setPinSetupOpen] = b(false);
-          He(() => { setName(item.name || ""); setTeamName(team ? team.name : ""); }, [item.id, item.name, team && team.id, team && team.name]);
+          let [editing,setEditing]=b(false), [pinSetupOpen,setPinSetupOpen]=b(false);
           let played = matches.filter((match) => match && match.played && !match.bye && team && (match.homeId === team.id || match.awayId === team.id));
           let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
           played.forEach((match) => { let home = match.homeId === team.id, gf = home ? match.homeScore : match.awayScore, ga = home ? match.awayScore : match.homeScore; goalsFor += Number(gf)||0; goalsAgainst += Number(ga)||0; if (gf > ga) wins++; else if (gf === ga) draws++; else losses++; });
           let goals = squad.reduce((total, player) => total + ((stats[player.id] && stats[player.id].goals) || 0), 0);
-          function handleAvatar(event) {
-            let file = event.target.files && event.target.files[0];
-            if (!file) return;
-            if (!file.type.startsWith("image/")) return window.alert("Escolha um arquivo de imagem.");
-            if (file.size > 4 * 1024 * 1024) return window.alert("Use uma imagem de até 4 MB.");
-            let reader = new FileReader();
-            reader.onload = () => onUpdateProfile(item.id, { avatar: reader.result });
-            reader.readAsDataURL(file);
-          }
-          function saveIdentity() {
-            let cleanName = name.trim(), cleanTeam = teamName.trim();
-            if (!cleanName) return window.alert("Informe um nome para o perfil.");
-            onUpdateProfile(item.id, { name: cleanName });
-            if (team && cleanTeam) onUpdateTeamName(team.id, cleanTeam);
-            setEditing(false);
+          async function saveProfileModal(values) {
+            await onUpdateProfile(item.id,{ name:values.name, avatar:values.avatar });
+            if(team && values.teamName) await Promise.resolve(onUpdateTeamName(team.id,values.teamName));
           }
           return React.createElement("div", null,
             React.createElement("div", { style:{ textAlign:"center", marginBottom:24, position:"relative" } },
-              React.createElement("button", { onClick:()=>setEditing(!editing), title:editing ? "Fechar edição" : "Editar perfil", className:"tapbtn", style:{ position:"absolute", right:0, top:0, width:42, height:42, borderRadius:999, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--heading)", display:"grid", placeItems:"center", cursor:"pointer", boxShadow:"var(--shadow-soft)" } }, React.createElement("span", { style:{ fontSize:19, lineHeight:1 } }, editing ? "×" : "✎")),
+              React.createElement("button", { onClick:()=>setEditing(true), title:"Editar perfil", className:"tapbtn", style:{ position:"absolute", right:0, top:0, width:42, height:42, borderRadius:999, border:"1px solid var(--border)", background:"var(--surface)", color:"var(--heading)", display:"grid", placeItems:"center", cursor:"pointer", boxShadow:"var(--shadow-soft)" } }, React.createElement("span", { style:{ fontSize:19, lineHeight:1 } }, "✎")),
               React.createElement("div", { style:{ width:116, height:116, margin:"0 auto", borderRadius:999, background:item.color || "var(--surface-soft)", overflow:"hidden", display:"grid", placeItems:"center", fontSize:44, fontWeight:750, boxShadow:"0 20px 54px rgba(0,0,0,.24), inset 0 0 0 1px var(--border)" } }, item.avatar ? React.createElement("img", { src:item.avatar, alt:"Avatar", style:{ width:"100%", height:"100%", objectFit:"cover" } }) : String(item.name || "?").charAt(0).toUpperCase()),
               React.createElement("div", { style:{ fontSize:30, fontWeight:750, letterSpacing:"-.04em", color:"var(--heading)", marginTop:16 } }, item.name),
               React.createElement("div", { style:{ color:"var(--muted)", marginTop:5, fontSize:15 } }, team ? team.name : "Administrador global"),
@@ -5216,20 +5263,7 @@
               React.createElement("div", { className:"family-card", style:{ padding:18, gridColumn:"1 / -1" } }, React.createElement("div", { style:{ fontSize:12,color:"var(--muted)",marginBottom:10 } }, "Últimas partidas"), React.createElement("div", { style:{ display:"flex",gap:8,alignItems:"center" } }, played.slice().sort((a,b)=>(a.playedAt||a.createdAt||0)-(b.playedAt||b.createdAt||0)).slice(-6).map((match)=>{ let isHome=match.homeId===team.id, mine=isHome?Number(match.homeScore)||0:Number(match.awayScore)||0, other=isHome?Number(match.awayScore)||0:Number(match.homeScore)||0, result=mine>other?"V":mine<other?"D":"E"; return React.createElement("span", { key:match.id, style:{ width:30,height:30,borderRadius:9,display:"grid",placeItems:"center",fontWeight:850,background:result==="V"?"rgba(0,201,120,.18)":result==="D"?"rgba(255,43,58,.18)":"rgba(255,187,38,.18)",color:result==="V"?"#00c978":result==="D"?"#ff2b3a":"#ffbb26" } }, result); })))
             ),
             (()=>{ let trophies=(tournaments||[]).filter((item)=>item&&item.status==="finished").map((item)=>{ let standings=Array.isArray(item.finalStandings)?item.finalStandings:[]; let entry=profile&&profile.id?standings.find((row)=>row&&String(row.profileId)===String(profile.id)):null; return entry&&Number(entry.position)===1?{ tournament:item, entry }:null; }).filter(Boolean).sort((a,b)=>(Number(b.tournament.finishedAt)||0)-(Number(a.tournament.finishedAt)||0)); return trophies.length ? React.createElement("section", { style:{ marginBottom:18 } }, React.createElement("div", { style:{ fontSize:19,fontWeight:800,marginBottom:12 } }, "Sala de troféus"), React.createElement("div", { style:{ display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10 } }, trophies.map(({tournament:item,entry})=>React.createElement("button", { key:item.id,onClick:()=>onOpenChampionshipSummary&&onOpenChampionshipSummary(item),className:"family-card tapbtn",style:{ padding:18,textAlign:"center",cursor:"pointer",color:"inherit",border:"1px solid var(--border)" } }, React.createElement(TrophyAsset,{tournament:item,size:62,style:{marginBottom:8}}), React.createElement("div", { style:{ fontWeight:800,fontSize:14 } }, item.name), React.createElement("div", { style:{ color:"var(--muted)",fontSize:12,marginTop:4 } }, item.type === "cup" ? "Campeão da Copa" : "Campeão"))))) : null; })(),
-            editing && React.createElement("div", { className: "family-card", style: { padding: 24, marginBottom: 16 } },
-              React.createElement("div", { style: { fontSize: 19, fontWeight: 600, marginBottom: 16 } }, "Editar perfil"),
-              React.createElement("label", { style: P }, "Avatar"),
-              React.createElement("input", { type:"file", accept:"image/*", onChange:handleAvatar, style:{ ...q, padding:"10px" } }),
-              React.createElement("div", { style:{ fontSize:11, color:"var(--muted)", marginTop:7, marginBottom:14 } }, "Imagem JPG, PNG ou WebP de até 4 MB."),
-              React.createElement("label", { style: P }, "Nome do perfil"), React.createElement("input", { style: q, value: name, onChange: (e) => setName(e.target.value), maxLength: 30 }),
-              team && React.createElement(React.Fragment, null, React.createElement("label", { style: { ...P, marginTop: 14 } }, "Nome do time neste campeonato"), React.createElement("input", { style: q, value: teamName, onChange: (e) => setTeamName(e.target.value), maxLength: 40 })),
-              React.createElement("div", { className:"profile-pin-setting" },
-                React.createElement("div", null, React.createElement("strong", null, "PIN do perfil"), React.createElement("span", null, item.pinHash ? "Ativado" : "Proteja a troca de perfil com 4 dígitos")),
-                React.createElement("button", { type:"button", onClick:()=>setPinSetupOpen(true), className:"family-pill-secondary" }, item.pinHash ? "Alterar PIN" : "Criar PIN"),
-                item.pinHash && React.createElement("button", { type:"button", onClick:()=>{ if(window.confirm("Remover o PIN deste perfil?")) onUpdateProfile(item.id,{ pinHash:null, pinUpdatedAt:Date.now() }); }, className:"profile-pin-remove" }, "Remover")
-              ),
-              React.createElement("button", { onClick: saveIdentity, style: { ...M, ...W, marginTop: 16 } }, "Salvar alterações")
-            ),
+            editing && React.createElement(ProfileEditModal,{ profile:item,team,onClose:()=>setEditing(false),onOpenPin:()=>{setEditing(false);setPinSetupOpen(true);},onSave:saveProfileModal }),
             pinSetupOpen && React.createElement(ProfilePinSetup, { profile:item, onClose:()=>setPinSetupOpen(false), onSave:(pinHash)=>onUpdateProfile(item.id,{ pinHash, pinUpdatedAt:Date.now() }) }),
             React.createElement("button", { onClick: onSwitchProfile, style: { ...M, width: "100%", marginTop: 16 } }, "Trocar perfil ou campeonato")
           );
