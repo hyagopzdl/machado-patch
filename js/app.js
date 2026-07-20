@@ -3110,10 +3110,12 @@
           let [lineupPicker, setLineupPicker] = b(null);
           let [lineupDrag, setLineupDrag] = b(null);
           let [lineupDragOver, setLineupDragOver] = b(null);
+          let [lineupDragGhost, setLineupDragGhost] = b(null);
           let [lineupEditMode, setLineupEditMode] = b(false);
           let [lineupEditingSlotId, setLineupEditingSlotId] = b(null);
           let [customPositions, setCustomPositions] = b(savedLineup.customPositions && typeof savedLineup.customPositions === "object" ? savedLineup.customPositions : {});
-          let lineupGestureRef = Rf({ timer:null, active:false, payload:null, pointerId:null });
+          let lineupGestureRef = Rf({ timer:null, active:false, payload:null, pointerId:null, startX:0, startY:0, moved:false });
+          let lineupSuppressClickRef = Rf(false);
           let lineupFieldRef = Rf(null);
           let customPositionsRef = Rf(customPositions);
           let lineupSlotEditRef = Rf({ active:false, slotId:null, pointerId:null });
@@ -3262,55 +3264,69 @@
           function clearLineupDrag() {
             let gesture = lineupGestureRef.current;
             if (gesture && gesture.timer) window.clearTimeout(gesture.timer);
-            lineupGestureRef.current = { timer:null, active:false, payload:null, pointerId:null };
+            lineupGestureRef.current = { timer:null, active:false, payload:null, pointerId:null, startX:0, startY:0, moved:false };
             setLineupDrag(null);
             setLineupDragOver(null);
+            setLineupDragGhost(null);
             setLineupEditingSlotId(null);
             document.body.classList.remove("is-lineup-dragging");
           }
-          function beginNativeLineupDrag(event, payload) {
-            if (readOnly) return;
+          function activateLineupPointerDrag(payload, pointerId, clientX, clientY, target) {
+            let current = lineupGestureRef.current;
+            lineupGestureRef.current = { ...current, timer:null, active:true, payload, pointerId, moved:false };
             setLineupDrag(payload);
             if (payload && payload.kind === "slot-position") setLineupEditingSlotId(payload.slotId);
-            document.body.classList.add("is-lineup-dragging");
-            if (event.dataTransfer) {
-              event.dataTransfer.effectAllowed = "move";
-              event.dataTransfer.setData("text/plain", JSON.stringify(payload));
+            if (payload && payload.kind === "player") {
+              let player = playerById.get(String(payload.playerId));
+              setLineupDragGhost(player ? { x:clientX, y:clientY, player } : null);
             }
+            document.body.classList.add("is-lineup-dragging");
+            try { target.setPointerCapture(pointerId); } catch (error) {}
           }
-          function beginTouchLineupDrag(event, payload) {
-            if (readOnly || event.pointerType === "mouse") return;
+          function beginLineupPointerDrag(event, payload) {
+            if (readOnly || event.button > 0) return;
             let pointerId = event.pointerId;
+            let target = event.currentTarget;
+            let base = { timer:null, active:false, payload, pointerId, startX:event.clientX, startY:event.clientY, moved:false };
+            if (event.pointerType === "mouse" || event.pointerType === "pen") {
+              event.preventDefault();
+              lineupGestureRef.current = base;
+              activateLineupPointerDrag(payload, pointerId, event.clientX, event.clientY, target);
+              return;
+            }
             let timer = window.setTimeout(() => {
-              lineupGestureRef.current = { timer:null, active:true, payload, pointerId };
-              setLineupDrag(payload);
-              if (payload && payload.kind === "slot-position") setLineupEditingSlotId(payload.slotId);
-              document.body.classList.add("is-lineup-dragging");
-              try { event.currentTarget.setPointerCapture(pointerId); } catch (error) {}
+              activateLineupPointerDrag(payload, pointerId, base.startX, base.startY, target);
               if (navigator.vibrate) navigator.vibrate(20);
             }, 300);
-            lineupGestureRef.current = { timer, active:false, payload, pointerId };
+            lineupGestureRef.current = { ...base, timer };
           }
-          function moveTouchLineupDrag(event) {
+          function moveLineupPointerDrag(event) {
             let gesture = lineupGestureRef.current;
             if (!gesture || gesture.pointerId !== event.pointerId) return;
+            let distance = Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY);
             if (!gesture.active) {
-              if (Math.abs(event.movementX || 0) > 5 || Math.abs(event.movementY || 0) > 5) {
+              if (distance > 8) {
                 if (gesture.timer) window.clearTimeout(gesture.timer);
-                lineupGestureRef.current = { timer:null, active:false, payload:null, pointerId:null };
+                lineupGestureRef.current = { timer:null, active:false, payload:null, pointerId:null, startX:0, startY:0, moved:false };
               }
               return;
             }
             event.preventDefault();
+            if (distance > 3 && !gesture.moved) {
+              gesture.moved = true;
+              lineupSuppressClickRef.current = true;
+            }
             if (gesture.payload && gesture.payload.kind === "slot-position") {
               updateSlotPositionFromPoint(gesture.payload.slotId, event.clientX, event.clientY, false);
               return;
             }
+            let player = playerById.get(String(gesture.payload && gesture.payload.playerId));
+            setLineupDragGhost(player ? { x:event.clientX, y:event.clientY, player } : null);
             let target = document.elementFromPoint(event.clientX, event.clientY);
             let slot = target && target.closest ? target.closest("[data-lineup-slot]") : null;
             setLineupDragOver(slot ? slot.getAttribute("data-lineup-slot") : (target && target.closest && target.closest("[data-lineup-bench]") ? "bench" : null));
           }
-          function endTouchLineupDrag(event) {
+          function endLineupPointerDrag(event) {
             let gesture = lineupGestureRef.current;
             if (!gesture || gesture.pointerId !== event.pointerId) return;
             if (gesture.timer) window.clearTimeout(gesture.timer);
@@ -3326,6 +3342,7 @@
               }
             }
             clearLineupDrag();
+            window.setTimeout(() => { lineupSuppressClickRef.current = false; }, 0);
           }
           let minPlayers = Math.max(0, Number(rosterSettings && rosterSettings.minPlayers != null ? rosterSettings.minPlayers : 23) || 0);
           let maxPlayers = Math.max(minPlayers, Number(rosterSettings && rosterSettings.maxPlayers != null ? rosterSettings.maxPlayers : 30) || 30);
@@ -3410,16 +3427,11 @@
                           "data-lineup-slot":slot.id,
                           className:`lineup-slot${player?"":" is-empty"}${lineupFitClass(draggedPlayer,slot)}${lineupDragOver===slot.id?" is-drag-over":""}${lineupDrag&&String(lineupDrag.playerId)===String(player&&player.id)?" is-drag-source":""}${lineupEditMode?" is-editable":""}${lineupEditingSlotId===slot.id?" is-being-edited":""}`,
                           disabled:readOnly,
-                          draggable:!readOnly,
-                          onClick:()=>{if(!lineupDrag)setLineupPicker({slotId:slot.id})},
-                          onDragStart:(event)=>beginNativeLineupDrag(event,{kind:"slot-position",slotId:slot.id,playerId:player?String(player.id):null}),
-                          onDragOver:(event)=>{if(lineupDrag&&lineupDrag.kind!=="slot-position"&&!readOnly){event.preventDefault();event.stopPropagation();setLineupDragOver(slot.id)}},
-                          onDragLeave:()=>{if(lineupDragOver===slot.id)setLineupDragOver(null)},
-                          onDrop:(event)=>{if(lineupDrag&&lineupDrag.kind!=="slot-position"){event.preventDefault();event.stopPropagation();moveLineupPlayer(lineupDrag,slot.id);clearLineupDrag()}},
-                          onDragEnd:()=>{if(lineupDrag&&lineupDrag.kind==="slot-position")saveLineup("Personalizada",assignments,customPositionsRef.current,presetFormation);clearLineupDrag()},
-                          onPointerDown:(event)=>beginTouchLineupDrag(event,{kind:"slot-position",slotId:slot.id,playerId:player?String(player.id):null}),
-                          onPointerMove:moveTouchLineupDrag,
-                          onPointerUp:endTouchLineupDrag,
+                          draggable:false,
+                          onClick:()=>{if(lineupSuppressClickRef.current)return;if(!lineupDrag)setLineupPicker({slotId:slot.id})},
+                          onPointerDown:(event)=>beginLineupPointerDrag(event,{kind:"slot-position",slotId:slot.id,playerId:player?String(player.id):null}),
+                          onPointerMove:moveLineupPointerDrag,
+                          onPointerUp:endLineupPointerDrag,
                           onPointerCancel:clearLineupDrag,
                           style:{left:`${slot.x}%`,top:`${slot.y}%`}
                         },
@@ -3441,12 +3453,10 @@
                       React.createElement("div", { className:"lineup-bench-list" }, benchPlayers.map((player)=>React.createElement("article", {
                         key:player.id,
                         className:`lineup-bench-player${lineupDrag&&String(lineupDrag.playerId)===String(player.id)?" is-drag-source":""}`,
-                        draggable:!readOnly,
-                        onDragStart:(event)=>beginNativeLineupDrag(event,{kind:"player",playerId:String(player.id),sourceSlotId:null}),
-                        onDragEnd:clearLineupDrag,
-                        onPointerDown:(event)=>beginTouchLineupDrag(event,{kind:"player",playerId:String(player.id),sourceSlotId:null}),
-                        onPointerMove:moveTouchLineupDrag,
-                        onPointerUp:endTouchLineupDrag,
+                        draggable:false,
+                        onPointerDown:(event)=>beginLineupPointerDrag(event,{kind:"player",playerId:String(player.id),sourceSlotId:null}),
+                        onPointerMove:moveLineupPointerDrag,
+                        onPointerUp:endLineupPointerDrag,
                         onPointerCancel:clearLineupDrag,
                         style:{background:`linear-gradient(145deg,color-mix(in srgb,${overallColor(player.overall)} 10%,var(--surface)) 0%,var(--surface) 78%)`,borderColor:`color-mix(in srgb,${overallColor(player.overall)} 32%,var(--border))`}
                       },
@@ -3454,6 +3464,11 @@
                         React.createElement("div",{className:"lineup-bench-player-info"},React.createElement("div",{className:"lineup-bench-player-name"},player.name),React.createElement("div",{className:"lineup-bench-player-position"},player.position||"—"))
                       )))
                     )
+                  ),
+                  lineupDragGhost && React.createElement("div", { className:"lineup-pointer-ghost", style:{ left:lineupDragGhost.x, top:lineupDragGhost.y, borderColor:overallColor(lineupDragGhost.player.overall) } },
+                    React.createElement("span", { style:{ color:overallColor(lineupDragGhost.player.overall), borderColor:overallColor(lineupDragGhost.player.overall) } }, lineupDragGhost.player.overall || "—"),
+                    React.createElement("strong", null, lineupDragGhost.player.name),
+                    React.createElement("small", null, lineupDragGhost.player.position || "—")
                   )
                 )
               ),
