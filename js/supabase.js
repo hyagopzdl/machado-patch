@@ -18,6 +18,9 @@
   const clone = (value) => value == null ? value : JSON.parse(JSON.stringify(value));
   const parts = (path) => String(path || "").replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
   const normalizePath = (path) => path === ".info/connected" ? path : (String(path || "").startsWith("pes") ? String(path) : `pes/${path}`);
+  const asObject = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const asArray = (value) => Array.isArray(value) ? value : [];
+  const ms = (value) => value == null ? null : new Date(value).getTime();
 
   function getAt(root, path) {
     if (path === ".info/connected") return true;
@@ -45,31 +48,313 @@
     });
   }
 
+  async function selectAll(table, orderColumn) {
+    let query = client.from(table).select("*");
+    if (orderColumn) query = query.order(orderColumn, { ascending: true });
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  function overlayRaw(row, extra = {}) {
+    return { ...asObject(row.raw_data), ...extra };
+  }
+
+  async function loadNormalizedBase() {
+    const [
+      profileRows, tournamentRows, participantRows, teamRows, matchRows,
+      ownershipRows, globalOwnershipRows, statsRows, offerRows, historyRows,
+      transferRows, financialRows, reviewRows, voteRows, overrideRows,
+      favoriteRows, presenceRows, importRows, metaRows, runtimeResult
+    ] = await Promise.all([
+      selectAll("profiles", "source_order"),
+      selectAll("tournaments", "source_order"),
+      selectAll("tournament_participants", "position"),
+      selectAll("teams", "source_order"),
+      selectAll("matches", "source_order"),
+      selectAll("player_ownership"),
+      selectAll("global_player_ownership"),
+      selectAll("player_stats"),
+      selectAll("trade_offers"),
+      selectAll("trade_offer_history"),
+      selectAll("transfers", "created_at"),
+      selectAll("financial_transactions", "created_at"),
+      selectAll("player_reviews", "created_at"),
+      selectAll("player_review_votes", "created_at"),
+      selectAll("player_catalog_overrides", "updated_at"),
+      selectAll("profile_favorites", "created_at"),
+      selectAll("presence", "updated_at"),
+      selectAll("admin_imports", "imported_at"),
+      selectAll("app_meta"),
+      client.rpc("get_runtime_documents")
+    ]);
+
+    if (runtimeResult.error) throw runtimeResult.error;
+    const runtime = runtimeResult.data || {};
+    const documents = asObject(runtime.documents);
+
+    const profiles = profileRows.map((row) => overlayRaw(row, {
+      id: row.id,
+      name: row.name,
+      color: row.color,
+      avatar: row.avatar,
+      role: row.role,
+      active: row.active,
+      pinHash: row.pin_hash,
+      pinUpdatedAt: ms(row.pin_updated_at),
+      recoveredFromTournament: row.recovered_from_tournament,
+      recoveredAt: ms(row.recovered_at)
+    }));
+
+    const historiesByOffer = new Map();
+    historyRows.forEach((row) => {
+      if (!historiesByOffer.has(row.offer_id)) historiesByOffer.set(row.offer_id, []);
+      historiesByOffer.get(row.offer_id).push(overlayRaw(row, {
+        id: row.id,
+        actorTeamId: row.actor_team_id,
+        type: row.action_type,
+        amount: row.amount == null ? null : Number(row.amount),
+        createdAt: ms(row.created_at)
+      }));
+    });
+
+    const tournaments = tournamentRows.map((row) => {
+      const raw = overlayRaw(row, {
+        id: row.id,
+        name: row.name,
+        format: row.format,
+        type: row.type,
+        status: row.status,
+        champion: row.champion,
+        cupStage: row.cup_stage,
+        groups: row.groups_data,
+        cupSnapshot: row.cup_snapshot,
+        finalStandings: row.final_standings,
+        economySettings: row.economy_settings,
+        finalPrizeSettings: row.final_prize_settings,
+        marketBalanceSettings: row.market_balance_settings,
+        marketSettings: row.market_settings,
+        createdAt: ms(row.created_at),
+        finishedAt: ms(row.finished_at),
+        resetAt: ms(row.reset_at),
+        resetByProfileId: row.reset_by_profile_id
+      });
+      const tournamentId = row.id;
+      const participants = participantRows.filter((item) => item.tournament_id === tournamentId).sort((a, b) => (a.position || 0) - (b.position || 0)).map((item) => item.profile_id);
+      const teams = teamRows.filter((item) => item.tournament_id === tournamentId).map((item) => overlayRaw(item, {
+        id: item.id, profileId: item.profile_id, name: item.name, color: item.color,
+        budget: Number(item.budget || 0), active: item.active, historical: item.historical,
+        lineup: item.lineup
+      }));
+      const matches = matchRows.filter((item) => item.tournament_id === tournamentId).map((item) => overlayRaw(item, {
+        id: item.id, homeTeamId: item.home_team_id, awayTeamId: item.away_team_id,
+        homeProfileId: item.home_profile_id, awayProfileId: item.away_profile_id,
+        stage: item.stage, round: item.round, leg: item.leg, status: item.status,
+        played: item.played, homeScore: item.home_score, awayScore: item.away_score,
+        playedAt: ms(item.played_at), createdAt: ms(item.created_at)
+      }));
+      const ownership = {};
+      ownershipRows.filter((item) => item.tournament_id === tournamentId).forEach((item) => {
+        ownership[item.player_id] = overlayRaw(item, {
+          teamId: item.team_id, initialTeamId: item.initial_team_id,
+          squadRole: item.squad_role, acquisitionSource: item.acquisition_source,
+          acquiredAt: ms(item.acquired_at), forSale: item.for_sale
+        });
+      });
+      const playerStats = {};
+      statsRows.filter((item) => item.tournament_id === tournamentId).forEach((item) => {
+        playerStats[item.player_id] = overlayRaw(item, {
+          teamId: item.team_id, playerNameSnapshot: item.player_name_snapshot,
+          goals: item.goals, redCards: item.red_cards, updatedAt: ms(item.updated_at)
+        });
+      });
+      const tradeOffers = {};
+      offerRows.filter((item) => item.tournament_id === tournamentId).forEach((item) => {
+        tradeOffers[item.id] = overlayRaw(item, {
+          id: item.id, playerId: item.player_id, playerName: item.player_name,
+          buyerTeamId: item.buyer_team_id, sellerTeamId: item.seller_team_id,
+          buyerProfileId: item.buyer_profile_id, sellerProfileId: item.seller_profile_id,
+          currentAmount: Number(item.current_amount || 0), marketValueAtCreation: item.market_value_at_creation == null ? null : Number(item.market_value_at_creation),
+          lastActorTeamId: item.last_actor_team_id, status: item.status,
+          expiresAt: ms(item.expires_at), createdAt: ms(item.created_at), updatedAt: ms(item.updated_at),
+          history: historiesByOffer.get(item.id) || []
+        });
+      });
+      const transfers = transferRows.filter((item) => item.tournament_id === tournamentId).map((item) => overlayRaw(item, {
+        id: item.id, playerId: item.player_id, playerName: item.player_name,
+        type: item.transfer_type, fromTeamId: item.from_team_id, toTeamId: item.to_team_id,
+        offerId: item.offer_id, price: Number(item.price || 0), marketValue: item.market_value == null ? null : Number(item.market_value),
+        depreciationPct: item.depreciation_pct == null ? null : Number(item.depreciation_pct), date: item.transfer_date, createdAt: ms(item.created_at)
+      }));
+      const financialTransactions = financialRows.filter((item) => item.tournament_id === tournamentId).map((item) => overlayRaw(item, {
+        id: item.id, teamId: item.team_id, type: item.transaction_type,
+        amount: Number(item.amount || 0), balanceBefore: Number(item.balance_before || 0), balanceAfter: Number(item.balance_after || 0),
+        label: item.label, referenceId: item.reference_id, createdAt: ms(item.created_at)
+      }));
+      const adminImports = importRows.filter((item) => item.tournament_id === tournamentId).map((item) => overlayRaw(item, {
+        id: item.id, importedByProfileId: item.imported_by_profile_id, type: item.import_type,
+        mode: item.mode, playerCount: item.player_count, teamCount: item.team_count, importedAt: ms(item.imported_at)
+      }));
+      return {
+        ...raw,
+        participants,
+        teamIds: teams.map((team) => team.id),
+        matches,
+        context: { ...asObject(raw.context), teams, matches, ownership, playerStats, tradeOffers, transfers, financialTransactions, adminImports }
+      };
+    });
+
+    const playerReviews = {};
+    reviewRows.forEach((row) => {
+      const votes = {};
+      voteRows.filter((vote) => vote.review_id === row.id).forEach((vote) => {
+        votes[vote.profile_id] = overlayRaw(vote, {
+          decision: vote.vote, avatarSnapshot: vote.avatar_snapshot,
+          nameSnapshot: vote.name_snapshot, createdAt: ms(vote.created_at)
+        });
+      });
+      playerReviews[row.id] = overlayRaw(row, {
+        id: row.id, playerId: row.player_id, playerNameSnapshot: row.player_name_snapshot,
+        createdByProfileId: row.created_by_profile_id, createdByNameSnapshot: row.created_by_name_snapshot,
+        original: row.original, proposed: row.proposed, status: row.status,
+        applyingByProfileId: row.applying_by_profile_id, applyingAt: ms(row.applying_at),
+        resolvedByProfileId: row.resolved_by_profile_id, resolvedAt: ms(row.resolved_at),
+        resolutionReason: row.resolution_reason, createdAt: ms(row.created_at), updatedAt: ms(row.updated_at), votes
+      });
+    });
+
+    const playerCatalogOverrides = {};
+    overrideRows.forEach((row) => {
+      playerCatalogOverrides[row.player_id] = overlayRaw(row, {
+        overall: row.overall, value: row.market_value == null ? null : Number(row.market_value),
+        updatedByProfileId: row.updated_by_profile_id, updatedAt: ms(row.updated_at)
+      });
+    });
+    const profileChampionshipPreferences = {};
+    favoriteRows.forEach((row) => {
+      profileChampionshipPreferences[row.tournament_id] ||= {};
+      profileChampionshipPreferences[row.tournament_id][row.profile_id] ||= { favorites: {} };
+      profileChampionshipPreferences[row.tournament_id][row.profile_id].favorites[row.player_id] = true;
+    });
+    const presence = {};
+    presenceRows.forEach((row) => { presence[row.profile_id] = { online: row.online, updatedAt: ms(row.updated_at) }; });
+    const globalOwnership = {};
+    globalOwnershipRows.forEach((row) => { globalOwnership[row.player_id] = overlayRaw(row, { teamId: row.team_id, forSale: row.for_sale }); });
+    const metaRow = metaRows[0] || {};
+
+    const pes = {
+      profiles,
+      tournaments,
+      meta: {
+        currentTournamentId: metaRow.current_tournament_id || null,
+        identitySchemaVersion: Number(metaRow.identity_schema_version || 0),
+        identityMigratedAt: ms(metaRow.identity_migrated_at),
+        seasonCounter: Number(metaRow.season_counter || 0)
+      },
+      adminSecurity: runtime.adminSecurity || {},
+      ownership: globalOwnership,
+      playerReviews,
+      presence,
+      profileChampionshipPreferences,
+      playerCatalogOverrides
+    };
+
+    applyRuntimeDocuments(pes, documents);
+    return { snapshot: { pes }, revision: Number(runtime.revision || metaRow.revision || 0) };
+  }
+
+  function applyRuntimeDocuments(pes, documents) {
+    Object.entries(documents).forEach(([key, value]) => {
+      if (key.startsWith("profile:")) {
+        const id = key.slice(8);
+        const index = pes.profiles.findIndex((item) => item && String(item.id) === id);
+        if (value === null) { if (index >= 0) pes.profiles.splice(index, 1); }
+        else if (index >= 0) pes.profiles[index] = value;
+        else pes.profiles.push(value);
+      } else if (key.startsWith("tournament:")) {
+        const id = key.slice(11);
+        const index = pes.tournaments.findIndex((item) => item && String(item.id) === id);
+        if (value === null) { if (index >= 0) pes.tournaments.splice(index, 1); }
+        else if (index >= 0) pes.tournaments[index] = value;
+        else pes.tournaments.push(value);
+      } else if (key.startsWith("review:")) {
+        const id = key.slice(7);
+        if (value === null) delete pes.playerReviews[id]; else pes.playerReviews[id] = value;
+      } else {
+        pes[key] = value;
+      }
+    });
+  }
+
   async function load(force = false) {
     if (!client) return state;
     if (loadPromise && !force) return loadPromise;
     loadPromise = (async () => {
-      const { data, error } = await client.rpc("get_legacy_snapshot");
-      if (error) throw error;
-      state = data && data.snapshot ? data.snapshot : { pes: {} };
-      revision = Number(data && data.revision || 0);
+      const loaded = await loadNormalizedBase();
+      state = loaded.snapshot;
+      revision = loaded.revision;
       emitAll();
       return state;
     })().finally(() => { loadPromise = null; });
     return loadPromise;
   }
 
+  function actorProfileId() {
+    try { const p = JSON.parse(localStorage.getItem("pes-my-profile") || "null"); return p && p.id || null; }
+    catch (_) { return null; }
+  }
+
+  function indexById(list) {
+    const map = new Map();
+    asArray(list).forEach((item) => { if (item && item.id != null) map.set(String(item.id), item); });
+    return map;
+  }
+
+  function collectEntityDiff(prefix, beforeList, afterList, documents, deleteKeys) {
+    const before = indexById(beforeList);
+    const after = indexById(afterList);
+    after.forEach((value, id) => {
+      if (JSON.stringify(before.get(id)) !== JSON.stringify(value)) documents[`${prefix}:${id}`] = value;
+    });
+    before.forEach((_, id) => { if (!after.has(id)) deleteKeys.push(`${prefix}:${id}`); });
+  }
+
+  function buildRuntimePatch(previousState, nextState) {
+    const before = asObject(previousState && previousState.pes);
+    const after = asObject(nextState && nextState.pes);
+    const documents = {};
+    const deleteKeys = [];
+    collectEntityDiff("profile", before.profiles, after.profiles, documents, deleteKeys);
+    collectEntityDiff("tournament", before.tournaments, after.tournaments, documents, deleteKeys);
+
+    const beforeReviews = asObject(before.playerReviews);
+    const afterReviews = asObject(after.playerReviews);
+    Object.entries(afterReviews).forEach(([id, value]) => {
+      if (JSON.stringify(beforeReviews[id]) !== JSON.stringify(value)) documents[`review:${id}`] = value;
+    });
+    Object.keys(beforeReviews).forEach((id) => { if (!(id in afterReviews)) deleteKeys.push(`review:${id}`); });
+
+    const smallKeys = ["meta", "adminSecurity", "ownership", "presence", "profileChampionshipPreferences", "playerCatalogOverrides"];
+    smallKeys.forEach((key) => {
+      if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) documents[key] = after[key] == null ? null : after[key];
+    });
+    return { documents, deleteKeys };
+  }
+
   async function commit(nextState, eventType = "state_change") {
     if (!client) throw new Error("Supabase não configurado");
-    const actor = (() => {
-      try { const p = JSON.parse(localStorage.getItem("pes-my-profile") || "null"); return p && p.id || null; }
-      catch (_) { return null; }
-    })();
+    const patch = buildRuntimePatch(state, nextState);
+    if (!Object.keys(patch.documents).length && !patch.deleteKeys.length) {
+      state = nextState;
+      emitAll();
+      return { committed: true, revision };
+    }
     const tournamentId = nextState && nextState.pes && nextState.pes.meta && nextState.pes.meta.currentTournamentId || null;
-    const { data, error } = await client.rpc("commit_legacy_snapshot", {
-      p_snapshot: nextState,
+    const { data, error } = await client.rpc("commit_runtime_documents", {
+      p_documents: patch.documents,
+      p_delete_keys: patch.deleteKeys,
       p_expected_revision: revision,
-      p_actor_profile_id: actor,
+      p_actor_profile_id: actorProfileId(),
       p_event_type: eventType,
       p_tournament_id: tournamentId
     });
@@ -131,9 +416,7 @@
       },
       once() { return load().then(() => ({ val: () => clone(getAt(state, path)) })); },
       set(value) { return runTransaction(path, () => value).then(() => undefined); },
-      update(patch) {
-        return runTransaction(path, (current) => ({ ...(current && typeof current === "object" ? current : {}), ...patch })).then(() => undefined);
-      },
+      update(patch) { return runTransaction(path, (current) => ({ ...(current && typeof current === "object" ? current : {}), ...patch })).then(() => undefined); },
       remove() { return runTransaction(path, () => null).then(() => undefined); },
       transaction(updater, completion) { return runTransaction(path, updater, completion); },
       onDisconnect() { return { remove: () => Promise.resolve(), set: () => Promise.resolve() }; }
