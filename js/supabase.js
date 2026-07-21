@@ -61,33 +61,28 @@
   }
 
   async function loadNormalizedBase() {
-    const [
-      profileRows, tournamentRows, participantRows, teamRows, matchRows,
-      ownershipRows, globalOwnershipRows, statsRows, offerRows, historyRows,
-      transferRows, financialRows, reviewRows, voteRows, overrideRows,
-      favoriteRows, presenceRows, importRows, metaRows, runtimeResult
-    ] = await Promise.all([
-      selectAll("profiles", "source_order"),
-      selectAll("tournaments", "source_order"),
-      selectAll("tournament_participants", "position"),
-      selectAll("teams", "source_order"),
-      selectAll("matches", "source_order"),
-      selectAll("player_ownership"),
-      selectAll("global_player_ownership"),
-      selectAll("player_stats"),
-      selectAll("trade_offers"),
-      selectAll("trade_offer_history"),
-      selectAll("transfers", "created_at"),
-      selectAll("financial_transactions", "created_at"),
-      selectAll("player_reviews", "created_at"),
-      selectAll("player_review_votes", "created_at"),
-      selectAll("player_catalog_overrides", "updated_at"),
-      selectAll("profile_favorites", "created_at"),
-      selectAll("presence", "updated_at"),
-      selectAll("admin_imports", "imported_at"),
-      selectAll("app_meta"),
-      client.rpc("get_runtime_documents")
-    ]);
+    // Carregamento propositalmente sequencial. No plano free, muitas consultas
+    // simultaneas podem competir por conexoes e atingir o statement_timeout.
+    const profileRows = await selectAll("profiles", "source_order");
+    const tournamentRows = await selectAll("tournaments", "source_order");
+    const participantRows = await selectAll("tournament_participants", "position");
+    const teamRows = await selectAll("teams", "source_order");
+    const matchRows = await selectAll("matches", "source_order");
+    const ownershipRows = await selectAll("player_ownership");
+    const globalOwnershipRows = await selectAll("global_player_ownership");
+    const statsRows = await selectAll("player_stats");
+    const offerRows = await selectAll("trade_offers");
+    const historyRows = await selectAll("trade_offer_history");
+    const transferRows = await selectAll("transfers", "created_at");
+    const financialRows = await selectAll("financial_transactions", "created_at");
+    const reviewRows = await selectAll("player_reviews", "created_at");
+    const voteRows = await selectAll("player_review_votes", "created_at");
+    const overrideRows = await selectAll("player_catalog_overrides", "updated_at");
+    const favoriteRows = await selectAll("profile_favorites", "created_at");
+    const presenceRows = await selectAll("presence", "updated_at");
+    const importRows = await selectAll("admin_imports", "imported_at");
+    const metaRows = await selectAll("app_meta");
+    const runtimeResult = await client.rpc("get_runtime_documents");
 
     if (runtimeResult.error) throw runtimeResult.error;
     const runtime = runtimeResult.data || {};
