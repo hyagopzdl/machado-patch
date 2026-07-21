@@ -1317,7 +1317,7 @@
             let teamIdForName = (originalName) => `history-${competitionId}-${String(mappings[originalName])}`;
             let snapshotForName = (originalName) => {
               let profile = profileForName(originalName) || {};
-              return { profileId:profile.id||null, profileNameSnapshot:profile.name||originalName, originalName, avatarSnapshot:profile.avatar||null, colorSnapshot:profile.color||null, teamId:teamIdForName(originalName), teamNameSnapshot:profile.name||originalName };
+              return { profileId:profile.id||null, profileNameSnapshot:profile.name||originalName, originalName, colorSnapshot:profile.color||null, teamId:teamIdForName(originalName), teamNameSnapshot:profile.name||originalName };
             };
             let contextTeams = allNames.map((originalName) => { let snap=snapshotForName(originalName); return { id:snap.teamId, profileId:snap.profileId, name:snap.profileNameSnapshot, color:snap.colorSnapshot, budget:0, active:false, historical:true }; });
             let tournament;
