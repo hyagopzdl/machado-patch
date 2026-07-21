@@ -200,6 +200,10 @@
               [m, selectedTournamentId],
             );
           He(() => {
+            if (!R || !R.id || !window.ManchaApp || typeof window.ManchaApp.loadTournamentData !== "function") return;
+            window.ManchaApp.loadTournamentData(R.id).catch((error) => console.error("Supabase tournament load failed", error));
+          }, [R && R.id]);
+          He(() => {
             if (!tournamentsLoaded || !m.length) return;
             if (selectedTournamentId && m.some((item) => item && item.id === selectedTournamentId)) return;
             let ordered = [...m].sort((a,b) => (Number(b.createdAt || b.finishedAt) || 0) - (Number(a.createdAt || a.finishedAt) || 0));
