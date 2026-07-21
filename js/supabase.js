@@ -190,10 +190,24 @@
   }
 
   function indexById(list) { const map=new Map(); asArray(list).forEach(item=>{ if(item&&item.id!=null) map.set(String(item.id),item); }); return map; }
+  function tournamentPatchDocument(value) {
+    const tournament=clone(value);
+    const context=asObject(tournament&&tournament.context);
+    // Lazy-loaded financial data is not an empty collection. Omitting it from
+    // ordinary tournament updates prevents apply_direct_patch from treating
+    // "not loaded" as "delete every financial transaction".
+    if(context.__financialLoaded!==true){
+      delete context.financialTransactions;
+    }
+    delete context.__financialLoaded;
+    delete context.__importsLoaded;
+    tournament.context=context;
+    return tournament;
+  }
   function buildPatch(beforeState,nextState) {
     const before=asObject(beforeState&&beforeState.pes), after=asObject(nextState&&nextState.pes), documents={}, deleteKeys=[];
-    const collect=(prefix,b,a)=>{ const bm=indexById(b), am=indexById(a); am.forEach((v,id)=>{if(JSON.stringify(bm.get(id))!==JSON.stringify(v))documents[`${prefix}:${id}`]=v;}); bm.forEach((_,id)=>{if(!am.has(id))deleteKeys.push(`${prefix}:${id}`);}); };
-    collect("profile",before.profiles,after.profiles); collect("tournament",before.tournaments,after.tournaments);
+    const collect=(prefix,b,a,serialize=(value)=>value)=>{ const bm=indexById(b), am=indexById(a); am.forEach((v,id)=>{const beforeValue=bm.get(id), serializedBefore=beforeValue==null?beforeValue:serialize(beforeValue), serializedNext=serialize(v);if(JSON.stringify(serializedBefore)!==JSON.stringify(serializedNext))documents[`${prefix}:${id}`]=serializedNext;}); bm.forEach((_,id)=>{if(!am.has(id))deleteKeys.push(`${prefix}:${id}`);}); };
+    collect("profile",before.profiles,after.profiles); collect("tournament",before.tournaments,after.tournaments,tournamentPatchDocument);
     const br=asObject(before.playerReviews), ar=asObject(after.playerReviews);
     Object.entries(ar).forEach(([id,v])=>{if(JSON.stringify(br[id])!==JSON.stringify(v))documents[`review:${id}`]=v;}); Object.keys(br).forEach(id=>{if(!(id in ar))deleteKeys.push(`review:${id}`);});
     ["meta","adminSecurity","ownership","presence","playerCatalogOverrides"].forEach(key=>{if(JSON.stringify(before[key])!==JSON.stringify(after[key]))documents[key]=after[key]??null;});
