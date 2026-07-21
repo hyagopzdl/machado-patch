@@ -109,7 +109,7 @@
     const tournamentList = tournaments.map(row => {
       const id = row.id;
       const tournamentTeams = teams.filter(x => x.tournament_id === id).map(x => ({ id:x.id, profileId:x.profile_id, name:x.name, color:x.color, budget:Number(x.budget||0), active:x.active, historical:x.historical, lineup:x.lineup }));
-      const tournamentMatches = matches.filter(x => x.tournament_id === id).map(x => ({ id:x.id, homeTeamId:x.home_team_id, awayTeamId:x.away_team_id, homeProfileId:x.home_profile_id, awayProfileId:x.away_profile_id, stage:x.stage, round:x.round, leg:x.leg, status:x.status, played:x.played, homeScore:x.home_score, awayScore:x.away_score, playedAt:ms(x.played_at), createdAt:ms(x.created_at) }));
+      const tournamentMatches = matches.filter(x => x.tournament_id === id).map(x => ({ id:x.id, homeId:x.home_team_id, awayId:x.away_team_id, homeTeamId:x.home_team_id, awayTeamId:x.away_team_id, homeProfileId:x.home_profile_id, awayProfileId:x.away_profile_id, stage:x.stage, round:x.round, leg:x.leg, status:x.status, played:x.played, homeScore:x.home_score, awayScore:x.away_score, playedAt:ms(x.played_at), createdAt:ms(x.created_at) }));
       const tournamentOwnership = {};
       ownership.filter(x => x.tournament_id === id).forEach(x => { tournamentOwnership[x.player_id] = { teamId:x.team_id, initialTeamId:x.initial_team_id, squadRole:x.squad_role, acquisitionSource:x.acquisition_source, acquiredAt:ms(x.acquired_at), forSale:x.for_sale }; });
       const tournamentStats = {};
@@ -177,7 +177,7 @@
     collect("profile",before.profiles,after.profiles); collect("tournament",before.tournaments,after.tournaments);
     const br=asObject(before.playerReviews), ar=asObject(after.playerReviews);
     Object.entries(ar).forEach(([id,v])=>{if(JSON.stringify(br[id])!==JSON.stringify(v))documents[`review:${id}`]=v;}); Object.keys(br).forEach(id=>{if(!(id in ar))deleteKeys.push(`review:${id}`);});
-    ["meta","adminSecurity","ownership","presence","profileChampionshipPreferences","playerCatalogOverrides"].forEach(key=>{if(JSON.stringify(before[key])!==JSON.stringify(after[key]))documents[key]=after[key]??null;});
+    ["meta","adminSecurity","ownership","presence","playerCatalogOverrides"].forEach(key=>{if(JSON.stringify(before[key])!==JSON.stringify(after[key]))documents[key]=after[key]??null;});
     return {documents,deleteKeys};
   }
 
@@ -198,6 +198,33 @@
     const base=clone(state), current=clone(getAt(base,path)), updated=updater(current);
     if(updated===undefined){const snapshot={val:()=>current}; if(completion)completion(null,false,snapshot); return{committed:false,snapshot};}
     const next=setAt(base,path,clone(updated));
+
+    const favoriteMatch = path.match(/^pes\/profileChampionshipPreferences\/([^/]+)\/([^/]+)\/favorites\/([^/]+)$/);
+    if (favoriteMatch) {
+      const [, tournamentId, profileId, playerId] = favoriteMatch;
+      const isFavorite = updated === true;
+      const operation = async () => {
+        const { error } = await client.rpc("set_profile_favorite", {
+          p_tournament_id: tournamentId,
+          p_profile_id: profileId,
+          p_player_id: playerId,
+          p_favorite: isFavorite
+        });
+        if (error) throw error;
+        state = next;
+        emitAll();
+      };
+      try {
+        writeQueue = writeQueue.then(operation, operation);
+        await writeQueue;
+        const snapshot={val:()=>clone(getAt(state,path))};
+        if(completion)completion(null,true,snapshot);
+        return{committed:true,snapshot};
+      } catch(error) {
+        if(completion)completion(error,false,{val:()=>clone(getAt(state,path))});
+        throw error;
+      }
+    }
 
     // Firebase presence depended on a real socket and onDisconnect(). This
     // compatibility runtime has no realtime connection, so persisting presence
