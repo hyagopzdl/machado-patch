@@ -1,0 +1,41 @@
+button { transition: transform .12s ease, opacity .12s ease; }
+
+.family-card { background: var(--surface) !important; color: var(--body) !important; border: 0 !important; border-radius: 10px !important; box-shadow: var(--shadow-inset) !important; }
+
+.family-pill-primary { background: var(--ink) !important; color: var(--on-dark) !important; border: 0 !important; border-radius: 9999px !important; }
+
+.family-pill-secondary { background: var(--surface-sand) !important; color: var(--heading) !important; border: 0 !important; border-radius: 9999px !important; box-shadow: var(--shadow-inset) !important; }
+
+.settings-theme-card { cursor: pointer; padding: 18px; border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-inset); border: 0; text-align: left; color: var(--body); }
+
+.settings-theme-card.is-active { box-shadow: inset 0 0 0 2px var(--ink); }
+
+.theme-preview { height: 96px; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+
+.theme-preview.light { background:#fbfaf9; box-shadow:inset 0 0 0 1px #e9e4dd; }
+
+.theme-preview.dark { background:#11110f; box-shadow:inset 0 0 0 1px #34312c; }
+
+.theme-preview span { display:block; height:10px; border-radius:999px; }
+
+.theme-preview span:first-child { width:45%; }
+
+.theme-preview span:nth-child(2) { width:75%; }
+
+.theme-preview span:nth-child(3) { width:58%; }
+
+.theme-preview.light span { background:#343433; }
+
+.theme-preview.dark span { background:#f5f1ea; }
+
+.animate-spin { animation: spin 1s linear infinite; }
+
+button { -webkit-tap-highlight-color: transparent; }
+
+.family-card { transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease, background .2s ease !important; backdrop-filter: blur(18px); }
+
+.unified-player-card { width:100%; min-width:0; height:242px; padding:13px; border-radius:22px; display:grid; grid-template-rows:42px minmax(0,1fr) 38px; row-gap:16px; }
+
+.unified-player-action { width:100%; height:38px; border-radius:999px; padding:0 9px; font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center; text-align:center; }
+
+#root h1,#root h2,#root h3 { font-weight:800 !important; letter-spacing:-.035em !important; }
