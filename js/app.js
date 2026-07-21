@@ -605,7 +605,7 @@
               if (!review || review.status !== "pending") { failureReason="unavailable"; return; }
               if (String(review.createdByProfileId) === String(te.id)) { failureReason="own_review"; return; }
               let votes = review.votes && typeof review.votes === "object" ? { ...review.votes } : {};
-              votes[te.id] = { decision, profileNameSnapshot:voter.name||te.name||"Perfil", avatarSnapshot:voter.avatar||null, colorSnapshot:voter.color||null, createdAt:Date.now() };
+              votes[te.id] = { decision, profileNameSnapshot:voter.name||te.name||"Perfil", colorSnapshot:voter.color||null, createdAt:Date.now() };
               let approvals = Object.values(votes).filter((vote) => vote && vote.decision === "approve").length;
               let rejections = Object.values(votes).filter((vote) => vote && vote.decision === "reject").length;
               let nextReview = { ...review, votes, updatedAt:Date.now() };
@@ -1421,8 +1421,8 @@
                   let runnerProfile=x.find((profile)=>profile&&String(profile.id)===String(runnerTeam.profileId))||{};
                   let prize=Math.max(0,Number(cup.cupConfig&&cup.cupConfig.prize)||0);
                   cup={...cup,status:"finished",champion:championTeamId,finishedAt:now,finalStandings:[
-                    {position:1,teamId:championTeamId,profileId:championTeam.profileId||null,profileNameSnapshot:championProfile.name||championTeam.name||"Campeão",teamNameSnapshot:championTeam.name||"Time",avatarSnapshot:championProfile.avatar||null,colorSnapshot:championProfile.color||championTeam.color||null,points:0,prize},
-                    {position:2,teamId:runnerTeamId,profileId:runnerTeam.profileId||null,profileNameSnapshot:runnerProfile.name||runnerTeam.name||"Vice",teamNameSnapshot:runnerTeam.name||"Time",avatarSnapshot:runnerProfile.avatar||null,colorSnapshot:runnerProfile.color||runnerTeam.color||null,points:0,prize:0}
+                    {position:1,teamId:championTeamId,profileId:championTeam.profileId||null,profileNameSnapshot:championProfile.name||championTeam.name||"Campeão",teamNameSnapshot:championTeam.name||"Time",colorSnapshot:championProfile.color||championTeam.color||null,points:0,prize},
+                    {position:2,teamId:runnerTeamId,profileId:runnerTeam.profileId||null,profileNameSnapshot:runnerProfile.name||runnerTeam.name||"Vice",teamNameSnapshot:runnerTeam.name||"Time",colorSnapshot:runnerProfile.color||runnerTeam.color||null,points:0,prize:0}
                   ],cupSnapshot:{groups:cup.groups,matches:cup.matches,championTeamId,runnerTeamId,linkedLeagueId:cup.linkedLeagueId}};
                   finishedCup=cup;
                   if (league && prize>0) {
@@ -1942,7 +1942,7 @@
               let team = p.find((item)=>item.id===row.id) || row.team || {};
               let profile = x.find((item)=>item && typeof item === "object" && String(item.id)===String(team.profileId)) || {};
               let award = awards.find((item)=>item.teamId===row.id);
-              return { position:index+1, teamId:row.id, profileId:team.profileId||null, profileNameSnapshot:profile.name||team.archivedProfileName||team.name||"Perfil", teamNameSnapshot:team.name||"Time", avatarSnapshot:profile.avatar||null, colorSnapshot:profile.color||team.color||null, points:row.pts, played:row.played, wins:row.wins, draws:row.draws, losses:row.losses, goalsFor:row.gf, goalsAgainst:row.ga, goalDifference:row.gd, prize:award?award.amount:0, finalBalance:(Number(team.budget)||0)+(award?award.amount:0) };
+              return { position:index+1, teamId:row.id, profileId:team.profileId||null, profileNameSnapshot:profile.name||team.archivedProfileName||team.name||"Perfil", teamNameSnapshot:team.name||"Time", colorSnapshot:profile.color||team.color||null, points:row.pts, played:row.played, wins:row.wins, draws:row.draws, losses:row.losses, goalsFor:row.gf, goalsAgainst:row.ga, goalDifference:row.gd, prize:award?award.amount:0, finalBalance:(Number(team.budget)||0)+(award?award.amount:0) };
             });
             ae(m.map((item)=>item.id===R.id?{...item,status:"finished",champion:rows[0].id,finishedAt:now,finalAwards:awards,finalStandings,context:{...(item.context||{}),teams,playerStats:nextStats,financialTransactions:transactions}}:item));
           }
@@ -4356,9 +4356,12 @@
             ),
           );
         }
-        function ProfileVoteAvatar({ vote }) {
-          let label=String(vote&&vote.profileNameSnapshot||"?");
-          return React.createElement("span", { title:label, style:{ width:30,height:30,borderRadius:"50%",overflow:"hidden",display:"grid",placeItems:"center",background:vote&&vote.colorSnapshot||"var(--surface-soft)",color:"white",fontSize:11,fontWeight:850,border:"2px solid var(--surface)",marginLeft:-6 } }, vote&&vote.avatarSnapshot?React.createElement("img",{src:vote.avatarSnapshot,alt:"",style:{width:"100%",height:"100%",objectFit:"cover"}}):label.charAt(0).toUpperCase());
+        function ProfileVoteAvatar({ vote, profiles }) {
+          let profile=(Array.isArray(profiles)?profiles:[]).find((item)=>item&&vote&&String(item.id)===String(vote.profileId))||{};
+          let label=String(profile.name||vote&&vote.profileNameSnapshot||"?");
+          let avatar=profile.avatar||vote&&vote.avatarSnapshot||null;
+          let color=profile.color||vote&&vote.colorSnapshot||"var(--surface-soft)";
+          return React.createElement("span", { title:label, style:{ width:30,height:30,borderRadius:"50%",overflow:"hidden",display:"grid",placeItems:"center",background:color,color:"white",fontSize:11,fontWeight:850,border:"2px solid var(--surface)",marginLeft:-6 } }, avatar?React.createElement("img",{src:avatar,alt:"",style:{width:"100%",height:"100%",objectFit:"cover"}}):label.charAt(0).toUpperCase());
         }
         function PlayerReportModal({ player, onClose, onSubmit }) {
           let [overall,setOverall]=b(""),[value,setValue]=b("");
@@ -4372,9 +4375,9 @@
             React.createElement("button",{className:"tapbtn",onClick:()=>onSubmit(player,{overall,value}),style:{...M,...W,width:"100%",marginTop:18}},"Enviar para revisão")
           );
         }
-        function PlayerReviewsModal({ reviews, catalogMap, currentProfile, isAdmin, onClose, onVote, onRemove }) {
+        function PlayerReviewsModal({ reviews, catalogMap, profiles, currentProfile, isAdmin, onClose, onVote, onRemove }) {
           let ordered=[...(reviews||[])].sort((a,b)=>Number(a.createdAt||0)-Number(b.createdAt||0));
-          let voteAvatars=(items)=>items.length?React.createElement("div",{style:{position:"absolute",top:-16,left:"50%",transform:"translateX(-50%)",display:"flex",justifyContent:"center",paddingLeft:6,zIndex:2}},items.slice(0,5).map((vote,i)=>React.createElement(ProfileVoteAvatar,{key:`${vote.profileNameSnapshot||i}-${i}`,vote}))):null;
+          let voteAvatars=(items)=>items.length?React.createElement("div",{style:{position:"absolute",top:-16,left:"50%",transform:"translateX(-50%)",display:"flex",justifyContent:"center",paddingLeft:6,zIndex:2}},items.slice(0,5).map((vote,i)=>React.createElement(ProfileVoteAvatar,{key:`${vote.profileId||vote.profileNameSnapshot||i}-${i}`,vote,profiles}))):null;
           let overallBadge=(value,isOld)=>{
             let color=overallColor(value);
             return React.createElement("span",{style:{minWidth:48,height:42,padding:"0 11px",borderRadius:14,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:19,fontWeight:900,fontVariantNumeric:"tabular-nums",color,border:`2px solid ${color}`,background:`color-mix(in srgb, ${color} ${isOld?6:12}%, transparent)`,opacity:isOld?.48:1}},Number(value)||0);
@@ -4383,7 +4386,7 @@
           let valueBadge=(value,isOld,isNew)=>React.createElement("span",{style:{height:42,padding:"0 12px",borderRadius:14,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,fontSize:15,fontWeight:850,fontVariantNumeric:"tabular-nums",color:isOld?"var(--muted)":"var(--heading)",border:"1px solid var(--border)",background:"var(--surface-soft)",opacity:isOld?.5:1}},isNew&&React.createElement(BankIcon,{size:15,color:"var(--heading)"}),L(value));
           let reviewCard=(review)=>{
             let player=catalogMap.get(review.playerId)||{name:review.playerNameSnapshot};
-            let votes=Object.values(review.votes||{}), approvals=votes.filter(v=>v&&v.decision==="approve"), rejections=votes.filter(v=>v&&v.decision==="reject"), own=String(review.createdByProfileId)===String(currentProfile&&currentProfile.id), myVote=review.votes&&currentProfile&&review.votes[currentProfile.id];
+            let votes=Object.entries(review.votes||{}).map(([profileId,vote])=>({...vote,profileId})), approvals=votes.filter(v=>v&&v.decision==="approve"), rejections=votes.filter(v=>v&&v.decision==="reject"), own=String(review.createdByProfileId)===String(currentProfile&&currentProfile.id), myVote=review.votes&&currentProfile&&review.votes[currentProfile.id];
             let canRemove=own||isAdmin;
             let removeLabel=own?"Cancelar pedido":"Remover revisão";
             let changedOverall=review.proposed&&review.proposed.overall!=null;
@@ -5388,20 +5391,54 @@
             )
           );
         }
+        function optimizeAvatarFile(file, size=96, quality=.74) {
+          return new Promise((resolve,reject)=>{
+            let objectUrl=URL.createObjectURL(file), image=new Image();
+            image.onload=()=>{
+              try {
+                let sourceSize=Math.min(image.naturalWidth||image.width,image.naturalHeight||image.height);
+                let sourceX=Math.max(0,((image.naturalWidth||image.width)-sourceSize)/2);
+                let sourceY=Math.max(0,((image.naturalHeight||image.height)-sourceSize)/2);
+                let canvas=document.createElement("canvas");
+                canvas.width=size; canvas.height=size;
+                let context=canvas.getContext("2d",{alpha:false});
+                context.imageSmoothingEnabled=true;
+                context.imageSmoothingQuality="high";
+                context.drawImage(image,sourceX,sourceY,sourceSize,sourceSize,0,0,size,size);
+                let finish=(blob)=>{
+                  URL.revokeObjectURL(objectUrl);
+                  if(!blob) { reject(new Error("avatar_encode_failed")); return; }
+                  let reader=new FileReader();
+                  reader.onload=()=>resolve(reader.result);
+                  reader.onerror=()=>reject(reader.error||new Error("avatar_read_failed"));
+                  reader.readAsDataURL(blob);
+                };
+                canvas.toBlob((blob)=>{
+                  if(blob) finish(blob);
+                  else canvas.toBlob(finish,"image/jpeg",quality);
+                },"image/webp",quality);
+              } catch(error) { URL.revokeObjectURL(objectUrl); reject(error); }
+            };
+            image.onerror=()=>{ URL.revokeObjectURL(objectUrl); reject(new Error("avatar_load_failed")); };
+            image.src=objectUrl;
+          });
+        }
         function ProfileEditModal({ profile, team, onSave, onClose, onOpenPin }) {
-          let [name,setName]=b(profile.name || ""), [teamName,setTeamName]=b(team ? team.name : ""), [avatar,setAvatar]=b(profile.avatar || null), [saving,setSaving]=b(false), [error,setError]=b("");
-          function handleAvatar(event) {
+          let [name,setName]=b(profile.name || ""), [teamName,setTeamName]=b(team ? team.name : ""), [avatar,setAvatar]=b(profile.avatar || null), [saving,setSaving]=b(false), [avatarProcessing,setAvatarProcessing]=b(false), [error,setError]=b("");
+          async function handleAvatar(event) {
             let file=event.target.files && event.target.files[0];
             if(!file) return;
             if(!file.type.startsWith("image/")) { setError("Escolha um arquivo de imagem."); return; }
             if(file.size > 4*1024*1024) { setError("Use uma imagem de até 4 MB."); return; }
-            let reader=new FileReader();
-            reader.onload=()=>{ setAvatar(reader.result); setError(""); };
-            reader.readAsDataURL(file);
+            setAvatarProcessing(true); setError("");
+            try { setAvatar(await optimizeAvatarFile(file,96,.74)); }
+            catch(error) { console.error("avatar optimization failed",error); setError("Não foi possível processar a imagem."); }
+            finally { setAvatarProcessing(false); event.target.value=""; }
           }
           async function submit() {
             let cleanName=name.trim(), cleanTeam=teamName.trim();
             if(!cleanName) { setError("Informe um nome para o perfil."); return; }
+            if(avatarProcessing) { setError("Aguarde a otimização do avatar."); return; }
             setSaving(true); setError("");
             try { await onSave({ name:cleanName, avatar, teamName:cleanTeam }); onClose(); }
             catch(saveError) { console.error("profile edit save failed",saveError); setError("Não foi possível salvar as alterações."); }
@@ -5422,7 +5459,7 @@
               ),
               React.createElement("button", { type:"button", onClick:onOpenPin, className:"profile-edit-pin-button family-pill-secondary" }, profile.pinHash ? "Alterar PIN" : "Criar PIN"),
               error && React.createElement("div", { className:"profile-modal-error" }, error),
-              React.createElement("button", { type:"button", onClick:submit, disabled:saving, style:{ ...M, ...W, marginTop:16 } }, saving ? "Salvando..." : "Salvar alterações")
+              React.createElement("button", { type:"button", onClick:submit, disabled:saving||avatarProcessing, style:{ ...M, ...W, marginTop:16 } }, avatarProcessing ? "Otimizando avatar..." : saving ? "Salvando..." : "Salvar alterações")
             )
           );
         }
@@ -6254,16 +6291,17 @@
             .filter((item)=>item&&Number(item.goals)>0)
             .map((item)=>({ ...item, goals:Number(item.goals)||0, team:teamById(item.teamId) }))
             .sort((left,right)=>right.goals-left.goals||String(left.playerNameSnapshot||"").localeCompare(String(right.playerNameSnapshot||""),"pt-BR"));
-          let finalRows = tournament.status === "finished" && Array.isArray(tournament.finalStandings) && tournament.finalStandings.length ? tournament.finalStandings : tournament.status === "finished" ? standings.map((row,index)=>{ let team=teams.find((item)=>item.id===row.id)||{}; let profile=profileForTeam(team)||{}; let award=Array.isArray(tournament.finalAwards)?tournament.finalAwards.find((item)=>item.teamId===row.id):null; return { position:index+1,teamId:row.id,profileId:team.profileId||null,profileNameSnapshot:profile.name||team.name,teamNameSnapshot:team.name,avatarSnapshot:profile.avatar||null,colorSnapshot:profile.color||team.color||null,points:row.pts,prize:award?award.amount:0,wins:row.wins,draws:row.draws,losses:row.losses,goalDifference:row.gd }; }):[];
+          let finalRows = tournament.status === "finished" && Array.isArray(tournament.finalStandings) && tournament.finalStandings.length ? tournament.finalStandings : tournament.status === "finished" ? standings.map((row,index)=>{ let team=teams.find((item)=>item.id===row.id)||{}; let profile=profileForTeam(team)||{}; let award=Array.isArray(tournament.finalAwards)?tournament.finalAwards.find((item)=>item.teamId===row.id):null; return { position:index+1,teamId:row.id,profileId:team.profileId||null,profileNameSnapshot:profile.name||team.name,teamNameSnapshot:team.name,colorSnapshot:profile.color||team.color||null,points:row.pts,prize:award?award.amount:0,wins:row.wins,draws:row.draws,losses:row.losses,goalDifference:row.gd }; }):[];
+          let finalProfile=(row)=>(Array.isArray(profiles)?profiles:[]).find((profile)=>profile&&row&&String(profile.id)===String(row.profileId))||{};
           let podiumRows = finalRows.slice(0,3);
           return React.createElement("div", null,
-            tournament.status === "finished" && podiumRows.length ? React.createElement("section", { className:"family-card", style:{ padding:"22px 18px",marginBottom:16,textAlign:"center",background:"linear-gradient(145deg,color-mix(in srgb,#ffbb26 10%,var(--surface)),var(--surface))",overflow:"hidden" } }, React.createElement("div", { style:{ color:"#ffbb26",fontWeight:850,fontSize:12,textTransform:"uppercase",letterSpacing:".14em",marginBottom:14 } }, "Pódio final"), React.createElement("div", { style:{ display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10,alignItems:"end" } }, [podiumRows[1],podiumRows[0],podiumRows[2]].map((row,index)=>row?React.createElement("button", { key:row.teamId||index,onClick:()=>onOpenSummary&&onOpenSummary(tournament),style:{ border:0,background:"transparent",color:"inherit",cursor:"pointer",padding:8,textAlign:"center",transform:index===1?"translateY(-8px)":"none" } }, React.createElement("div", { style:{ fontSize:index===1?38:30 } }, row.position===1?"🏆":row.position===2?"🥈":"🥉"), React.createElement("div", { style:{ width:index===1?58:48,height:index===1?58:48,borderRadius:999,margin:"7px auto",background:row.colorSnapshot||"var(--surface-soft)",overflow:"hidden",display:"grid",placeItems:"center",fontWeight:850 } }, row.avatarSnapshot?React.createElement("img", { src:row.avatarSnapshot,alt:"",style:{width:"100%",height:"100%",objectFit:"cover"} }):String(row.profileNameSnapshot||"?").charAt(0).toUpperCase()), React.createElement("div", { style:{ fontWeight:850,fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" } }, row.profileNameSnapshot), React.createElement("div", { style:{ color:"var(--muted)",fontSize:11,marginTop:3 } }, `${row.points||0} pts · +${L(row.prize||0)}`)):React.createElement("span",{key:index}))) ) : null,
+            tournament.status === "finished" && podiumRows.length ? React.createElement("section", { className:"family-card", style:{ padding:"22px 18px",marginBottom:16,textAlign:"center",background:"linear-gradient(145deg,color-mix(in srgb,#ffbb26 10%,var(--surface)),var(--surface))",overflow:"hidden" } }, React.createElement("div", { style:{ color:"#ffbb26",fontWeight:850,fontSize:12,textTransform:"uppercase",letterSpacing:".14em",marginBottom:14 } }, "Pódio final"), React.createElement("div", { style:{ display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10,alignItems:"end" } }, [podiumRows[1],podiumRows[0],podiumRows[2]].map((row,index)=>row?React.createElement("button", { key:row.teamId||index,onClick:()=>onOpenSummary&&onOpenSummary(tournament),style:{ border:0,background:"transparent",color:"inherit",cursor:"pointer",padding:8,textAlign:"center",transform:index===1?"translateY(-8px)":"none" } }, React.createElement("div", { style:{ fontSize:index===1?38:30 } }, row.position===1?"🏆":row.position===2?"🥈":"🥉"), React.createElement("div", { style:{ width:index===1?58:48,height:index===1?58:48,borderRadius:999,margin:"7px auto",background:finalProfile(row).color||row.colorSnapshot||"var(--surface-soft)",overflow:"hidden",display:"grid",placeItems:"center",fontWeight:850 } }, (finalProfile(row).avatar||row.avatarSnapshot)?React.createElement("img", { src:finalProfile(row).avatar||row.avatarSnapshot,alt:"",style:{width:"100%",height:"100%",objectFit:"cover"} }):String(row.profileNameSnapshot||"?").charAt(0).toUpperCase()), React.createElement("div", { style:{ fontWeight:850,fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" } }, row.profileNameSnapshot), React.createElement("div", { style:{ color:"var(--muted)",fontSize:11,marginTop:3 } }, `${row.points||0} pts · +${L(row.prize||0)}`)):React.createElement("span",{key:index}))) ) : null,
             React.createElement("div", { style:E },
               React.createElement("div", { style:{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:16 } }, React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,minWidth:0}},React.createElement("div", { style:{ fontSize:21, fontWeight:750, letterSpacing:"-.025em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" } }, tableMode==="scorers"?"Artilheiros":tournament.name), React.createElement("button", { onClick:onOpenRules, title:"Regras do campeonato", style:{ width:26,height:26,borderRadius:"50%",border:"1px solid var(--border)",background:"var(--surface-soft)",color:"var(--muted)",cursor:"pointer",fontWeight:850,flexShrink:0 } }, "i")),React.createElement("button",{onClick:()=>setTableMode(tableMode==="scorers"?"standings":"scorers"),title:tableMode==="scorers"?"Voltar para classificação":"Ver artilheiros","aria-label":tableMode==="scorers"?"Voltar para classificação":"Ver artilheiros",style:{width:38,height:38,borderRadius:12,border:"1px solid var(--border)",background:"var(--surface-soft)",color:"var(--heading)",display:"grid",placeItems:"center",cursor:"pointer",flexShrink:0}},tableMode==="scorers"?React.createElement("svg",{width:19,height:19,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"},React.createElement("path",{d:"M8 4h8v4a4 4 0 0 1-8 0V4Z"}),React.createElement("path",{d:"M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 12v4M8 20h8M9 16h6"})):React.createElement("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"},React.createElement("path",{d:"M5 15c3-1 5-4 6-8l4 1-1 4 4 2c1 .5 1.2 2 .4 2.8L17 18H8c-2 0-3-1-3-3Z"}),React.createElement("path",{d:"M8 18v2M12 18v2M16 18v2"})))),
               tableMode==="scorers" ? (scorerRows.length?React.createElement("div",{style:{display:"grid",gap:7}},scorerRows.slice(0,5).map((row,index)=>React.createElement("div",{key:row.playerId||index,style:{display:"grid",gridTemplateColumns:"32px minmax(0,1fr) auto",alignItems:"center",gap:10,padding:"11px 10px",borderBottom:"1px solid var(--border)"}},React.createElement("div",{style:{fontWeight:850,textAlign:"center",color:index<3?"var(--green)":"var(--muted)"}},index+1),React.createElement("div",{style:{minWidth:0}},React.createElement("div",{style:{fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},row.playerNameSnapshot||"Jogador"),React.createElement("div",{style:{fontSize:11.5,color:"var(--muted)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},row.team?row.team.name:"Time não disponível")),React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,fontWeight:900,fontVariantNumeric:"tabular-nums"}},React.createElement("span",{style:{fontSize:15}},"⚽"),row.goals)))):React.createElement("div",{style:{padding:"24px 8px",textAlign:"center",color:"var(--muted)",fontSize:13}},"Nenhum gol com autoria foi registrado ainda.")) : ((tournament.status === "finished" ? finalRows.length : standings.length) ? React.createElement("div", { style:{ overflowX:"auto" } }, React.createElement("table", { style:{ width:"100%", borderCollapse:"collapse", minWidth:460 } },
                 React.createElement("thead", null, React.createElement("tr", null, ["#","Time","J","V","E","D","SG","PTS"].map((label)=>React.createElement("th", { key:label, style:{ textAlign: label==="Time"?"left":"center", fontSize:11, color:"var(--muted)", padding:"8px 10px", borderBottom:"1px solid var(--border)", ...(label==="PTS"?{position:"sticky",right:0,zIndex:4,background:"var(--surface)",boxShadow:"-10px 0 18px rgba(0,0,0,.12)"}:{}) } }, label)))),
                 React.createElement("tbody", null, (tournament.status === "finished" ? finalRows : standings).map((row,index)=>{ 
-                  let isFinal=tournament.status === "finished", team=teamById(isFinal?row.teamId:row.id), profileName=isFinal?(row.profileNameSnapshot||"Perfil removido"):profileNameForTeam(team), teamName=isFinal?(row.teamNameSnapshot||profileName):(team&&team.name?team.name:profileName), avatar=isFinal?React.createElement("span", { style:{ width:32,height:32,borderRadius:999,flexShrink:0,display:"inline-grid",placeItems:"center",background:row.colorSnapshot||"var(--surface-soft)",color:"white",fontSize:12,fontWeight:800,overflow:"hidden",border:row.avatarSnapshot?0:"1px solid var(--border)" } }, row.avatarSnapshot?React.createElement("img",{src:row.avatarSnapshot,alt:"",style:{width:"100%",height:"100%",objectFit:"cover"}}):String(teamName||"?").charAt(0).toUpperCase()):avatarForTeam(team,32);
+                  let isFinal=tournament.status === "finished", team=teamById(isFinal?row.teamId:row.id), currentFinalProfile=isFinal?finalProfile(row):{}, profileName=isFinal?(row.profileNameSnapshot||currentFinalProfile.name||"Perfil removido"):profileNameForTeam(team), teamName=isFinal?(row.teamNameSnapshot||profileName):(team&&team.name?team.name:profileName), finalAvatar=currentFinalProfile.avatar||row.avatarSnapshot||null, avatar=isFinal?React.createElement("span", { style:{ width:32,height:32,borderRadius:999,flexShrink:0,display:"inline-grid",placeItems:"center",background:currentFinalProfile.color||row.colorSnapshot||"var(--surface-soft)",color:"white",fontSize:12,fontWeight:800,overflow:"hidden",border:finalAvatar?0:"1px solid var(--border)" } }, finalAvatar?React.createElement("img",{src:finalAvatar,alt:"",style:{width:"100%",height:"100%",objectFit:"cover"}}):String(teamName||"?").charAt(0).toUpperCase()):avatarForTeam(team,32);
                   let values=isFinal?[row.played,row.wins,row.draws,row.losses,row.goalDifference,row.points]:[row.pj,row.v,row.e,row.d,row.sg,row.pts];
                   return React.createElement("tr", { key:(isFinal?row.teamId:row.id)||index }, React.createElement("td", { style:{ padding:"12px 6px", fontWeight:700, textAlign:"center" } }, isFinal?(row.position||index+1):index+1), React.createElement("td", { style:{ padding:"12px 6px", fontWeight:650, minWidth:210 } }, React.createElement("button", { onClick:()=>team&&onOpenTeam&&onOpenTeam(team.id), disabled:!team||!!(tournament.context&&tournament.context.historicalImport), style:{ display:"flex", alignItems:"center", gap:10, background:"none", border:0, padding:0, color:"var(--heading)", font:"inherit", cursor:team&&!(tournament.context&&tournament.context.historicalImport)?"pointer":"default", textAlign:"left", width:"100%" } }, avatar, React.createElement("span", { style:{ minWidth:0, display:"grid", gap:3 } }, React.createElement("span", { style:{ fontWeight:780, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textDecoration:team&&!(tournament.context&&tournament.context.historicalImport)?"underline":"none", textDecorationColor:"color-mix(in srgb, var(--green) 50%, transparent)", textUnderlineOffset:4 } }, teamName), isFinal?React.createElement("span", { style:{ fontSize:11.5, color:"var(--muted)", fontWeight:550, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, tournament.context&&tournament.context.historicalImport?`${profileName} • Resultado importado`:profileName):team&&React.createElement("span", { style:{ fontSize:11.5, color:"var(--muted)", fontWeight:550, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, profileName, " • ", teamOverall(team).toFixed(1), " OVR • ", L(Number(team.budget) || 0))))), values.map((value,i)=>React.createElement("td", { key:i, style:{ padding:"12px 10px", textAlign:"center", fontWeight:i===5?850:500, ...(i===5?{position:"sticky",right:0,zIndex:3,background:"var(--surface)",boxShadow:"-10px 0 18px rgba(0,0,0,.12)"}:{}) } }, Number(value)||0))); }))
               )) : React.createElement("div", { style:{ color:"var(--muted)", fontSize:14 } }, "A classificação aparecerá quando houver participantes."))

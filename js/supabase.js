@@ -112,7 +112,7 @@
     const [financial, reviews, votes, overrides] = await loadGroup([
       () => select("financial_transactions", "id,tournament_id,team_id,transaction_type,amount,balance_before,balance_after,label,reference_id,created_at", q => q.order("created_at", { ascending: false }).limit(2000)),
       () => select("player_reviews", "id,player_id,player_name_snapshot,created_by_profile_id,created_by_name_snapshot,original,proposed,status,applying_by_profile_id,applying_at,resolved_by_profile_id,resolved_at,resolution_reason,created_at,updated_at"),
-      () => select("player_review_votes", "review_id,profile_id,vote,avatar_snapshot,name_snapshot,created_at"),
+      () => select("player_review_votes", "review_id,profile_id,vote,name_snapshot,created_at"),
       () => select("player_catalog_overrides", "player_id,overall,market_value,updated_by_profile_id,updated_at")
     ]);
     const [favorites, presence, globalOwnership, imports] = await loadGroup([
@@ -157,7 +157,7 @@
     const reviewMap = {};
     reviews.forEach(row => {
       const reviewVotes = {};
-      votes.filter(v=>v.review_id===row.id).forEach(v=>{ reviewVotes[v.profile_id]={ decision:v.vote, avatarSnapshot:v.avatar_snapshot, nameSnapshot:v.name_snapshot, createdAt:ms(v.created_at) }; });
+      votes.filter(v=>v.review_id===row.id).forEach(v=>{ reviewVotes[v.profile_id]={ decision:v.vote, profileId:v.profile_id, profileNameSnapshot:v.name_snapshot, createdAt:ms(v.created_at) }; });
       reviewMap[row.id]={ id:row.id, playerId:row.player_id, playerNameSnapshot:row.player_name_snapshot, createdByProfileId:row.created_by_profile_id, createdByNameSnapshot:row.created_by_name_snapshot, original:row.original, proposed:row.proposed, status:row.status, applyingByProfileId:row.applying_by_profile_id, applyingAt:ms(row.applying_at), resolvedByProfileId:row.resolved_by_profile_id, resolvedAt:ms(row.resolved_at), resolutionReason:row.resolution_reason, createdAt:ms(row.created_at), updatedAt:ms(row.updated_at), votes:reviewVotes };
     });
     const preferenceMap = {};
