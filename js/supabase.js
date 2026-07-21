@@ -43,6 +43,10 @@
 
   function emitAll() {
     listeners.forEach((callbacks, path) => {
+      // `.info/connected` is a synthetic connection signal. Re-emitting it after
+      // every database commit restarts the presence write and creates an
+      // infinite apply_direct_patch loop. It is emitted only when subscribed.
+      if (path === ".info/connected") return;
       const value = clone(getAt(state, path));
       callbacks.forEach((callback) => callback({ val: () => value }));
     });
