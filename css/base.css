@@ -1,0 +1,67 @@
+html, body { margin: 0; padding: 0; background: var(--canvas); }
+
+body { color: var(--body); font-family: "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; transition: background .2s ease, color .2s ease; }
+
+* { box-sizing: border-box; }
+
+::-webkit-scrollbar { display: none; }
+
+button, input, select, textarea { font: inherit; }
+
+button:hover { opacity: .88; }
+
+button:active { transform: translateY(1px); }
+
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent) !important; }
+
+h1, h2, h3, h4, [data-display-heading] { color: var(--heading) !important; letter-spacing: -.02em; }
+
+code { background: var(--surface-soft); color: var(--heading); padding: 2px 5px; border-radius: 4px; }
+
+#root > div { background: var(--canvas) !important; color: var(--body) !important; }
+
+#root input, #root select, #root textarea {
+        background: var(--surface) !important; color: var(--heading) !important;
+        border-color: var(--border) !important; border-radius: 10px !important;
+      }
+
+#root input::placeholder, #root textarea::placeholder { color: var(--muted); }
+
+#root table { color: var(--body); }
+
+#root th { color: var(--muted) !important; }
+
+#root td, #root th { border-color: var(--border) !important; }
+
+/* Sports premium responsive system */
+
+
+      html { min-height: 100%; background: var(--canvas); }
+
+body {
+        min-height: 100vh;
+        background:
+          radial-gradient(900px 540px at 15% -10%, color-mix(in srgb, var(--green) 11%, transparent), transparent 64%),
+          radial-gradient(720px 500px at 95% 8%, color-mix(in srgb, var(--blue) 8%, transparent), transparent 62%),
+          var(--canvas);
+        background-attachment: fixed;
+      }
+
+html[data-theme="dark"] body {
+        background:
+          radial-gradient(850px 520px at 12% -8%, rgba(33,228,147,.12), transparent 64%),
+          radial-gradient(760px 520px at 100% 4%, rgba(43,116,255,.10), transparent 64%),
+          linear-gradient(180deg, #050807 0%, #080d0b 100%);
+      }
+
+button:active { transform: scale(.975); }
+
+.market-recommendation-rail::-webkit-scrollbar { display:none; }
+
+.app-content > * { animation:sportsPageIn .28s ease both; }
+
+#root input, #root select, #root textarea { min-height:46px; border-radius:14px !important; background:color-mix(in srgb,var(--surface) 88%,transparent) !important; transition:border-color .16s ease,box-shadow .16s ease,background .16s ease; }
+
+#root table { border-collapse:separate; border-spacing:0; }
+
+#root th { font-size:11px !important; letter-spacing:.07em; text-transform:uppercase; }
