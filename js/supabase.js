@@ -71,7 +71,7 @@
     // Grupos pequenos e sequenciais: nenhuma tempestade de conexoes e nenhum retry automatico.
     const [profiles, tournaments, meta, security] = await loadGroup([
       () => select("profiles", "id,name,color,avatar,role,active,pin_hash,pin_updated_at,recovered_from_tournament,recovered_at,created_at,source_order", q => q.order("source_order")),
-      () => select("tournaments", "id,name,format,type,status,champion,cup_stage,groups_data,cup_snapshot,final_standings,economy_settings,final_prize_settings,market_balance_settings,market_settings,created_at,finished_at,reset_at,reset_by_profile_id,source_order", q => q.order("source_order")),
+      () => select("tournaments", "id,name,format,type,status,champion,cup_stage,groups_data,cup_snapshot,final_standings,economy_settings,final_prize_settings,market_balance_settings,market_settings,roster_settings,created_at,finished_at,reset_at,reset_by_profile_id,source_order", q => q.order("source_order")),
       () => select("app_meta", "current_tournament_id,identity_schema_version,identity_migrated_at,season_counter", q => q.limit(1)),
       async () => { const {data,error}=await client.rpc("get_app_security"); if(error) throw error; return data || {}; }
     ]);
@@ -139,7 +139,7 @@
         id:row.id, name:row.name, format:row.format, type:row.type, status:row.status, champion:row.champion,
         cupStage:row.cup_stage, groups:row.groups_data, cupSnapshot:row.cup_snapshot, finalStandings:row.final_standings,
         economySettings:row.economy_settings, finalPrizeSettings:row.final_prize_settings, marketBalanceSettings:row.market_balance_settings,
-        marketSettings:row.market_settings, createdAt:ms(row.created_at), finishedAt:ms(row.finished_at), resetAt:ms(row.reset_at), resetByProfileId:row.reset_by_profile_id,
+        marketSettings:row.market_settings, rosterSettings:row.roster_settings, createdAt:ms(row.created_at), finishedAt:ms(row.finished_at), resetAt:ms(row.reset_at), resetByProfileId:row.reset_by_profile_id,
         participants: participants.filter(x => x.tournament_id === id).sort((a,b)=>(a.position||0)-(b.position||0)).map(x=>x.profile_id),
         teamIds:tournamentTeams.map(x=>x.id), matches:tournamentMatches,
         context:{
@@ -203,20 +203,23 @@
   async function commit(nextState,eventType) {
     const patch=buildPatch(state,nextState);
     if(!Object.keys(patch.documents).length&&!patch.deleteKeys.length){state=nextState;emitAll();return;}
-    const operation=async()=>{
-      const {error}=await client.rpc("apply_direct_patch",{p_documents:patch.documents,p_delete_keys:patch.deleteKeys,p_actor_profile_id:actorProfileId(),p_event_type:eventType||"state_change"});
-      if(error) throw error;
-      state=nextState; emitAll();
-    };
-    writeQueue=writeQueue.then(operation,operation);
-    return writeQueue;
+    const {error}=await client.rpc("apply_direct_patch",{p_documents:patch.documents,p_delete_keys:patch.deleteKeys,p_actor_profile_id:actorProfileId(),p_event_type:eventType||"state_change"});
+    if(error) throw error;
+    state=nextState; emitAll();
   }
 
   async function runTransaction(path,updater,completion){
     await load();
-    const base=clone(state), current=clone(getAt(base,path)), updated=updater(current);
-    if(updated===undefined){const snapshot={val:()=>current}; if(completion)completion(null,false,snapshot); return{committed:false,snapshot};}
-    const next=setAt(base,path,clone(updated));
+    if(path === "pes/presence" || path.startsWith("pes/presence/")){
+      const base=clone(state), current=clone(getAt(base,path)), updated=updater(current);
+      if(updated===undefined){const snapshot={val:()=>current}; if(completion)completion(null,false,snapshot); return{committed:false,snapshot};}
+      state=setAt(base,path,clone(updated)); emitAll();
+      const snapshot={val:()=>clone(getAt(state,path))}; if(completion)completion(null,true,snapshot); return{committed:true,snapshot};
+    }
+    const queued = async () => {
+      const base=clone(state), current=clone(getAt(base,path)), updated=updater(current);
+      if(updated===undefined){const snapshot={val:()=>current}; if(completion)completion(null,false,snapshot); return{committed:false,snapshot};}
+      const next=setAt(base,path,clone(updated));
 
     const favoriteMatch = path.match(/^pes\/profileChampionshipPreferences\/([^/]+)\/([^/]+)\/favorites\/([^/]+)$/);
     if (favoriteMatch) {
@@ -234,8 +237,7 @@
         emitAll();
       };
       try {
-        writeQueue = writeQueue.then(operation, operation);
-        await writeQueue;
+        await operation();
         const snapshot={val:()=>clone(getAt(state,path))};
         if(completion)completion(null,true,snapshot);
         return{committed:true,snapshot};
@@ -245,20 +247,11 @@
       }
     }
 
-    // Firebase presence depended on a real socket and onDisconnect(). This
-    // compatibility runtime has no realtime connection, so persisting presence
-    // through the generic patch RPC creates self-triggered write loops. Keep
-    // presence local-only until it is replaced by a dedicated heartbeat RPC.
-    if(path === "pes/presence" || path.startsWith("pes/presence/")){
-      state=next;
-      emitAll();
-      const snapshot={val:()=>clone(getAt(state,path))};
-      if(completion)completion(null,true,snapshot);
-      return{committed:true,snapshot};
-    }
-
     try{await commit(next,`transaction:${path}`);const snapshot={val:()=>clone(getAt(state,path))};if(completion)completion(null,true,snapshot);return{committed:true,snapshot};}
     catch(error){if(completion)completion(error,false,{val:()=>clone(getAt(state,path))});throw error;}
+    };
+    writeQueue = writeQueue.then(queued, queued);
+    return writeQueue;
   }
 
   function ref(rawPath){const path=normalizePath(rawPath);return{
@@ -272,8 +265,48 @@
     onDisconnect(){return{remove:()=>Promise.resolve(),set:()=>Promise.resolve()};}
   };}
 
+
+  async function setTeamBudget(tournamentId, teamId, amount) {
+    if (!client) throw new Error("Supabase não configurado");
+    const { data, error } = await client.rpc("set_team_budget", {
+      p_tournament_id: tournamentId,
+      p_team_id: teamId,
+      p_amount: Number(amount),
+      p_actor_profile_id: actorProfileId()
+    });
+    if (error) throw error;
+    const payload = data || {};
+    const next = clone(state);
+    const tournaments = asArray(next.pes && next.pes.tournaments);
+    const tournament = tournaments.find(item => item && String(item.id) === String(tournamentId));
+    if (tournament && tournament.context) {
+      tournament.context.teams = asArray(tournament.context.teams).map(team => String(team.id) === String(teamId) ? { ...team, budget: Number(payload.amount ?? amount) } : team);
+      if (payload.transaction) tournament.context.financialTransactions = [payload.transaction, ...asArray(tournament.context.financialTransactions)];
+    }
+    state = next;
+    emitAll();
+    return payload;
+  }
+
+  async function updateTournamentSettings(tournamentId, patch) {
+    if (!client) throw new Error("Supabase não configurado");
+    const { data, error } = await client.rpc("update_tournament_admin_settings", {
+      p_tournament_id: tournamentId,
+      p_patch: patch || {},
+      p_actor_profile_id: actorProfileId()
+    });
+    if (error) throw error;
+    const payload = data || {};
+    const next = clone(state);
+    const tournament = asArray(next.pes && next.pes.tournaments).find(item => item && String(item.id) === String(tournamentId));
+    if (tournament) Object.assign(tournament, payload);
+    state = next;
+    emitAll();
+    return payload;
+  }
+
   async function fetchPage(rpcName,params={}){if(!client)throw new Error("Supabase não configurado");const{data,error}=await client.rpc(rpcName,params);if(error)throw error;return{items:(data||[]).map(row=>row.data),total:Number(data&&data[0]&&data[0].total_count||0)};}
-  function Ee(){return client?{ref,fetchPage}:null;}
+  function Ee(){return client?{ref,fetchPage,setTeamBudget,updateTournamentSettings}:null;}
   function U(path,value){const db=Ee();return db?db.ref(`pes/${path}`).set(value===undefined?null:value):Promise.resolve();}
   function Q(path,callback){const db=Ee();if(!db){callback(null);return()=>{};}const reference=db.ref(`pes/${path}`),handler=snapshot=>callback(snapshot.val());reference.on("value",handler);return()=>reference.off("value",handler);}
 

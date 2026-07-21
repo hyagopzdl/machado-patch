@@ -1893,22 +1893,35 @@
             if (!clean || !teamId) return;
             Se(p.map((team) => team.id === teamId ? { ...team, name: clean } : team));
           }
-          function updateAdminBudget(teamId, value) {
+          async function updateAdminBudget(teamId, value) {
+            if (!R) return;
             let amount = Math.max(0, Number(value) || 0);
             let current = p.find((team) => team.id === teamId);
             let before = Number(current && current.budget) || 0;
-            Se(p.map((team) => team.id === teamId ? { ...team, budget: amount } : team));
-            if (amount !== before) {
-              let transactions = Array.isArray(R && R.context && R.context.financialTransactions) ? [...R.context.financialTransactions] : [];
-              transactions.unshift(financeEntry("admin_adjustment", teamId, amount - before, "Ajuste manual do administrador", null, before));
-              saveContextField("financialTransactions", transactions);
+            if (amount === before) return;
+            let db = Ee();
+            if (db && db.setTeamBudget) {
+              try { await db.setTeamBudget(R.id, teamId, amount); }
+              catch (error) { console.error("Falha ao atualizar saldo", error); window.alert("Não foi possível salvar o saldo. Tente novamente."); }
+              return;
             }
+            Se(p.map((team) => team.id === teamId ? { ...team, budget: amount } : team));
+          }
+          async function persistTournamentAdminSettings(patch) {
+            if (!R) return;
+            let db = Ee();
+            if (db && db.updateTournamentSettings) {
+              try { await db.updateTournamentSettings(R.id, patch); }
+              catch (error) { console.error("Falha ao atualizar configurações", error); window.alert("Não foi possível salvar as configurações."); }
+              return;
+            }
+            ae(m.map((item) => item.id === R.id ? { ...item, ...patch } : item));
           }
           function updateEconomyRules(winReward, scoringDrawReward, scorelessDrawReward, lossReward, goalReward, redCardPenalty, championPrize, topScorerPrize) {
             if (!R) return;
             let economySettings = { version: 2, winReward: Math.max(0, Number(winReward)||0), scoringDrawReward: Math.max(0, Number(scoringDrawReward)||0), scorelessDrawReward: Math.max(0, Number(scorelessDrawReward)||0), lossReward: Math.max(0, Number(lossReward)||0), goalReward: Math.max(0, Number(goalReward)||0), redCardPenalty: Math.max(0, Number(redCardPenalty)||0) };
             let finalPrizeSettings = { championPrize:Math.max(0,Number(championPrize)||0), firstPlacePrize:Math.max(0,Number(championPrize)||0), lastPlacePercentage:50, topScorerPrize:Math.max(0,Number(topScorerPrize)||0) };
-            ae(m.map((item)=>item.id===R.id ? { ...item, economySettings, finalPrizeSettings } : item));
+            persistTournamentAdminSettings({ economySettings, finalPrizeSettings });
           }
           // A migração retroativa automática foi desativada após a conversão para Supabase.
           // Partidas já persistidas são hidratadas como liquidadas em js/supabase.js, evitando
@@ -1943,24 +1956,24 @@
             if (!R) return;
             let pct = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
             let safeField = field === "initialRosterDepreciationPct" ? "initialRosterDepreciationPct" : "depreciationPct";
-            ae(m.map((item) => item.id === R.id ? { ...item, marketSettings: { ...(item.marketSettings || {}), [safeField]: pct } } : item));
+            persistTournamentAdminSettings({ marketSettings: { ...(R.marketSettings || {}), [safeField]: pct } });
           }
           function updateMarketAccessRules(isOpen, limitEnabled, maxOverall) {
             if (!R) return;
             let nextSettings = { ...(R.marketSettings || {}), isOpen: isOpen === true, freePlayerOverallLimit: { enabled: limitEnabled === true, maxOverall: Math.min(99, Math.max(1, Math.round(Number(maxOverall) || 99))) } };
-            ae(m.map((item) => item.id === R.id ? { ...item, marketSettings: nextSettings } : item));
+            persistTournamentAdminSettings({ marketSettings: nextSettings });
           }
           function updateMarketBalanceRules(enabled, maxDifference) {
             if (!R) return;
             let next = { enabled: enabled === true, maxDifference: Math.max(0, Number(maxDifference) || 0) };
-            ae(m.map((item) => item.id === R.id ? { ...item, marketBalanceSettings: next } : item));
+            persistTournamentAdminSettings({ marketBalanceSettings: next });
           }
           function updateRosterRules(minValue, maxValue) {
             if (!R) return;
             let minPlayers = Math.max(0, Math.round(Number(minValue) || 0));
             let maxPlayers = Math.max(1, Math.round(Number(maxValue) || 0));
             if (maxPlayers < minPlayers) maxPlayers = minPlayers;
-            ae(m.map((item) => item.id === R.id ? { ...item, rosterSettings: { minPlayers, maxPlayers } } : item));
+            persistTournamentAdminSettings({ rosterSettings: { minPlayers, maxPlayers } });
           }
           function viewTournament(tournamentId) {
             setSelectedTournamentId(tournamentId || null);
@@ -5545,6 +5558,26 @@
           let [competitionWizardOpen, setCompetitionWizardOpen] = b(false);
           let [competitionWizardStep, setCompetitionWizardStep] = b(1);
           let [adminSection, setAdminSection] = b("home");
+          let [budgetDrafts, setBudgetDrafts] = b({});
+          let [ruleDrafts, setRuleDrafts] = b({});
+          He(() => {
+            let next = {}; (teams || []).forEach((team) => { if (team) next[String(team.id)] = String(Number(team.budget) || 0); });
+            setBudgetDrafts(next);
+          }, [currentTournament && currentTournament.id, JSON.stringify((teams || []).map((team) => team && [team.id, team.budget]))]);
+          He(() => {
+            if (!currentTournament) return;
+            setRuleDrafts({
+              depreciationPct: String(currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10),
+              initialRosterDepreciationPct: String(currentTournament.marketSettings && currentTournament.marketSettings.initialRosterDepreciationPct != null ? currentTournament.marketSettings.initialRosterDepreciationPct : 50),
+              minPlayers: String(currentTournament.rosterSettings && currentTournament.rosterSettings.minPlayers != null ? currentTournament.rosterSettings.minPlayers : 23),
+              maxPlayers: String(currentTournament.rosterSettings && currentTournament.rosterSettings.maxPlayers != null ? currentTournament.rosterSettings.maxPlayers : 30)
+            });
+          }, [currentTournament && currentTournament.id]);
+          function commitBudget(teamId) {
+            let raw = budgetDrafts[String(teamId)];
+            if (raw === "" || raw == null) return;
+            onUpdateBudget(teamId, raw);
+          }
           let [newParticipantIds, setNewParticipantIds] = b([]);
           let [newParticipantDrafts, setNewParticipantDrafts] = b({});
           let activeLeagues = (tournaments || []).filter((item)=>item&&item.type!=="cup"&&item.status!=="finished");
@@ -5819,14 +5852,14 @@
               React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 } }, "Defina quanto será descontado do valor de mercado quando um participante fizer uma venda imediata. Ofertas entre usuários não usam essa taxa."),
               React.createElement("label", { style: P }, "Depreciação na venda ao mercado"),
               React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" } },
-                React.createElement("input", { type: "range", min: 0, max: 100, step: 1, value: currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10, onChange: (event) => onUpdateMarketDepreciation(event.target.value), style: { width: "100%", accentColor: "var(--green)" } }),
+                React.createElement("input", { type: "range", min: 0, max: 100, step: 1, value: ruleDrafts.depreciationPct != null ? ruleDrafts.depreciationPct : 10, onChange: (event) => setRuleDrafts({ ...ruleDrafts, depreciationPct:event.target.value }), onMouseUp: () => onUpdateMarketDepreciation(ruleDrafts.depreciationPct), onTouchEnd: () => onUpdateMarketDepreciation(ruleDrafts.depreciationPct), onKeyUp: (event) => { if (["ArrowLeft","ArrowRight","Home","End"].includes(event.key)) onUpdateMarketDepreciation(ruleDrafts.depreciationPct); }, style: { width: "100%", accentColor: "var(--green)" } }),
                 React.createElement("div", { style: { minWidth: 68, textAlign: "center", padding: "9px 10px", borderRadius: 10, background: "var(--surface-soft)", fontWeight: 800 } }, (currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10), "%")
               ),
               React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 10 } }, "Exemplo: um jogador de 15 moedas rende ", Math.ceil(15 * (1 - (currentTournament.marketSettings && currentTournament.marketSettings.depreciationPct != null ? currentTournament.marketSettings.depreciationPct : 10) / 100)), " moedas."),
               React.createElement("div", { style:{ height:1, background:"var(--border)", margin:"20px 0" } }),
               React.createElement("label", { style: P }, "Depreciação do elenco-base"),
               React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" } },
-                React.createElement("input", { type: "range", min: 0, max: 100, step: 1, value: currentTournament.marketSettings && currentTournament.marketSettings.initialRosterDepreciationPct != null ? currentTournament.marketSettings.initialRosterDepreciationPct : 50, onChange: (event) => onUpdateInitialRosterDepreciation(event.target.value), style: { width: "100%", accentColor: "var(--green)" } }),
+                React.createElement("input", { type: "range", min: 0, max: 100, step: 1, value: ruleDrafts.initialRosterDepreciationPct != null ? ruleDrafts.initialRosterDepreciationPct : 50, onChange: (event) => setRuleDrafts({ ...ruleDrafts, initialRosterDepreciationPct:event.target.value }), onMouseUp: () => onUpdateInitialRosterDepreciation(ruleDrafts.initialRosterDepreciationPct), onTouchEnd: () => onUpdateInitialRosterDepreciation(ruleDrafts.initialRosterDepreciationPct), onKeyUp: (event) => { if (["ArrowLeft","ArrowRight","Home","End"].includes(event.key)) onUpdateInitialRosterDepreciation(ruleDrafts.initialRosterDepreciationPct); }, style: { width: "100%", accentColor: "var(--green)" } }),
                 React.createElement("div", { style: { minWidth: 68, textAlign: "center", padding: "9px 10px", borderRadius: 10, background: "var(--surface-soft)", fontWeight: 800 } }, (currentTournament.marketSettings && currentTournament.marketSettings.initialRosterDepreciationPct != null ? currentTournament.marketSettings.initialRosterDepreciationPct : 50), "%")
               ),
               React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 10, lineHeight:1.45 } }, "Aplicada somente ao vender para o mercado um jogador que ainda pertence ao time para o qual foi importado originalmente.")
@@ -5835,15 +5868,15 @@
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Regras do elenco"),
               React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginBottom: 14 } }, "Define quantos jogadores cada time precisa manter e o limite para novas contratações."),
               React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } },
-                React.createElement("div", null, React.createElement("label", { style: P }, "Mínimo"), React.createElement("input", { type: "number", min: 0, max: 99, style: q, value: currentTournament.rosterSettings && currentTournament.rosterSettings.minPlayers != null ? currentTournament.rosterSettings.minPlayers : 23, onChange: (event) => onUpdateRosterRules(event.target.value, currentTournament.rosterSettings && currentTournament.rosterSettings.maxPlayers != null ? currentTournament.rosterSettings.maxPlayers : 30) })),
-                React.createElement("div", null, React.createElement("label", { style: P }, "Máximo"), React.createElement("input", { type: "number", min: 1, max: 99, style: q, value: currentTournament.rosterSettings && currentTournament.rosterSettings.maxPlayers != null ? currentTournament.rosterSettings.maxPlayers : 30, onChange: (event) => onUpdateRosterRules(currentTournament.rosterSettings && currentTournament.rosterSettings.minPlayers != null ? currentTournament.rosterSettings.minPlayers : 23, event.target.value) }))
+                React.createElement("div", null, React.createElement("label", { style: P }, "Mínimo"), React.createElement("input", { type: "number", min: 0, max: 99, style: q, value: ruleDrafts.minPlayers != null ? ruleDrafts.minPlayers : 23, onChange: (event) => setRuleDrafts({ ...ruleDrafts, minPlayers:event.target.value }), onBlur: () => onUpdateRosterRules(ruleDrafts.minPlayers, ruleDrafts.maxPlayers), onKeyDown: (event) => { if (event.key === "Enter") event.currentTarget.blur(); } })),
+                React.createElement("div", null, React.createElement("label", { style: P }, "Máximo"), React.createElement("input", { type: "number", min: 1, max: 99, style: q, value: ruleDrafts.maxPlayers != null ? ruleDrafts.maxPlayers : 30, onChange: (event) => setRuleDrafts({ ...ruleDrafts, maxPlayers:event.target.value }), onBlur: () => onUpdateRosterRules(ruleDrafts.minPlayers, ruleDrafts.maxPlayers), onKeyDown: (event) => { if (event.key === "Enter") event.currentTarget.blur(); } }))
               ),
               React.createElement("div", { style: { fontSize: 11.5, color: "var(--muted)", marginTop: 10 } }, "Times fora do novo limite mantêm seus jogadores, mas ficam impedidos de comprar ou vender até regularizarem o elenco.")
             ),
             adminSection === "participants" && currentTournament && React.createElement("div", { style: E },
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Moedas dos participantes"),
               React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginBottom: 14 } }, currentTournament.name),
-              teams.filter((team) => team.active !== false).length ? teams.filter((team) => team.active !== false).map((team) => React.createElement("div", { key: team.id, style: { display: "grid", gridTemplateColumns: "1fr 120px", gap: 10, alignItems: "center", marginBottom: 10 } }, React.createElement("div", { style: { fontWeight: 700 } }, team.name), React.createElement("input", { type: "number", min: 0, style: { ...q, padding: "9px 10px" }, value: team.budget, onChange: (event) => onUpdateBudget(team.id, event.target.value) }))) : React.createElement("div", { style: { color: "var(--muted)" } }, "Nenhum participante ativo.")
+              teams.filter((team) => team.active !== false).length ? teams.filter((team) => team.active !== false).map((team) => React.createElement("div", { key: team.id, style: { display: "grid", gridTemplateColumns: "1fr 120px", gap: 10, alignItems: "center", marginBottom: 10 } }, React.createElement("div", { style: { fontWeight: 700 } }, team.name), React.createElement("input", { type: "number", min: 0, style: { ...q, padding: "9px 10px" }, value: budgetDrafts[String(team.id)] != null ? budgetDrafts[String(team.id)] : String(Number(team.budget)||0), onChange: (event) => setBudgetDrafts({ ...budgetDrafts, [String(team.id)]: event.target.value }), onBlur: () => commitBudget(team.id), onKeyDown: (event) => { if (event.key === "Enter") { event.currentTarget.blur(); } } }))) : React.createElement("div", { style: { color: "var(--muted)" } }, "Nenhum participante ativo.")
             ),
             adminSection === "tools" && currentTournament && React.createElement("div", { style: E },
               React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 } },
