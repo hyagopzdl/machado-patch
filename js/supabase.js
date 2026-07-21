@@ -212,16 +212,31 @@
     return writeQueue;
   }
 
+  function financialMutationTournamentIds(path,current,updated) {
+    if (!(path === "pes/tournaments" || path.startsWith("pes/tournaments/"))) return [];
+    const explicit=path.match(/^pes\/tournaments\/([^/]+)/);
+    if (explicit && path.includes("financialTransactions")) return [explicit[1]];
+    if (path !== "pes/tournaments") return [];
+    const beforeById=indexById(current), ids=[];
+    asArray(updated).forEach((nextTournament)=>{
+      if(!nextTournament||nextTournament.id==null)return;
+      const previous=beforeById.get(String(nextTournament.id));
+      const previousTransactions=asArray(previous&&previous.context&&previous.context.financialTransactions);
+      const nextTransactions=asArray(nextTournament&&nextTournament.context&&nextTournament.context.financialTransactions);
+      if(JSON.stringify(previousTransactions)!==JSON.stringify(nextTransactions)) ids.push(String(nextTournament.id));
+    });
+    return ids;
+  }
+
   async function runTransaction(path,updater,completion){
     await load();
-    if (path === "pes/tournaments" || path.startsWith("pes/tournaments/")) {
-      const match=path.match(/^pes\/tournaments\/(?:([^/]+))?/);
-      const requestedId=match&&match[1];
-      const ids=requestedId?[requestedId]:asArray(getAt(state,"pes/tournaments")).map(t=>t&&t.id).filter(Boolean);
-      await Promise.all(ids.map(hydrateTournamentFinancial));
-    }
     if (path === "pes/playerReviews" || path.startsWith("pes/playerReviews/")) await loadPlayerReviews();
-    const base=clone(state), current=clone(getAt(base,path)), updated=updater(current);
+    let base=clone(state), current=clone(getAt(base,path)), updated=updater(current);
+    const financialIds=financialMutationTournamentIds(path,current,updated).filter((id)=>!deferredLoaded.financial.has(String(id)));
+    if(financialIds.length){
+      await Promise.all(financialIds.map(hydrateTournamentFinancial));
+      base=clone(state); current=clone(getAt(base,path)); updated=updater(current);
+    }
     if(updated===undefined){const snapshot={val:()=>current}; if(completion)completion(null,false,snapshot); return{committed:false,snapshot};}
     const next=setAt(base,path,clone(updated));
 

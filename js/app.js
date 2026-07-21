@@ -1689,11 +1689,12 @@
               throw error;
             }
           }
-          function rollbackMarketPurchase(transactionId) {
+          async function rollbackMarketPurchase(transactionOrId) {
+            let transactionId=transactionOrId&&typeof transactionOrId==="object"?transactionOrId.id:transactionOrId;
             if (!R || !isAdminProfile(te) || !transactionId) return;
-            let transaction = Array.isArray(R.context && R.context.financialTransactions)
+            let transaction = transactionOrId&&typeof transactionOrId==="object"?transactionOrId:(Array.isArray(R.context && R.context.financialTransactions)
               ? R.context.financialTransactions.find((item) => item && String(item.id) === String(transactionId))
-              : null;
+              : null);
             if (!transaction || !["market_purchase","player_purchase","market_sale"].includes(transaction.type)) {
               window.alert("Esta movimentação não pode ser revertida.");
               return;
@@ -1706,6 +1707,7 @@
             let rollbackLabel = transaction.type === "market_sale" ? "venda ao mercado" : "compra";
             if (!window.confirm(`Reverter a ${rollbackLabel} de ${playerName}? O jogador e o saldo voltarão ao estado anterior.`)) return;
             let db = Ee(), tournamentId = R.id, failureReason = null, rollbackId = _(), now = Date.now();
+            try{if(typeof hydrateTournamentFinancial==="function")await hydrateTournamentFinancial(tournamentId);}catch(error){console.error("Falha ao preparar histórico para estorno",error);window.alert("Não foi possível carregar os dados necessários para o estorno.");return;}
             let applyRollback = (tournament) => {
               let context = { ...(tournament.context || {}) };
               let transactions = Array.isArray(context.financialTransactions) ? context.financialTransactions.map((item) => ({ ...item })) : [];
@@ -4573,7 +4575,7 @@
             try{let page=await loadFinancialTransactions({tournamentId,teamId:showAll?null:team&&team.id,limit:50,before:reset?null:cursor});setItems((current)=>reset?page.items:[...current,...page.items]);setHasMore(page.hasMore);setCursor(page.nextCursor);}catch(fetchError){console.error("Falha ao carregar histórico financeiro",fetchError);setError("Não foi possível carregar o histórico.");}finally{setLoading(false);setLoadingMore(false);}
           };
           He(()=>{let active=true;setItems([]);setCursor(null);setHasMore(false);Promise.resolve().then(()=>active&&fetchTransactions(true));return()=>{active=false}},[tournamentId,team&&team.id,showAll]);
-          let rollbackButton=(item)=>{let can=canRollback&&item&&["market_purchase","player_purchase","market_sale","user_transfer"].includes(item.type)&&!item.rolledBackAt;return can?React.createElement("button",{onClick:()=>onRollback&&onRollback(item.id),style:{border:"1px solid var(--border)",background:"var(--surface-soft)",color:"var(--heading)",borderRadius:10,padding:"7px 9px",fontSize:10.5,fontWeight:800,cursor:"pointer"}},"Estornar"):null};
+          let rollbackButton=(item)=>{let can=canRollback&&item&&["market_purchase","player_purchase","market_sale","user_transfer"].includes(item.type)&&!item.rolledBackAt;return can?React.createElement("button",{onClick:()=>onRollback&&onRollback(item),style:{border:"1px solid var(--border)",background:"var(--surface-soft)",color:"var(--heading)",borderRadius:10,padding:"7px 9px",fontSize:10.5,fontWeight:800,cursor:"pointer"}},"Estornar"):null};
           return ReactDOM.createPortal(React.createElement("div", { className:"sports-modal-overlay",onClick:onClose,style:{ position:"fixed",inset:0,zIndex:1200,display:"grid",placeItems:"center",padding:16,background:"rgba(0,0,0,.72)",backdropFilter:"blur(12px)" } }, React.createElement("div", { onClick:(e)=>e.stopPropagation(),style:{ width:"min(560px,100%)",maxHeight:"82vh",overflow:"auto",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:24,padding:20 } }, React.createElement("div", { style:{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 } }, React.createElement("div", null, React.createElement("div", { style:{ fontSize:12,color:"var(--muted)" } }, showAll?"Mercado":"Saldo atual"), React.createElement("strong", { style:{ fontSize:showAll?22:28,color:showAll?"var(--heading)":"var(--green)" } }, showAll?"Histórico de transações":L(team&&team.budget||0))), React.createElement("button", { onClick:onClose,style:{ width:34,height:34,borderRadius:"50%",border:"1px solid var(--border)",background:"var(--surface-soft)",color:"var(--heading)" } }, "×")), loading&&React.createElement("div",{style:{color:"var(--muted)",textAlign:"center",padding:28}},"Carregando histórico…"), error&&React.createElement("div",{style:{color:"var(--danger)",textAlign:"center",padding:18}},error), !loading&&items.map((item)=>React.createElement("div", { key:item.id,style:{ display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:12,alignItems:"center",padding:"12px 0",borderBottom:"1px solid var(--border)" } }, React.createElement("div", null, React.createElement("div", { style:{ fontWeight:750,fontSize:13.5 } }, item.label||"Movimentação"), showAll&&React.createElement("div",{style:{fontSize:11,color:"var(--muted)",marginTop:3}},teamName(item.teamId)), React.createElement("div", { style:{ fontSize:10.5,color:"var(--muted)",marginTop:3 } }, new Date(item.createdAt||Date.now()).toLocaleString("pt-BR"))), React.createElement("div",{style:{display:"flex",alignItems:"center",gap:9}},React.createElement("strong", { style:{ color:Number(item.amount)>=0?"var(--green)":"var(--danger)" } }, `${Number(item.amount)>=0?"+ ":"− "}${L(Math.abs(Number(item.amount)||0))}`),rollbackButton(item)))), !loading&&!items.length&&!error&&React.createElement("div", { style:{ color:"var(--muted)",textAlign:"center",padding:24 } }, "Nenhuma movimentação registrada ainda."), hasMore&&React.createElement("button",{disabled:loadingMore,onClick:()=>fetchTransactions(false),style:{width:"100%",marginTop:16,padding:12,borderRadius:12,border:"1px solid var(--border)",background:"var(--surface-soft)",color:"var(--heading)",fontWeight:800,cursor:loadingMore?"wait":"pointer"}},loadingMore?"Carregando…":"Carregar mais 50"))), document.body);
         }
 
