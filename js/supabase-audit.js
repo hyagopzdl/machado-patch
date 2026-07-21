@@ -63,6 +63,84 @@
     return `${method} ${details.area}:${details.resource}:${details.operation}?${new URLSearchParams(sorted).toString()}`;
   };
 
+  const redactValue = (key, value) => {
+    const sensitive = /apikey|authorization|token|secret|password|email|phone|cpf|document/i;
+    if (sensitive.test(key)) return "[redacted]";
+    const text = String(value == null ? "" : value);
+    return text.length > 300 ? `${text.slice(0, 300)}…` : text;
+  };
+
+  const extractQueryDetails = (url) => {
+    const params = new URLSearchParams(url.search);
+    const query = {};
+    for (const [key, value] of params.entries()) {
+      if (key === "apikey") continue;
+      query[key] = redactValue(key, value);
+    }
+    return {
+      select: params.get("select") || "",
+      order: params.get("order") || "",
+      limit: params.get("limit") || "",
+      offset: params.get("offset") || "",
+      filters: Object.fromEntries([...params.entries()].filter(([key]) => !["apikey", "select", "order", "limit", "offset"].includes(key)).map(([key, value]) => [key, redactValue(key, value)])),
+      query
+    };
+  };
+
+  const parseResponseMeta = async (response) => {
+    const meta = { rowCount: null, bodyType: "unknown", topLevelKeys: [], sampleShape: "" };
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        meta.bodyType = contentType || "non-json";
+        return meta;
+      }
+      const text = await response.clone().text();
+      if (!text) {
+        meta.bodyType = "empty";
+        meta.rowCount = 0;
+        return meta;
+      }
+      const json = JSON.parse(text);
+      if (Array.isArray(json)) {
+        meta.bodyType = "array";
+        meta.rowCount = json.length;
+        const first = json[0];
+        if (first && typeof first === "object" && !Array.isArray(first)) {
+          meta.topLevelKeys = Object.keys(first).slice(0, 30);
+          meta.sampleShape = meta.topLevelKeys.join(",");
+        } else if (first != null) {
+          meta.sampleShape = typeof first;
+        }
+      } else if (json && typeof json === "object") {
+        meta.bodyType = "object";
+        meta.rowCount = 1;
+        meta.topLevelKeys = Object.keys(json).slice(0, 30);
+        meta.sampleShape = meta.topLevelKeys.join(",");
+      } else {
+        meta.bodyType = typeof json;
+        meta.rowCount = 1;
+      }
+    } catch (error) {
+      meta.bodyType = "unparsed";
+      meta.parseError = String(error && error.message || error);
+    }
+    return meta;
+  };
+
+  const captureStack = () => {
+    try {
+      return new Error().stack
+        .split("\n")
+        .slice(2, 10)
+        .filter((line) => !line.includes("supabase-audit.js"))
+        .join("\n")
+        .trim();
+    } catch (_) {
+      return "";
+    }
+  };
+
   const addRecord = (record) => {
     records.push(record);
     if (records.length > MAX_RECORDS) records.shift();
@@ -80,6 +158,8 @@
 
     const method = String(init.method || (request && request.method) || "GET").toUpperCase();
     const details = classify(url, method);
+    const queryDetails = extractQueryDetails(url);
+    const callerStack = captureStack();
     const sentBytes = byteLength(init.body || (request && request.body));
     const started = performance.now();
 
@@ -93,6 +173,7 @@
         receivedBytes = buffer.byteLength;
         measuredFromBody = true;
       } catch (_) {}
+      const responseMeta = await parseResponseMeta(response);
 
       addRecord({
         at: new Date().toISOString(),
@@ -107,7 +188,19 @@
         resource: details.resource,
         operation: details.operation,
         signature: normalizeSignature(method, url, details),
-        path: `${url.pathname}${url.search}`
+        path: `${url.pathname}${url.search}`,
+        select: queryDetails.select,
+        order: queryDetails.order,
+        limit: queryDetails.limit,
+        offset: queryDetails.offset,
+        filters: queryDetails.filters,
+        query: queryDetails.query,
+        rowCount: responseMeta.rowCount,
+        bodyType: responseMeta.bodyType,
+        topLevelKeys: responseMeta.topLevelKeys,
+        sampleShape: responseMeta.sampleShape,
+        parseError: responseMeta.parseError || "",
+        callerStack
       });
       return response;
     } catch (error) {
@@ -117,6 +210,9 @@
         sentBytes, receivedBytes: 0, measuredFromBody: false,
         area: details.area, resource: details.resource, operation: details.operation,
         signature: normalizeSignature(method, url, details), path: `${url.pathname}${url.search}`,
+        select: queryDetails.select, order: queryDetails.order, limit: queryDetails.limit, offset: queryDetails.offset,
+        filters: queryDetails.filters, query: queryDetails.query, rowCount: null, bodyType: "error",
+        topLevelKeys: [], sampleShape: "", callerStack,
         error: String(error && error.message || error)
       });
       throw error;
@@ -188,10 +284,22 @@
   const csvEscape = (value) => `"${String(value == null ? "" : value).replace(/"/g, '""')}"`;
   const exportCsv = () => {
     const report = summarize();
-    const headers = ["area", "resource", "operation", "calls", "errors", "sentBytes", "receivedBytes", "avgDurationMs", "maxDurationMs"];
-    const lines = [headers.join(","), ...report.operations.map((row) => headers.map((key) => csvEscape(row[key])).join(","))];
+    const headers = [
+      "at", "area", "resource", "operation", "method", "status", "ok", "durationMs",
+      "sentBytes", "receivedBytes", "rowCount", "bodyType", "select", "order", "limit", "offset",
+      "filters", "sampleShape", "signature", "path", "callerStack", "error"
+    ];
+    const lines = [headers.join(",")];
+    report.records.forEach((row) => {
+      const normalized = {
+        ...row,
+        filters: JSON.stringify(row.filters || {}),
+        callerStack: String(row.callerStack || "").replace(/\n/g, " | ")
+      };
+      lines.push(headers.map((key) => csvEscape(normalized[key])).join(","));
+    });
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    download(`supabase-audit-${stamp}.csv`, lines.join("\n"), "text/csv;charset=utf-8");
+    download(`supabase-audit-v2-${stamp}.csv`, lines.join("\n"), "text/csv;charset=utf-8");
   };
 
   const formatBytes = (bytes) => {
@@ -251,5 +359,5 @@
   localStorage.setItem("mancha-supabase-audit", "1");
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountPanel);
   else mountPanel();
-  console.info("[Auditoria Supabase] ativa. Use window.ManchaSupabaseAudit.getReport() ou window.exportSupabaseAudit().");
+  console.info("[Auditoria Supabase v2] ativa. Use window.ManchaSupabaseAudit.getReport() ou window.exportSupabaseAudit().");
 })();
