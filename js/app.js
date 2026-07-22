@@ -473,7 +473,7 @@
                   participants: [],
                   teamIds: [],
                   createdAt: Date.now(),
-                  marketSettings: { depreciationPct: 10, initialRosterDepreciationPct: 50, isOpen: true, freePlayerOverallLimit: { enabled:false, minOverall:1, maxOverall:99 } },
+                  marketSettings: { depreciationPct: 10, initialRosterDepreciationPct: 50, isOpen: true, freePlayerOverallLimit: { enabled:false, minOverall:1, maxOverall:99 }, playerTradeLock:{ enabled:false, gamesRequired:50 } },
                   rosterSettings: { minPlayers: 23, maxPlayers: 30 },
                   economySettings: { version: 2, winReward: 5, scoringDrawReward: 3, scorelessDrawReward: 2, lossReward: 1, goalReward: 1, redCardPenalty: 1 },
                   finalPrizeSettings: { firstPlacePrize: 20, lastPlacePercentage: 50 },
@@ -833,6 +833,8 @@
                 : { kind: "owned", teamId: i.teamId };
           }
           function fullSquadOverall(teamId, ownershipValue = c, catalogValue = n) { return window.ManchaApp.MarketFeature.fullSquadOverall(teamId, ownershipValue, catalogValue); }
+          function playerTradeLockSettings(tournament = R) { return window.ManchaApp.MarketFeature.playerTradeLockSettings(tournament); }
+          function playerTradeLockStatus(playerId, teamId, tournament = R, ownershipValue = c, transfersValue = k, matchesValue = null) { let sourceMatches = matchesValue || (tournament && tournament.context && Array.isArray(tournament.context.matches) ? tournament.context.matches : (Array.isArray(tournament && tournament.matches) ? tournament.matches : [])); return window.ManchaApp.MarketFeature.playerTradeLockStatus(playerId, teamId, tournament, ownershipValue, transfersValue, sourceMatches); }
           function marketBalanceSettings(tournament = R) { return window.ManchaApp.MarketFeature.marketBalanceSettings(tournament); }
           function marketAccessSettings(tournament = R) { return window.ManchaApp.MarketFeature.marketAccessSettings(tournament); }
           function inferPlayerAcquisition(playerId, ownershipItem, transfersValue = k) { return window.ManchaApp.MarketFeature.inferPlayerAcquisition(playerId, ownershipItem, transfersValue); }
@@ -904,6 +906,8 @@
           async function sendTradeOffer(player, amount) {
             if (!R || !ProfileTeam || !marketTournamentId) return;
             let status = Pe(player), sellerTeamId = status.teamId;
+            let sellerTradeLock = sellerTeamId ? playerTradeLockStatus(player.id, sellerTeamId, marketTournament || R) : null;
+            if (sellerTradeLock && sellerTradeLock.locked) { window.alert(`Este jogador ainda precisa completar mais ${sellerTradeLock.gamesRemaining} jogos no time atual antes de poder ser negociado.`); return; }
             let operationBlock = marketOperationBlock(player, status, marketTournament || R);
             if (operationBlock.blocked) { window.alert(operationBlock.message); return; }
             let value = Math.max(1, Number(amount) || player.value);
@@ -933,6 +937,8 @@
               let owner = tournament.context && tournament.context.ownership && tournament.context.ownership[player.id];
               let actualSellerId = owner && owner.teamId != null ? owner.teamId : sellerTeamId;
               if (!actualSellerId || String(actualSellerId) === String(ProfileTeam.id)) { fail("owner_changed"); return null; }
+              let lock = playerTradeLockStatus(player.id, actualSellerId, tournament, tournament.context && tournament.context.ownership || {}, tournament.context && tournament.context.transfers || [], tournament.context && tournament.context.matches || []);
+              if (lock.locked) { fail("player_trade_locked"); return null; }
               return { ...offers, [id]:{ ...offer, sellerTeamId:actualSellerId } };
             }, "trade_offer_created");
             if (result.committed) {
@@ -942,6 +948,7 @@
             let messages = {
               duplicate:"Você já possui uma negociação em andamento por este jogador.",
               owner_changed:"O jogador não pertence mais ao time selecionado.",
+              player_trade_locked:"Este jogador ainda não cumpriu o número mínimo de jogos no time atual.",
               championship_not_found:"O campeonato da negociação não foi encontrado.",
               database_unavailable:"Não foi possível acessar o Supabase."
             };
@@ -955,6 +962,10 @@
               if (!offer || !isOfferOpen(offer)) { fail("unavailable"); return null; }
               let isBuyer = String(offer.buyerTeamId) === String(ProfileTeam.id), isSeller = String(offer.sellerTeamId) === String(ProfileTeam.id);
               if (!isBuyer && !isSeller) { fail("forbidden"); return null; }
+              if (isSeller && action === "counter") {
+                let lock = playerTradeLockStatus(offer.playerId, offer.sellerTeamId, tournament, tournament.context && tournament.context.ownership || {}, tournament.context && tournament.context.transfers || [], tournament.context && tournament.context.matches || []);
+                if (lock.locked) { fail("player_trade_locked"); return null; }
+              }
               let now = Date.now(), next = { ...offer, updatedAt:now };
               if (action === "decline") {
                 if (!isSeller) { fail("forbidden"); return null; }
@@ -973,7 +984,7 @@
               return { ...offers, [offerId]:next };
             }, "trade_offer_updated");
             if (!result.committed && result.reason !== "busy") {
-              let messages = { unavailable:"A proposta não está mais disponível.", forbidden:"Você não pode alterar esta proposta.", not_your_turn:"Aguarde a resposta do outro usuário." };
+              let messages = { unavailable:"A proposta não está mais disponível.", forbidden:"Você não pode alterar esta proposta.", not_your_turn:"Aguarde a resposta do outro usuário.", player_trade_locked:"Este jogador ainda não cumpriu o número mínimo de jogos no time atual." };
               window.alert(messages[result.reason] || "Não foi possível atualizar a proposta.");
             }
           }
@@ -1002,6 +1013,11 @@
             }
             if (localSellerSize <= minPlayers) {
               window.alert(`Seu elenco possui o mínimo de ${minPlayers} jogadores. Contrate pelo menos mais um jogador antes de aceitar esta proposta.`);
+              return;
+            }
+            let localTradeLock = playerTradeLockStatus(localOffer.playerId, localOffer.sellerTeamId, R, localOwnership, k);
+            if (localTradeLock.locked) {
+              window.alert(`Este jogador ainda precisa completar mais ${localTradeLock.gamesRemaining} jogos no time atual antes de ser negociado.`);
               return;
             }
             if ((Number(localBuyer.budget) || 0) < Number(localOffer.currentAmount || 0)) {
@@ -1050,6 +1066,8 @@
               let sellerSize = Object.values(ownership).filter((item) => item && String(item.teamId) === String(seller.id)).length;
               if (buyerSize >= maxPlayers) { failureReason = "buyer_roster_full"; return; }
               if (sellerSize <= minPlayers) { failureReason = "seller_min_roster"; return; }
+              let atomicTradeLock = playerTradeLockStatus(offer.playerId, seller.id, tournament, ownership, context.transfers || [], context.matches || tournament.matches || []);
+              if (atomicTradeLock.locked) { failureReason = "player_trade_locked"; return; }
               if ((Number(buyer.budget) || 0) < Number(offer.currentAmount || 0)) { failureReason = "insufficient_funds"; return; }
               let offerPlayer = n.find((player) => player && String(player.id) === String(offer.playerId));
               let atomicBalanceCheck = evaluateMarketBalance(offerPlayer, buyer.id, tournament, teams, ownership, n);
@@ -1093,7 +1111,8 @@
                 championship_not_found: "O campeonato desta proposta não foi encontrado.",
                 offer_unavailable: "A proposta não está mais disponível.",
                 market_balance_lock: "A transferência está bloqueada pela regra de equilíbrio do mercado. A proposta continua aberta.",
-                market_closed: "O mercado está fechado. A proposta continuará aberta até a reabertura."
+                market_closed: "O mercado está fechado. A proposta continuará aberta até a reabertura.",
+                player_trade_locked: "Este jogador ainda não cumpriu o número mínimo de jogos no time atual. A proposta continuará aberta."
               };
               window.alert(messages[failureReason] || "A transferência não pôde ser concluída.");
             }, false);
@@ -1174,6 +1193,8 @@
           }
           function wt(o, i, y) {
             if (!marketAccessSettings(R).isOpen) { window.alert("O mercado está fechado pela administração."); return; }
+            let tradeLock = playerTradeLockStatus(o.id, i);
+            if (tradeLock.locked) { window.alert(`Este jogador ainda precisa completar mais ${tradeLock.gamesRemaining} jogos no seu time antes de ser negociado.`); return; }
             let D = Math.max(1, Number(y) || o.value);
             (ne({ ...c, [o.id]: { ...(c[o.id] || {}), teamId: i, forSale: !0, price: D } }),
               Ae(null));
@@ -1185,6 +1206,8 @@
           function It(o) {
             if (!R || !ProfileTeam || !o) return;
             if (!marketAccessSettings(R).isOpen) { window.alert("O mercado está fechado pela administração."); return; }
+            let tradeLock = playerTradeLockStatus(o.id, ProfileTeam.id);
+            if (tradeLock.locked) { window.alert(`Este jogador ainda precisa completar mais ${tradeLock.gamesRemaining} jogos no seu time antes de ser negociado.`); return; }
             let minPlayers = Math.max(0, Number(R.rosterSettings && R.rosterSettings.minPlayers != null ? R.rosterSettings.minPlayers : 23) || 0);
             if (Oe(ProfileTeam.id).length <= minPlayers) {
               window.alert(`Você precisa manter no mínimo ${minPlayers} jogadores no elenco.`);
@@ -1200,12 +1223,14 @@
             let localSaleRule = marketSaleDepreciation(R, o.id, ProfileTeam.id);
             let amount = Math.ceil((Number(o.value) || 0) * (1 - localSaleRule.depreciationPct / 100));
             let depreciationPct = localSaleRule.depreciationPct;
-            let tournamentId = R.id, teamId = ProfileTeam.id, now = Date.now();
+            let tournamentId = R.id, teamId = ProfileTeam.id, now = Date.now(), failureReason = null;
             let applySale = (tournament) => {
               let context = { ...(tournament.context || {}) };
               let ownership = { ...(context.ownership || {}) };
               let current = ownership[o.id];
               if (!current || current.teamId !== teamId) return null;
+              let serverTradeLock = playerTradeLockStatus(o.id, teamId, tournament, ownership, context.transfers || [], context.matches || tournament.matches || []);
+              if (serverTradeLock.locked) { failureReason = "player_trade_locked"; return null; }
               let serverTransfers = Array.isArray(context.transfers) ? context.transfers : [];
               let serverRule = marketSaleDepreciation(tournament, o.id, teamId, ownership, serverTransfers);
               depreciationPct = serverRule.depreciationPct;
@@ -1251,7 +1276,7 @@
             }, (error, committed, snapshot) => {
               endMarketAction(actionKey);
               if (error) window.alert("Não foi possível concluir a venda. Tente novamente.");
-              else if (!committed) window.alert("A venda foi cancelada porque o jogador não pertence mais ao seu elenco.");
+              else if (!committed) window.alert(failureReason === "player_trade_locked" ? "Este jogador ainda não cumpriu o número mínimo de jogos no seu time." : "A venda foi cancelada porque o jogador não pertence mais ao seu elenco.");
               else {
                 applyConfirmedTournamentSnapshot(snapshot);
                 setSaleModal(null);
@@ -1979,12 +2004,12 @@
             let safeField = field === "initialRosterDepreciationPct" ? "initialRosterDepreciationPct" : "depreciationPct";
             ae(m.map((item) => item.id === R.id ? { ...item, marketSettings: { ...(item.marketSettings || {}), [safeField]: pct } } : item));
           }
-          function updateMarketAccessRules(isOpen, limitEnabled, minOverall, maxOverall) {
+          function updateMarketAccessRules(isOpen, limitEnabled, minOverall, maxOverall, tradeLockEnabled, tradeLockGames) {
             if (!R) return;
             let normalizedMin = Math.min(99, Math.max(1, Math.round(Number(minOverall) || 1)));
             let normalizedMax = Math.min(99, Math.max(1, Math.round(Number(maxOverall) || 99)));
             if (normalizedMin > normalizedMax) { window.alert("O overall mínimo não pode ser maior que o overall máximo."); return; }
-            let nextSettings = { ...(R.marketSettings || {}), isOpen: isOpen === true, freePlayerOverallLimit: { enabled: limitEnabled === true, minOverall: normalizedMin, maxOverall: normalizedMax } };
+            let nextSettings = { ...(R.marketSettings || {}), isOpen: isOpen === true, freePlayerOverallLimit: { enabled: limitEnabled === true, minOverall: normalizedMin, maxOverall: normalizedMax }, playerTradeLock:{ enabled:tradeLockEnabled === true, gamesRequired:Math.max(0,Math.round(Number(tradeLockGames)||0)) } };
             ae(m.map((item) => item.id === R.id ? { ...item, marketSettings: nextSettings } : item));
           }
           function updateMarketBalanceRules(enabled, maxDifference) {
@@ -2550,6 +2575,7 @@
                           rosterSettings: R && R.rosterSettings ? R.rosterSettings : { minPlayers: 23, maxPlayers: 30 },
                           readOnly: !!(R && (R.status === "finished" || R.type === "cup")),
                           baseRosterPlayerIds: ProfileTeam ? Oe(ProfileTeam.id).filter((player) => isInitialRosterPlayer(player.id, ProfileTeam.id)).map((player) => String(player.id)) : [],
+                          tradeLockStatusFor: ProfileTeam ? (player) => playerTradeLockStatus(player.id, ProfileTeam.id) : null,
                           onSaveLineup: (teamId, lineup) => Se(p.map((team) => team && String(team.id) === String(teamId) ? { ...team, lineup } : team)),
                         }),
 
@@ -3417,6 +3443,7 @@
           readOnlyActionLabel = null,
           onReadOnlyAction = null,
           baseRosterPlayerIds = [],
+          tradeLockStatusFor = null,
           onSaveLineup = null,
         }) {
           let s = e.find((h) => h.id === t);
@@ -3722,13 +3749,15 @@
           }
           function playerCard(player) {
             let cannotSell = squad.length <= minPlayers;
+            let tradeLock = !readOnly && tradeLockStatusFor ? tradeLockStatusFor(player) : null;
+            let tradeLocked = !!(tradeLock && tradeLock.locked);
             return React.createElement(UnifiedPlayerCard, {
               key:player.id, player, onOpen:c,
-              actionLabel:readOnly?readOnlyActionLabel:"Vender ao mercado",
-              actionDisabled:readOnly?!onReadOnlyAction:cannotSell,
+              actionLabel:readOnly?readOnlyActionLabel:(tradeLocked?`Faltam ${tradeLock.gamesRemaining} jogos`:"Vender ao mercado"),
+              actionDisabled:readOnly?!onReadOnlyAction:(cannotSell||tradeLocked),
               isInitialRoster:baseRosterPlayerIds.includes(String(player.id)),
               currentTeamName:s && s.name ? s.name : null,
-              onAction:()=>{ if(readOnly){ if(onReadOnlyAction) onReadOnlyAction(player); } else if(!cannotSell) p(player); }
+              onAction:()=>{ if(readOnly){ if(onReadOnlyAction) onReadOnlyAction(player); } else if(!cannotSell&&!tradeLocked) p(player); }
             });
           }
           if (squadView === "formation") {
@@ -4703,8 +4732,9 @@
         function MarketAccessAdminForm({ tournament, onSave }) {
           let settings=tournament&&tournament.marketSettings&&typeof tournament.marketSettings==="object"?tournament.marketSettings:{};
           let limit=settings.freePlayerOverallLimit&&typeof settings.freePlayerOverallLimit==="object"?settings.freePlayerOverallLimit:{};
-          let [isOpen,setIsOpen]=b(settings.isOpen!==false),[limitEnabled,setLimitEnabled]=b(limit.enabled===true),[minOverall,setMinOverall]=b(limit.minOverall!=null?limit.minOverall:1),[maxOverall,setMaxOverall]=b(limit.maxOverall!=null?limit.maxOverall:99);
-          He(()=>{setIsOpen(settings.isOpen!==false);setLimitEnabled(limit.enabled===true);setMinOverall(limit.minOverall!=null?limit.minOverall:1);setMaxOverall(limit.maxOverall!=null?limit.maxOverall:99)},[tournament&&tournament.id,settings.isOpen,limit.enabled,limit.minOverall,limit.maxOverall]);
+          let tradeLock=settings.playerTradeLock&&typeof settings.playerTradeLock==="object"?settings.playerTradeLock:{};
+          let [isOpen,setIsOpen]=b(settings.isOpen!==false),[limitEnabled,setLimitEnabled]=b(limit.enabled===true),[minOverall,setMinOverall]=b(limit.minOverall!=null?limit.minOverall:1),[maxOverall,setMaxOverall]=b(limit.maxOverall!=null?limit.maxOverall:99),[tradeLockEnabled,setTradeLockEnabled]=b(tradeLock.enabled===true),[tradeLockGames,setTradeLockGames]=b(tradeLock.gamesRequired!=null?tradeLock.gamesRequired:50);
+          He(()=>{setIsOpen(settings.isOpen!==false);setLimitEnabled(limit.enabled===true);setMinOverall(limit.minOverall!=null?limit.minOverall:1);setMaxOverall(limit.maxOverall!=null?limit.maxOverall:99);setTradeLockEnabled(tradeLock.enabled===true);setTradeLockGames(tradeLock.gamesRequired!=null?tradeLock.gamesRequired:50)},[tournament&&tournament.id,settings.isOpen,limit.enabled,limit.minOverall,limit.maxOverall,tradeLock.enabled,tradeLock.gamesRequired]);
           return React.createElement("div",{style:{marginTop:18,paddingTop:18,borderTop:"1px solid var(--border)"}},
             React.createElement("h3",{style:{margin:"0 0 6px"}},"Mercado"),
             React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,marginBottom:14}},"Controle quando as negociações podem acontecer e o intervalo de overall permitido para compras diretas de jogadores livres."),
@@ -4717,7 +4747,10 @@
               ),
               Number(minOverall)>Number(maxOverall)&&React.createElement("div",{style:{fontSize:11.5,color:"var(--danger)",marginTop:8}},"O overall mínimo não pode ser maior que o máximo.")
             ),
-            React.createElement("button",{onClick:()=>onSave(isOpen,limitEnabled,minOverall,maxOverall),disabled:limitEnabled&&Number(minOverall)>Number(maxOverall),style:{...M,...W,marginTop:12,opacity:limitEnabled&&Number(minOverall)>Number(maxOverall)?.55:1}},"Salvar regras do mercado")
+            React.createElement("div",{style:{height:1,background:"var(--border)",margin:"18px 0"}}),
+            React.createElement("label",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:"12px 0"}},React.createElement("span",null,React.createElement("strong",null,"Travar revenda após contratação"),React.createElement("div",{style:{fontSize:11.5,color:"var(--muted)",marginTop:3,lineHeight:1.4}},"Jogadores comprados do mercado ou de outro usuário precisam cumprir jogos no novo time antes de serem negociados novamente. A regra também vale para compras antigas que possam ser identificadas.")),React.createElement("input",{type:"checkbox",checked:tradeLockEnabled,onChange:(event)=>setTradeLockEnabled(event.target.checked)})),
+            tradeLockEnabled&&React.createElement("div",null,React.createElement("label",{style:P},"Jogos necessários no novo time"),React.createElement("input",{type:"number",min:1,max:999,step:1,value:tradeLockGames,onChange:(event)=>setTradeLockGames(event.target.value),style:q}),React.createElement("div",{style:{fontSize:11.5,color:"var(--muted)",marginTop:7,lineHeight:1.4}},"O cálculo usa as partidas do time depois da data da aquisição. Não gera consultas adicionais por jogador.")),
+            React.createElement("button",{onClick:()=>onSave(isOpen,limitEnabled,minOverall,maxOverall,tradeLockEnabled,tradeLockGames),disabled:limitEnabled&&Number(minOverall)>Number(maxOverall),style:{...M,...W,marginTop:12,opacity:limitEnabled&&Number(minOverall)>Number(maxOverall)?.55:1}},"Salvar regras do mercado")
           );
         }
         function MarketBalanceAdminForm({ tournament, teams, catalog, onSave }) {

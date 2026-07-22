@@ -7,6 +7,36 @@
     if (!players.length) return 0;
     return players.reduce((sum, player) => sum + (Number(player.overall) || 0), 0) / players.length;
   }
+
+  function playerTradeLockSettings(tournament) {
+    let settings = tournament && tournament.marketSettings && typeof tournament.marketSettings === "object" ? tournament.marketSettings : {};
+    let lock = settings.playerTradeLock && typeof settings.playerTradeLock === "object" ? settings.playerTradeLock : {};
+    return { enabled: lock.enabled === true, gamesRequired: Math.max(0, Math.round(Number(lock.gamesRequired != null ? lock.gamesRequired : 50) || 0)) };
+  }
+  function latestInboundTransfer(playerId, teamId, transfersValue) {
+    return (Array.isArray(transfersValue) ? transfersValue : [])
+      .filter((entry) => entry && String(entry.playerId) === String(playerId) && String(entry.toTeamId || "") === String(teamId || "") && ["market_purchase","user_transfer"].includes(entry.type))
+      .slice().sort((a,b) => (Number(b.createdAt)||0) - (Number(a.createdAt)||0))[0] || null;
+  }
+  function playerTradeLockStatus(playerId, teamId, tournament, ownershipValue, transfersValue, matchesValue) {
+    let settings = playerTradeLockSettings(tournament);
+    if (!settings.enabled || settings.gamesRequired <= 0) return { locked:false, enabled:settings.enabled, gamesRequired:settings.gamesRequired, gamesPlayed:settings.gamesRequired, gamesRemaining:0 };
+    let item = ownershipValue && typeof ownershipValue === "object" ? ownershipValue[playerId] : null;
+    if (!item || String(item.teamId || "") !== String(teamId || "")) return { locked:false, enabled:true, gamesRequired:settings.gamesRequired, gamesPlayed:0, gamesRemaining:0 };
+    let transfer = latestInboundTransfer(playerId, teamId, transfersValue);
+    let origin = item.acquisitionSource && item.acquisitionSource !== "unknown" ? item.acquisitionSource : ((transfer && transfer.type) || "unknown");
+    if (!["market_purchase","user_transfer"].includes(origin)) return { locked:false, enabled:true, gamesRequired:settings.gamesRequired, gamesPlayed:settings.gamesRequired, gamesRemaining:0, origin };
+    let acquiredAt = Number(item.acquiredAt || (transfer && transfer.createdAt) || 0);
+    if (!acquiredAt) return { locked:false, enabled:true, gamesRequired:settings.gamesRequired, gamesPlayed:settings.gamesRequired, gamesRemaining:0, origin, legacy:true };
+    let gamesPlayed = (Array.isArray(matchesValue) ? matchesValue : []).filter((match) => {
+      if (!match || match.played === false || match.status === "scheduled") return false;
+      let involves = String(match.homeTeamId || match.homeId || "") === String(teamId) || String(match.awayTeamId || match.awayId || "") === String(teamId);
+      let matchTime = Number(match.playedAt || match.createdAt || 0);
+      return involves && matchTime >= acquiredAt;
+    }).length;
+    let gamesRemaining = Math.max(0, settings.gamesRequired - gamesPlayed);
+    return { locked:gamesRemaining > 0, enabled:true, gamesRequired:settings.gamesRequired, gamesPlayed, gamesRemaining, acquiredAt, origin };
+  }
   function marketBalanceSettings(tournament) {
     let settings = tournament && tournament.marketBalanceSettings && typeof tournament.marketBalanceSettings === "object" ? tournament.marketBalanceSettings : {};
     return { enabled: settings.enabled === true, maxDifference: Math.max(0, Number(settings.maxDifference != null ? settings.maxDifference : 10) || 0), recoveryMode: settings.recoveryMode !== false };
@@ -87,5 +117,5 @@
     return `Esta contratação elevaria a diferença entre os times para ${check.futureGap.toFixed(1)} OVR. Pela regra de equilíbrio, o máximo permitido agora é ${(check.currentGap > check.maxDifference ? check.currentGap : check.maxDifference).toFixed(1)} OVR. O time mais fraco está com ${check.weakestOverall.toFixed(1)} OVR.`;
   }
 
-  window.ManchaApp.MarketFeature = { fullSquadOverall, marketBalanceSettings, marketAccessSettings, inferPlayerAcquisition, isInitialRosterPlayer, marketSaleDepreciation, marketOperationBlock, evaluateMarketBalance, marketBalanceMessage };
+  window.ManchaApp.MarketFeature = { fullSquadOverall, playerTradeLockSettings, playerTradeLockStatus, marketBalanceSettings, marketAccessSettings, inferPlayerAcquisition, isInitialRosterPlayer, marketSaleDepreciation, marketOperationBlock, evaluateMarketBalance, marketBalanceMessage };
 })();
