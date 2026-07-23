@@ -35,6 +35,13 @@
   let loadPromise = null;
   let loaded = false;
   let writeQueue = Promise.resolve();
+  // Opening or refreshing the app must be strictly read-only. Tournament writes
+  // are unlocked only after a real user interaction in the current page load.
+  let explicitUserInteraction = false;
+  const unlockUserWrites = () => { explicitUserInteraction = true; };
+  ["pointerdown", "touchstart", "keydown"].forEach((eventName) => {
+    window.addEventListener(eventName, unlockUserWrites, { capture: true, passive: true });
+  });
   const listeners = new Map();
   const queryCache = new Map();
   const pendingQueries = new Map();
@@ -311,6 +318,9 @@
       .map(key=>key.slice("tournament:".length));
     if(!tournamentIds.length)return;
 
+    // Do not reuse the 60-second boot cache for concurrency validation.
+    // This must compare against the database as it exists immediately before RPC.
+    invalidateCache("boot:");
     const remoteState=await loadNormalizedState();
     const localById=indexById(asObject(baseState&&baseState.pes).tournaments);
     const remoteById=indexById(asObject(remoteState&&remoteState.pes).tournaments);
@@ -353,6 +363,12 @@
     const patch=buildPatch(baseState,nextState);
     if(!Object.keys(patch.documents).length&&!patch.deleteKeys.length){state=nextState;emitAll();return;}
     validateTournamentPatch(baseState,nextState,patch,eventType);
+    const hasTournamentWrite = Object.keys(patch.documents).some((key) => key.startsWith("tournament:"))
+      || patch.deleteKeys.some((key) => key.startsWith("tournament:"));
+    if (hasTournamentWrite && !explicitUserInteraction) {
+      console.error("[Tournament Sync] Escrita automática durante carregamento bloqueada", { eventType, patch });
+      throw new Error("Sincronização bloqueada: abrir ou atualizar a página não pode alterar o campeonato.");
+    }
     const operation=async()=>{
       // A SQL recovery, another tab, or another user may have changed the
       // normalized tables after this tab loaded. Never let an old in-memory

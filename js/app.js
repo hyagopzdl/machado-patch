@@ -211,32 +211,8 @@
             let preferred = ordered.find((item) => item.status !== "finished") || ordered[0];
             if (preferred && preferred.id) { setSelectedTournamentId(preferred.id); qe("pes-selected-tournament", preferred.id); }
           }, [tournamentsLoaded, m, selectedTournamentId]);
-          He(() => {
-            if (!R || !R.id || !te || typeof te !== "object" || !te.id || !Array.isArray(te.favoritePlayerIds) || te.favoritePlayerIds.length === 0) return;
-            let db = Ee();
-            if (!db) return;
-            db.ref("pes").transaction((rootValue) => {
-              if (!rootValue || typeof rootValue !== "object") return rootValue;
-              let root = { ...rootValue };
-              let profiles = Array.isArray(root.profiles) ? root.profiles.map((profile) => profile && typeof profile === "object" ? { ...profile } : profile) : [];
-              let profileIndex = profiles.findIndex((profile) => profile && typeof profile === "object" && String(profile.id) === String(te.id));
-              if (profileIndex < 0 || !Array.isArray(profiles[profileIndex].favoritePlayerIds) || profiles[profileIndex].favoritePlayerIds.length === 0) return;
-              let legacyIds = profiles[profileIndex].favoritePlayerIds.map((id) => String(id));
-              let preferences = root.profileChampionshipPreferences && typeof root.profileChampionshipPreferences === "object" ? { ...root.profileChampionshipPreferences } : {};
-              let tournamentPreferences = preferences[R.id] && typeof preferences[R.id] === "object" ? { ...preferences[R.id] } : {};
-              let profilePreferences = tournamentPreferences[te.id] && typeof tournamentPreferences[te.id] === "object" ? { ...tournamentPreferences[te.id] } : {};
-              let favorites = profilePreferences.favorites && typeof profilePreferences.favorites === "object" ? { ...profilePreferences.favorites } : {};
-              legacyIds.forEach((id) => { favorites[id] = true; });
-              tournamentPreferences[te.id] = { ...profilePreferences, favorites, migratedFromGlobalAt: Date.now() };
-              preferences[R.id] = tournamentPreferences;
-              let nextProfile = { ...profiles[profileIndex] };
-              delete nextProfile.favoritePlayerIds;
-              profiles[profileIndex] = nextProfile;
-              root.profiles = profiles;
-              root.profileChampionshipPreferences = preferences;
-              return root;
-            }).catch((error) => console.error("favorite migration failed", error));
-          }, [R && R.id, te && te.id, te && Array.isArray(te.favoritePlayerIds) ? te.favoritePlayerIds.join("|") : ""]);
+          // Legacy migrations must never rewrite the full championship during page load.
+          // Any remaining favorite migration will be handled by a dedicated, explicit action.
           He(() => {
             if (!R || !R.id || !te || !te.id) {
               setProfileChampionshipPreferences({});
@@ -263,29 +239,8 @@
             marketTournament = linkedLeague || R,
             marketTournamentId = marketTournament && marketTournament.id ? marketTournament.id : null;
 
-          He(() => {
-            if (!R || !R.id || R.type === "cup" || !R.context || R.context.originSchemaVersion >= 1) return;
-            let db = Ee();
-            if (!db) return;
-            db.ref("pes/tournaments").transaction((serverValue) => {
-              let isArray = Array.isArray(serverValue);
-              let list = isArray ? [...serverValue] : Object.values(serverValue || {});
-              let index = list.findIndex((item) => item && String(item.id) === String(R.id));
-              if (index < 0) return;
-              let tournament = list[index], context = tournament.context && typeof tournament.context === "object" ? { ...tournament.context } : {};
-              if (Number(context.originSchemaVersion || 0) >= 1) return serverValue;
-              let ownership = context.ownership && typeof context.ownership === "object" ? { ...context.ownership } : {};
-              let transfers = Array.isArray(context.transfers) ? context.transfers : [];
-              Object.keys(ownership).forEach((playerId) => {
-                let item = ownership[playerId];
-                if (!item || typeof item !== "object" || item.acquisitionSource) return;
-                let origin = inferPlayerAcquisition(playerId, item, transfers);
-                ownership[playerId] = { ...item, acquisitionSource:origin.acquisitionSource, initialTeamId:origin.initialTeamId || null, originMigratedAt:Date.now() };
-              });
-              list[index] = { ...tournament, context:{ ...context, ownership, originSchemaVersion:1, originMigratedAt:Date.now() } };
-              return isArray ? list : Object.fromEntries(list.map((item,idx) => [item.id || String(idx), item]));
-            }).catch((error) => console.error("player origin migration failed", error));
-          }, [R && R.id]);
+          // IMPORTANT: do not run ownership/schema migrations as a page-load side effect.
+          // The normalized tables are the source of truth and opening the app must be read-only.
 
           He(() => {
             if (!R || R.type !== "cup" || !R.id) return;
@@ -309,7 +264,9 @@
             })();
             let repairedMatches = currentMatches.length ? currentMatches.map((match) => ({ ...match, homeId: match.homeId != null ? String(match.homeId) : null, awayId: match.awayId != null ? String(match.awayId) : null })) : repairedGroups.flatMap((group) => cupRoundRobin(group.teamIds, Number(R.cupConfig && R.cupConfig.groupLegs) === 2 ? 2 : 1, group.name));
             let repaired = { ...R, status: R.status || "ongoing", cupStage: R.cupStage || "groups", participants: selectedTeams.map((team) => String(team.profileId)), teamIds: selectedTeams.map((team) => String(team.id)), groups: repairedGroups, matches: repairedMatches, context: { ...(R.context || {}), teams: selectedTeams.map((team) => ({ ...team })) } };
-            ae(m.map((item) => item && String(item.id) === String(R.id) ? repaired : item));
+            // Repair the in-memory view only. Persisting an automatic repair during boot can
+            // replace normalized tables before the user has reviewed the generated structure.
+            g(m.map((item) => item && String(item.id) === String(R.id) ? repaired : item));
           }, [R && R.id]);
 
           function saveContextField(field, value) {
