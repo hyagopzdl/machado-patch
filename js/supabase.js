@@ -512,6 +512,19 @@
     emitAll();
     return result;
   }
+  async function importHistoricalMatches(tournamentId,matches){
+    await load();
+    if(!client)throw new Error("Supabase não configurado");
+    const payload=asArray(matches).map(item=>clone(item));
+    if(!payload.length)return{ok:true,inserted:0,skipped:0};
+    const{data,error}=await client.rpc("import_historical_matches",{p_tournament_id:String(tournamentId),p_matches:payload,p_actor_profile_id:actorProfileId()});
+    if(error)throw error;
+    invalidateCache();
+    state=syncLegacyMirrors(await loadNormalizedState());
+    loaded=true;
+    emitAll();
+    return data||{ok:true,inserted:payload.length,skipped:0};
+  }
   async function fetchPage(rpcName,params={}){if(!client)throw new Error("Supabase não configurado");const{data,error}=await client.rpc(rpcName,params);if(error)throw error;return{items:(data||[]).map(row=>row.data),total:Number(data&&data[0]&&data[0].total_count||0)};}
   function Ee(){return client?{ref,fetchPage,loadFinancialTransactions,loadPlayerReviews,hydrateTournamentFinancial}:null;}
   function U(path,value){const db=Ee();return db?db.ref(`pes/${path}`).set(value===undefined?null:value):Promise.resolve();}
@@ -521,5 +534,5 @@
   const normalizeIdentityText=value=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/\s+/g," ");
   function stableIdentityId(prefix,seed){const input=`${prefix}:${normalizeIdentityText(seed)||"legacy"}`;let hash=2166136261;for(let i=0;i<input.length;i++){hash^=input.charCodeAt(i);hash=Math.imul(hash,16777619);}return`${prefix}_${(hash>>>0).toString(36)}`;}
   function migrateStableIdentitySchema(){return Promise.resolve(true);}
-  Object.assign(window.ManchaApp,{Ee,U,Q,setTeamBudget,loadFinancialTransactions,loadPlayerReviews,hydrateTournamentFinancial,normalizeIdentityText,stableIdentityId,migrateStableIdentitySchema,IDENTITY_SCHEMA_VERSION,supabaseClient:client,fetchSupabasePage:fetchPage});
+  Object.assign(window.ManchaApp,{Ee,U,Q,setTeamBudget,importHistoricalMatches,loadFinancialTransactions,loadPlayerReviews,hydrateTournamentFinancial,normalizeIdentityText,stableIdentityId,migrateStableIdentitySchema,IDENTITY_SCHEMA_VERSION,supabaseClient:client,fetchSupabasePage:fetchPage});
 })();

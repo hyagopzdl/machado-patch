@@ -2044,6 +2044,23 @@
             if (result && result.committed) setMatchWizard(null);
             else setMatchWizard({ ...data, saving:false });
           }
+          async function importMissingHistoricalMatches(payload) {
+            if (!R || !payload || !Array.isArray(payload.matches) || !payload.matches.length) return;
+            let api = window.ManchaApp;
+            if (!api || typeof api.importHistoricalMatches !== "function") {
+              window.alert("A ferramenta de recuperação histórica ainda não foi instalada no Supabase.");
+              return;
+            }
+            try {
+              let result = await api.importHistoricalMatches(R.id, payload.matches);
+              window.alert(`${Number(result && result.inserted) || 0} partida(s) recuperada(s). ${Number(result && result.skipped) || 0} duplicada(s) ignorada(s).`);
+              return result;
+            } catch (error) {
+              console.error("Falha ao recuperar partidas históricas", error);
+              window.alert(`Não foi possível importar as partidas. ${error && error.message ? error.message : "Verifique o SQL da ferramenta."}`);
+              throw error;
+            }
+          }
           function deleteQuickMatch(match) {
             if (!R || !match) return;
             let currentProfileId = te && typeof te === "object" ? te.id : null;
@@ -2602,7 +2619,7 @@
                           onUpdateBalanceLoanSettings: updateBalanceLoanSettings,
                           onGrantBalanceLoan: grantBalanceLoan,
                           onFinishTournament: finishCurrentTournament,
-                          catalog: n, onImportRosters: importRosterPlan, onImportHistoricalCompetition: importHistoricalCompetition,
+                          catalog: n, onImportRosters: importRosterPlan, onImportHistoricalCompetition: importHistoricalCompetition, onImportMissingMatches: importMissingHistoricalMatches,
                         }),
                       Y === "profile" &&
                         React.createElement(ProfileArea, {
@@ -5732,7 +5749,58 @@
             React.createElement("div", { style: { minWidth: 68, textAlign: "center", padding: "9px 10px", borderRadius: 10, background: "var(--surface-soft)", fontWeight: 800 } }, draft, "%")
           );
         }
-        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onRemoveOrphanParticipant, onRestoreOrphanProfile, onUpdateMarketDepreciation, onUpdateInitialRosterDepreciation, onUpdateMarketBalanceRules, onUpdateMarketAccessRules, onUpdateRosterRules, onUpdateEconomyRules, onUpdateBalanceLoanSettings, onGrantBalanceLoan, onFinishTournament, catalog, onImportRosters, onImportHistoricalCompetition }) {
+        const MISSING_MATCHES_RECOVERY_TEXT = `Hyago 3 x 0 Italo | gols: Hyago=Hleb,Hleb,Buffel
+Italo 0 x 0 Hyago
+Italo 1 x 0 Hyago | gols: Italo=Bousserie
+Italo 0 x 0 Hyago
+Italo 1 x 1 Hyago | gols: Italo=Bousserie; Hyago=McCarthy
+Vertin 3 x 1 Italo | gols: Vertin=Taddei,Taddei,Pellisier; Italo=Bousserie
+Vertin 1 x 0 Italo | gols: Vertin=Carew
+Vertin 0 x 0 Italo
+Vertin 1 x 0 Italo | gols: Vertin=Carew
+Vertin 1 x 0 Italo | gols: Vertin=Carew | vermelho: Italo=Hutt
+Vertin 0 x 1 Italo | gols: Italo=Zalayeta
+Allison 0 x 0 Italo
+Allison 2 x 0 Italo | gols: Allison=Aghahowa,L. Gonzalez
+Allison 0 x 0 Italo
+Allison 2 x 0 Italo | gols: Allison=Aghahowa,A. Johnson
+Allison 1 x 0 Italo | gols: Allison=Aghahowa
+Allison 0 x 0 Vertin
+Allison 0 x 0 Hyago
+Hyago 0 x 1 Vertin | gols: Vertin=Carew
+Hyago 0 x 1 Vertin | gols: Vertin=Taddei
+Hyago 0 x 0 Vertin
+Hyago 0 x 1 Vertin | gols: Vertin=Gol contra
+Vertin 1 x 0 Lucas | gols: Vertin=Carew | vermelho: Lucas=Vidigal
+Vertin 0 x 0 Lucas
+Vertin 1 x 0 Lucas | gols: Vertin=Luyindula
+Italo 1 x 1 Lucas | gols: Italo=Zalayeta; Lucas=Kluivert | vermelho: Italo=Patzasoglou
+Italo 1 x 1 Lucas | gols: Italo=Zalayeta; Lucas=Dani
+Italo 2 x 1 Lucas | gols: Italo=Zalayeta,Bousserie; Lucas=Kluivert
+Italo 0 x 0 Lucas
+Italo 1 x 1 Lucas | gols: Italo=Zalayeta; Lucas=Kluivert
+Italo 0 x 1 Lucas | gols: Lucas=Dani
+Italo 0 x 1 Lucas | gols: Lucas=Kluivert
+Allison 0 x 0 Lucas
+Allison 1 x 1 Lucas | gols: Allison=A. Johnson; Lucas=Kluivert
+Allison 2 x 0 Lucas | gols: Allison=Rothen,Aghahowa
+Allison 1 x 0 Lucas | gols: Allison=A. Johnson
+Hyago 1 x 0 Lucas | gols: Hyago=McCarthy
+Hyago 1 x 0 Lucas | gols: Hyago=McCarthy | vermelho: Lucas=Sagna
+Hyago 2 x 0 Lucas | gols: Hyago=Buffel,Gol contra
+Hyago 0 x 0 Lucas`;
+        function parseMissingMatchesRecoveryText(value) {
+          const rows=[];
+          String(value||"").split(/\r?\n/).map(line=>line.trim()).filter(Boolean).forEach((line,index)=>{
+            const parts=line.split("|").map(part=>part.trim()).filter(Boolean), score=parts.shift()||"";
+            const match=score.match(/^(.+?)\s+(\d+)\s*[x×]\s*(\d+)\s+(.+)$/i);
+            if(!match){rows.push({index,line,error:"Formato de placar inválido"});return;}
+            const row={index,line,homeName:match[1].trim(),homeScore:Number(match[2]),awayScore:Number(match[3]),awayName:match[4].trim(),homeGoals:[],awayGoals:[],homeRedCards:[],awayRedCards:[]};
+            parts.forEach(section=>{const split=section.split(":");if(split.length<2)return;const type=normalizeImportText(split.shift());split.join(":").split(";").map(item=>item.trim()).filter(Boolean).forEach(group=>{const eq=group.indexOf("=");if(eq<0)return;const teamName=group.slice(0,eq).trim(),names=group.slice(eq+1).split(",").map(name=>name.trim()).filter(Boolean);const side=normalizeImportText(teamName)===normalizeImportText(row.homeName)?"home":normalizeImportText(teamName)===normalizeImportText(row.awayName)?"away":null;if(!side)return;const target=type.startsWith("vermelho")?(side==="home"?row.homeRedCards:row.awayRedCards):(side==="home"?row.homeGoals:row.awayGoals);target.push(...names);});});
+            const goalCount=row.homeGoals.length+row.awayGoals.length;if(goalCount!==row.homeScore+row.awayScore)row.warning=`Autores informados: ${goalCount}; placar: ${row.homeScore+row.awayScore}`;rows.push(row);
+          });return rows;
+        }
+        function AdminArea({ currentTournament, tournaments, teams, profiles, profileName, setProfileName, profileColor, setProfileColor, profileBudget, setProfileBudget, tournamentName, setTournamentName, onCreateProfile, onCreateTournament, onDeleteTournament, onSelectTournament, onUpdateBudget, onToggleParticipant, onDeleteProfile, onResetTournament, onRemoveOrphanParticipant, onRestoreOrphanProfile, onUpdateMarketDepreciation, onUpdateInitialRosterDepreciation, onUpdateMarketBalanceRules, onUpdateMarketAccessRules, onUpdateRosterRules, onUpdateEconomyRules, onUpdateBalanceLoanSettings, onGrantBalanceLoan, onFinishTournament, catalog, onImportRosters, onImportHistoricalCompetition, onImportMissingMatches }) {
           let globalProfiles = (profiles || []).filter((profile) => profile && typeof profile === "object" && profile.active !== false);
           let participants = currentTournament && Array.isArray(currentTournament.participants) ? currentTournament.participants : [];
           let globalProfileIds = new Set(globalProfiles.map((profile) => String(profile.id)));
@@ -5742,6 +5810,12 @@
           let [importPreview, setImportPreview] = b(null);
           let [historyImportText,setHistoryImportText]=b("");
           let [historyImportPreview,setHistoryImportPreview]=b(null);
+          let yesterdayDate=(()=>{let date=new Date();date.setDate(date.getDate()-1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;})();
+          let [missingMatchesText,setMissingMatchesText]=b(MISSING_MATCHES_RECOVERY_TEXT);
+          let [missingMatchesDate,setMissingMatchesDate]=b(yesterdayDate);
+          let [missingMatchesPreview,setMissingMatchesPreview]=b(null);
+          let [missingMatchesMappings,setMissingMatchesMappings]=b({});
+          let [missingMatchesSaving,setMissingMatchesSaving]=b(false);
           let [historyMappings,setHistoryMappings]=b({});
           let sourceCandidates = [...(tournaments || [])].sort((a, b) => (Number(b.finishedAt || b.createdAt) || 0) - (Number(a.finishedAt || a.createdAt) || 0));
           let [creationMode, setCreationMode] = b(sourceCandidates.length ? "continue" : "new");
@@ -5807,6 +5881,22 @@
           function buildHistoryImportPreview(){let parsed=parseHistoricalCompetitionTxt(historyImportText);if(!parsed.name){window.alert("O TXT precisa ter NAME=Nome da competição.");return;}if(!parsed.names||!parsed.names.length){window.alert("Nenhum participante foi identificado.");return;}if(parsed.type==="cup"&&!parsed.champion){window.alert("A Copa precisa informar o campeão em [CHAMPION].");return;}let next={};parsed.names.forEach((name)=>{let normalized=normalizeImportText(name);let matches=globalProfiles.filter((profile)=>normalizeImportText(profile.name)===normalized);if(matches.length===1)next[name]=matches[0].id;});setHistoryMappings(next);setHistoryImportPreview(parsed);}
           function confirmHistoryImport(){if(!historyImportPreview)return;let used=Object.values(historyMappings).filter(Boolean);if(historyImportPreview.names.some((name)=>!historyMappings[name])){window.alert("Vincule todos os participantes.");return;}if(new Set(used.map(String)).size!==used.length){window.alert("Cada nome antigo precisa estar vinculado a um perfil diferente.");return;}let rows=historyImportPreview.names.map((originalName)=>({originalName}));if(!window.confirm(`Importar ${historyImportPreview.name} como competição encerrada?`))return;onImportHistoricalCompetition({competition:historyImportPreview,rows,mappings:historyMappings});}
 
+          function buildMissingMatchesPreview(){
+            let parsed=parseMissingMatchesRecoveryText(missingMatchesText),aliases={itallo:"italo"};
+            let names=[...new Set(parsed.filter(row=>!row.error).flatMap(row=>[row.homeName,row.awayName]))],next={...missingMatchesMappings};
+            names.forEach(name=>{if(next[name])return;let normalized=aliases[normalizeImportText(name)]||normalizeImportText(name);let candidates=(teams||[]).filter(team=>{let profile=(profiles||[]).find(item=>item&&String(item.id)===String(team&&team.profileId));return [team&&team.name,profile&&profile.name].some(value=>(aliases[normalizeImportText(value)]||normalizeImportText(value))===normalized);});if(candidates.length===1)next[name]=candidates[0].id;});
+            setMissingMatchesMappings(next);setMissingMatchesPreview(parsed);
+          }
+          async function confirmMissingMatchesImport(){
+            if(!currentTournament||!missingMatchesPreview||missingMatchesSaving)return;
+            let valid=missingMatchesPreview.filter(row=>!row.error),names=[...new Set(valid.flatMap(row=>[row.homeName,row.awayName]))];
+            if(names.some(name=>!missingMatchesMappings[name])){window.alert("Vincule todos os participantes antes de importar.");return;}
+            if(valid.some(row=>row.warning)&&!window.confirm("Algumas linhas têm quantidade de autores diferente do placar. Importar mesmo assim?"))return;
+            let dateParts=String(missingMatchesDate||"").split("-").map(Number),base=new Date(dateParts[0]||new Date().getFullYear(),(dateParts[1]||1)-1,dateParts[2]||1,12,0,0,0).getTime(),teamById=new Map((teams||[]).map(team=>[String(team.id),team]));
+            let matches=valid.map((row,index)=>{let home=teamById.get(String(missingMatchesMappings[row.homeName])),away=teamById.get(String(missingMatchesMappings[row.awayName]));let scorer=(name,teamId)=>({playerId:null,teamId,playerNameSnapshot:/^gol contra$/i.test(name)?null:name,type:/^gol contra$/i.test(name)?"own_goal":"historical_snapshot"});let card=(name,teamId)=>({playerId:null,teamId,playerNameSnapshot:name,type:"historical_snapshot"});let playedAt=base+index*60000,recoveryKey=`missing-${missingMatchesDate}-${index+1}-${home.id}-${away.id}-${row.homeScore}-${row.awayScore}`;return {id:`recovery_${missingMatchesDate.replace(/-/g,"")}_${String(index+1).padStart(3,"0")}`,stage:"league",round:0,manual:true,played:true,bye:false,homeId:home.id,awayId:away.id,homeTeamId:home.id,awayTeamId:away.id,homeScore:row.homeScore,awayScore:row.awayScore,homeTeamNameSnapshot:home.name,awayTeamNameSnapshot:away.name,homeProfileId:home.profileId||null,awayProfileId:away.profileId||null,scorers:[...row.homeGoals.map(name=>scorer(name,home.id)),...row.awayGoals.map(name=>scorer(name,away.id))],redCards:[...row.homeRedCards.map(name=>card(name,home.id)),...row.awayRedCards.map(name=>card(name,away.id))],playedAt,createdAt:Date.now(),status:"confirmed",historicalRecovery:true,statsAlreadyAccounted:true,skipStatsUpdate:true,skipFinancialRewards:true,recoveryKey};});
+            if(!window.confirm(`Importar ${matches.length} partidas apenas para histórico e classificação? Moedas e artilharia não serão alteradas.`))return;
+            setMissingMatchesSaving(true);try{await onImportMissingMatches({matches});setMissingMatchesPreview(null);}finally{setMissingMatchesSaving(false);}
+          }
           function resolveImportEntry(index, playerId) {
             let next = { ...importPreview, entries: importPreview.entries.map((entry, entryIndex) => entryIndex === index ? { ...entry, playerId, status: playerId ? "matched" : "not_found" } : entry) };
             let seen = new Map();
@@ -6049,6 +6139,18 @@
               React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 4 } }, "Moedas dos participantes"),
               React.createElement("div", { style: { fontSize: 13, color: "var(--muted)", marginBottom: 14 } }, currentTournament.name),
               teams.filter((team) => team.active !== false).length ? teams.filter((team) => team.active !== false).map((team) => React.createElement("div", { key: team.id, style: { display: "grid", gridTemplateColumns: "1fr 120px", gap: 10, alignItems: "center", marginBottom: 10 } }, React.createElement("div", { style: { fontWeight: 700 } }, team.name), React.createElement(AdminBudgetInput, { team, onCommit: onUpdateBudget }))) : React.createElement("div", { style: { color: "var(--muted)" } }, "Nenhum participante ativo.")
+            ),
+            adminSection === "tools" && currentTournament && currentTournament.type !== "cup" && React.createElement("div", { style:{...E,border:"1px solid color-mix(in srgb,var(--green) 35%,var(--border))"} },
+              React.createElement("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:5} },React.createElement("div", { style:{fontSize:18,fontWeight:800} },"Recuperar partidas ausentes"),React.createElement("span", { style:{fontSize:10.5,fontWeight:800,textTransform:"uppercase",letterSpacing:".07em",padding:"5px 8px",borderRadius:999,background:"color-mix(in srgb,var(--green) 12%,transparent)",color:"var(--green)"} },"Sem duplicar recompensas")),
+              React.createElement("div", { style:{fontSize:13,color:"var(--muted)",lineHeight:1.55,marginBottom:14} },"Adiciona placares, autores dos gols e cartões ao histórico e recalcula a classificação. Não altera artilharia, moedas, estatísticas ou transações."),
+              React.createElement("label", { style:P },"Data das partidas"),React.createElement("input", { type:"date",value:missingMatchesDate,onChange:event=>setMissingMatchesDate(event.target.value),style:{...q,marginBottom:12} }),
+              React.createElement("label", { style:P },"Partidas — da mais antiga para a mais recente"),React.createElement("textarea", { value:missingMatchesText,onChange:event=>{setMissingMatchesText(event.target.value);setMissingMatchesPreview(null);},rows:14,style:{...q,resize:"vertical",minHeight:280,fontFamily:"ui-monospace,SFMono-Regular,Menlo,monospace",fontSize:11.5,lineHeight:1.55} }),
+              React.createElement("button", { disabled:!missingMatchesText.trim(),onClick:buildMissingMatchesPreview,style:{...M,...W,marginTop:10,opacity:missingMatchesText.trim()?1:.45} },"Gerar prévia das partidas"),
+              missingMatchesPreview&&React.createElement("div", { style:{marginTop:16,display:"grid",gap:12} },React.createElement("div", { style:{fontSize:13,fontWeight:800} },`${missingMatchesPreview.filter(row=>!row.error).length} partidas identificadas`),
+                React.createElement("div", { style:{display:"grid",gap:8} },[...new Set(missingMatchesPreview.filter(row=>!row.error).flatMap(row=>[row.homeName,row.awayName]))].map(name=>React.createElement("div", { key:name,style:{display:"grid",gridTemplateColumns:"minmax(90px,.8fr) minmax(0,1.4fr)",gap:10,alignItems:"center"} },React.createElement("strong", { style:{fontSize:12.5} },name),React.createElement("select", { value:missingMatchesMappings[name]||"",onChange:event=>setMissingMatchesMappings({...missingMatchesMappings,[name]:event.target.value}),style:{...q,padding:"9px 10px",fontSize:12} },React.createElement("option", { value:"" },"Selecionar time"),(teams||[]).filter(team=>team&&team.active!==false).map(team=>{let profile=(profiles||[]).find(item=>item&&String(item.id)===String(team.profileId));return React.createElement("option", { key:team.id,value:team.id },`${profile&&profile.name?profile.name:"Sem perfil"} · ${team.name}`);}))))),
+                React.createElement("div", { style:{maxHeight:420,overflow:"auto",border:"1px solid var(--border)",borderRadius:14} },missingMatchesPreview.map((row,index)=>React.createElement("div", { key:index,style:{padding:"11px 12px",borderBottom:index<missingMatchesPreview.length-1?"1px solid var(--border)":"none",background:row.error?"color-mix(in srgb,var(--danger) 8%,transparent)":"transparent"} },row.error?React.createElement("div", { style:{color:"var(--danger)",fontSize:12,fontWeight:700} },`Linha ${index+1}: ${row.error}`):React.createElement(React.Fragment,null,React.createElement("div", { style:{fontSize:13,fontWeight:800} },`${row.homeName} ${row.homeScore} × ${row.awayScore} ${row.awayName}`),React.createElement("div", { style:{fontSize:11.5,color:"var(--muted)",marginTop:4,lineHeight:1.45} },[row.homeGoals.length?`${row.homeName}: ${row.homeGoals.join(", ")}`:"",row.awayGoals.length?`${row.awayName}: ${row.awayGoals.join(", ")}`:"",row.homeRedCards.length||row.awayRedCards.length?`Vermelhos: ${[...row.homeRedCards,...row.awayRedCards].join(", ")}`:""].filter(Boolean).join(" · ")),row.warning&&React.createElement("div", { style:{fontSize:11,color:"#ffbb26",marginTop:4,fontWeight:700} },row.warning))))),
+                React.createElement("button", { disabled:missingMatchesSaving||missingMatchesPreview.some(row=>row.error)||[...new Set(missingMatchesPreview.filter(row=>!row.error).flatMap(row=>[row.homeName,row.awayName]))].some(name=>!missingMatchesMappings[name]),onClick:confirmMissingMatchesImport,style:{...M,...W,opacity:missingMatchesSaving?.55:1} },missingMatchesSaving?"Importando…":"Importar sem recalcular moedas e artilharia")
+              )
             ),
             adminSection === "tools" && currentTournament && React.createElement("div", { style: E },
               React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 } },
