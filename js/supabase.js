@@ -275,6 +275,69 @@
       throw new Error(`Sincronização destrutiva bloqueada pelo Safe Mode: ${failures.join("; ")}`);
     }
   }
+  function stableCriticalTournamentState(tournament) {
+    const context=asObject(tournament&&tournament.context);
+    const teams=asArray(context.teams).map(team=>({
+      id:String(team&&team.id||""),
+      profileId:String(team&&(team.profileId||team.profile_id)||"")
+    })).sort((a,b)=>a.id.localeCompare(b.id));
+    const matches=asArray(tournament&&tournament.matches).map(match=>({
+      id:String(match&&match.id||""),
+      home:String(match&&(match.homeTeamId||match.homeId||match.home_team_id)||""),
+      away:String(match&&(match.awayTeamId||match.awayId||match.away_team_id)||""),
+      homeScore:Number(match&&match.homeScore||0),
+      awayScore:Number(match&&match.awayScore||0),
+      played:!!(match&&match.played),
+      status:String(match&&match.status||"")
+    })).sort((a,b)=>a.id.localeCompare(b.id));
+    const ownership=Object.entries(asObject(context.ownership)).map(([playerId,row])=>({
+      playerId:String(playerId),
+      teamId:String(row&&(row.teamId||row.team_id)||""),
+      initialTeamId:String(row&&(row.initialTeamId||row.initial_team_id)||"")
+    })).sort((a,b)=>a.playerId.localeCompare(b.playerId));
+    const stats=Object.entries(asObject(context.playerStats)).map(([playerId,row])=>({
+      playerId:String(playerId),
+      teamId:String(row&&(row.teamId||row.team_id)||""),
+      goals:Number(row&&row.goals||0),
+      redCards:Number(row&&(row.redCards||row.red_cards)||0),
+      yellowCards:Number(row&&(row.yellowCards||row.yellow_cards)||0)
+    })).sort((a,b)=>a.playerId.localeCompare(b.playerId));
+    return JSON.stringify({teams,matches,ownership,stats});
+  }
+
+  async function assertRemoteStateIsCurrent(baseState, patch, eventType) {
+    const tournamentIds=Object.keys(patch.documents)
+      .filter(key=>key.startsWith("tournament:"))
+      .map(key=>key.slice("tournament:".length));
+    if(!tournamentIds.length)return;
+
+    const remoteState=await loadNormalizedState();
+    const localById=indexById(asObject(baseState&&baseState.pes).tournaments);
+    const remoteById=indexById(asObject(remoteState&&remoteState.pes).tournaments);
+    const stale=[];
+
+    tournamentIds.forEach(id=>{
+      const localTournament=localById.get(String(id));
+      const remoteTournament=remoteById.get(String(id));
+      if(!localTournament||!remoteTournament)return;
+      if(stableCriticalTournamentState(localTournament)!==stableCriticalTournamentState(remoteTournament)){
+        stale.push({
+          tournamentId:id,
+          local:tournamentSyncSnapshot(localTournament),
+          remote:tournamentSyncSnapshot(remoteTournament)
+        });
+      }
+    });
+
+    if(stale.length){
+      console.error("[Tournament Sync] Estado local desatualizado; RPC bloqueada", {eventType,stale});
+      state=remoteState;
+      loaded=true;
+      emitAll();
+      throw new Error("Sincronização bloqueada: esta aba estava com dados antigos. O estado mais recente do banco foi recarregado; repita a ação.");
+    }
+  }
+
   function buildPatch(beforeState,nextState) {
     const before=asObject(beforeState&&beforeState.pes), after=asObject(nextState&&nextState.pes), documents={}, deleteKeys=[];
     const collect=(prefix,b,a,serialize=(value)=>value)=>{ const bm=indexById(b), am=indexById(a); am.forEach((v,id)=>{const beforeValue=bm.get(id), serializedBefore=beforeValue==null?beforeValue:serialize(beforeValue), serializedNext=serialize(v);if(JSON.stringify(serializedBefore)!==JSON.stringify(serializedNext))documents[`${prefix}:${id}`]=serializedNext;}); bm.forEach((_,id)=>{if(!am.has(id))deleteKeys.push(`${prefix}:${id}`);}); };
@@ -286,10 +349,15 @@
   }
 
   async function commit(nextState,eventType) {
-    const patch=buildPatch(state,nextState);
+    const baseState=clone(state);
+    const patch=buildPatch(baseState,nextState);
     if(!Object.keys(patch.documents).length&&!patch.deleteKeys.length){state=nextState;emitAll();return;}
-    validateTournamentPatch(state,nextState,patch,eventType);
+    validateTournamentPatch(baseState,nextState,patch,eventType);
     const operation=async()=>{
+      // A SQL recovery, another tab, or another user may have changed the
+      // normalized tables after this tab loaded. Never let an old in-memory
+      // tournament replace a newer database state.
+      await assertRemoteStateIsCurrent(baseState,patch,eventType);
       const {error}=await client.rpc("apply_direct_patch",{p_documents:patch.documents,p_delete_keys:patch.deleteKeys,p_actor_profile_id:actorProfileId(),p_event_type:eventType||"state_change"});
       if(error) throw error;
       state=nextState; invalidateCache(); emitAll();
