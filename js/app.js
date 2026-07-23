@@ -2063,7 +2063,7 @@
             redCards.forEach((event)=>{ let current=nextStats[event.playerId]&&typeof nextStats[event.playerId]==="object"?nextStats[event.playerId]:{}; nextStats[event.playerId]={...current,playerId:event.playerId,playerNameSnapshot:event.playerNameSnapshot,teamId:event.teamId,goals:Number(current.goals)||0,redCards:(Number(current.redCards)||0)+1,updatedAt:now}; });
             let transactions = Array.isArray(context.financialTransactions)?[...context.financialTransactions]:[];
             [[left,right,leftBreakdown],[right,left,rightBreakdown]].forEach(([team,opponent,detail])=>{if(detail.total!==0){let result=leftScore===rightScore?(leftScore>0?"Empate com gols":"Empate sem gols"):(team.id===left.id?(leftScore>rightScore?"Vitória":"Derrota"):(rightScore>leftScore?"Vitória":"Derrota"));let gross=Math.round(Number(detail.total)||0), repayment=Math.round(Number(loanRepayments[team.id])||0), before=Number(team.budget)||0;transactions.unshift(financeEntry("match_reward",team.id,gross,`${result} contra ${opponent.name} · ${detail.eligibleGoals} gol(s) · ${detail.redCards} vermelho(s)`,matchId,before,now));if(repayment>0)transactions.unshift(financeEntry("balance_loan_repayment",team.id,-repayment,"Pagamento do empréstimo de equilíbrio",matchId,before+gross,now));}});
-            ae(m.map((item)=>item.id===R.id?{...item,matches:[...(Array.isArray(item.matches)?item.matches:[]),match],economySettings:{...((item.economySettings)||{}),balanceLoans:loans},context:{...(item.context||{}),teams,playerStats:nextStats,financialTransactions:transactions}}:item));
+            ae(m.map((item)=>{if(item.id!==R.id)return item;let nextMatches=[...(Array.isArray(item.matches)?item.matches:[]),match];return {...item,matches:nextMatches,economySettings:{...((item.economySettings)||{}),balanceLoans:loans},context:{...(item.context||{}),matches:nextMatches,teams,playerStats:nextStats,financialTransactions:transactions}};}));
             setMatchWizard(null);
           }
           function deleteQuickMatch(match) {
@@ -2086,12 +2086,12 @@
             let context = R.context || {}, rewards = match.economyRewards || {}, repayments=match.economySettlement&&match.economySettlement.loanRepayments||{}, loans={...balanceLoansOf(R)}, teams = p.map((team)=>{ let amount=Math.round(Number(rewards[team.id])||0), repayment=Math.round(Number(repayments[team.id])||0), net=amount-repayment; if(repayment>0&&loans[String(team.id)]){let loan=loans[String(team.id)];loans[String(team.id)]={...loan,totalPaid:Math.max(0,Math.round(Number(loan.totalPaid)||0)-repayment),remaining:Math.round(Number(loan.remaining)||0)+repayment,status:"active",paidAt:null,updatedAt:Date.now()};} return net?{...team,budget:(Number(team.budget)||0)-net}:team; });
             let transactions = Array.isArray(context.financialTransactions)?[...context.financialTransactions]:[];
             Object.entries(rewards).forEach(([teamId,amount])=>{ if(Number(amount)!==0){ let team=p.find((item)=>item.id===teamId); let repayment=Math.round(Number(repayments[teamId])||0),before=Number(team&&team.budget)||0;transactions.unshift(financeEntry("match_reward_reversal",teamId,-Math.round(Number(amount)||0),`Estorno de partida anulada`,match.id,before));if(repayment>0)transactions.unshift(financeEntry("balance_loan_repayment_reversal",teamId,repayment,"Devolução ao saldo devedor do empréstimo",match.id,before-Math.round(Number(amount)||0))); }});
-            ae(m.map((item) => item.id === R.id ? {
+            ae(m.map((item) => {if(item.id!==R.id)return item;let nextMatches=(Array.isArray(item.matches) ? item.matches : []).map((entry) => entry.id === match.id ? { ...entry, status: "voided", voidedAt: Date.now(), voidedByProfileId: currentProfileId } : entry);return {
               ...item,
-              matches: (Array.isArray(item.matches) ? item.matches : []).map((entry) => entry.id === match.id ? { ...entry, status: "voided", voidedAt: Date.now(), voidedByProfileId: currentProfileId } : entry),
+              matches: nextMatches,
               economySettings:{...((item.economySettings)||{}),balanceLoans:loans},
-              context: { ...(item.context || {}), playerStats: nextStats, teams, financialTransactions: transactions }
-            } : item));
+              context: { ...(item.context || {}), matches:nextMatches, playerStats: nextStats, teams, financialTransactions: transactions }
+            };}));
           }
           function Et() {
             (ye({

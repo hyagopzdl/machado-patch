@@ -190,9 +190,34 @@
   }
 
   function indexById(list) { const map=new Map(); asArray(list).forEach(item=>{ if(item&&item.id!=null) map.set(String(item.id),item); }); return map; }
+
+  const TOURNAMENT_SYNC_SAFE_MODE = true;
+  const criticalTournamentCollections = [
+    ["teams", tournament => asArray(tournament && tournament.context && tournament.context.teams)],
+    ["matches", tournament => asArray(tournament && tournament.matches)],
+    ["ownership", tournament => Object.keys(asObject(tournament && tournament.context && tournament.context.ownership))],
+    ["stats", tournament => Object.keys(asObject(tournament && tournament.context && tournament.context.playerStats))],
+    ["offers", tournament => Object.keys(asObject(tournament && tournament.context && tournament.context.tradeOffers))],
+    ["transfers", tournament => asArray(tournament && tournament.context && tournament.context.transfers)]
+  ];
+
+  function tournamentSyncSnapshot(tournament) {
+    const snapshot = { id: tournament && tournament.id || null };
+    criticalTournamentCollections.forEach(([name, read]) => { snapshot[name] = read(tournament).length; });
+    return snapshot;
+  }
+
   function tournamentPatchDocument(value) {
     const tournament=clone(value);
     const context=asObject(tournament&&tournament.context);
+    // `matches` is edited by the UI at tournament root, while the database RPC
+    // persists normalized rows from `context.matches`. Keep one canonical list
+    // in both locations before comparing or sending the document.
+    const canonicalMatches=Array.isArray(tournament&&tournament.matches)
+      ? clone(tournament.matches)
+      : clone(asArray(context.matches));
+    tournament.matches=canonicalMatches;
+    context.matches=clone(canonicalMatches);
     // Lazy-loaded financial data is not an empty collection. Omitting it from
     // ordinary tournament updates prevents apply_direct_patch from treating
     // "not loaded" as "delete every financial transaction".
@@ -203,6 +228,52 @@
     delete context.__importsLoaded;
     tournament.context=context;
     return tournament;
+  }
+
+  function validateTournamentPatch(beforeState, nextState, patch, eventType) {
+    const before=indexById(asObject(beforeState&&beforeState.pes).tournaments);
+    const after=indexById(asObject(nextState&&nextState.pes).tournaments);
+    const failures=[];
+    const diagnostics=[];
+    Object.keys(patch.documents).filter(key=>key.startsWith("tournament:")).forEach((key)=>{
+      const id=key.slice("tournament:".length);
+      const previous=before.get(id);
+      const next=after.get(id);
+      if(!next)return;
+      const previousSnapshot=tournamentSyncSnapshot(previous);
+      const nextSnapshot=tournamentSyncSnapshot(next);
+      diagnostics.push({ tournamentId:id, before:previousSnapshot, after:nextSnapshot });
+      if(!previous)return;
+      criticalTournamentCollections.forEach(([name, read])=>{
+        const previousCount=read(previous).length;
+        const nextCount=read(next).length;
+        if(previousCount>0 && nextCount===0){
+          failures.push(`${id}.${name}: ${previousCount} -> 0`);
+          return;
+        }
+        if(previousCount>=6 && nextCount<=Math.floor(previousCount*0.5) && previousCount-nextCount>=3){
+          failures.push(`${id}.${name}: ${previousCount} -> ${nextCount}`);
+        }
+      });
+      const teamIds=new Set(asArray(next&&next.context&&next.context.teams).map(team=>String(team&&team.id)).filter(Boolean));
+      asArray(next.matches).forEach((match,index)=>{
+        if(!match || match.bye || match.status==="voided")return;
+        const home=match.homeTeamId||match.homeId;
+        const away=match.awayTeamId||match.awayId;
+        if(!home || !away) failures.push(`${id}.matches[${index}]: partida sem home/away team id`);
+        else if(teamIds.size && (!teamIds.has(String(home)) || !teamIds.has(String(away)))) failures.push(`${id}.matches[${index}]: time da partida não existe em context.teams`);
+      });
+    });
+    console.groupCollapsed(`[Tournament Sync] ${eventType||"state_change"}`);
+    console.table(diagnostics.map(item=>({ tournamentId:item.tournamentId, ...Object.fromEntries(Object.keys(item.after).filter(k=>k!=="id").map(k=>[k,`${item.before[k]||0} -> ${item.after[k]||0}`])) })));
+    console.info("documents", Object.keys(patch.documents));
+    console.info("deleteKeys", patch.deleteKeys);
+    console.info("details", diagnostics);
+    if(failures.length) console.error("blocked", failures);
+    console.groupEnd();
+    if(TOURNAMENT_SYNC_SAFE_MODE && failures.length){
+      throw new Error(`Sincronização destrutiva bloqueada pelo Safe Mode: ${failures.join("; ")}`);
+    }
   }
   function buildPatch(beforeState,nextState) {
     const before=asObject(beforeState&&beforeState.pes), after=asObject(nextState&&nextState.pes), documents={}, deleteKeys=[];
@@ -217,6 +288,7 @@
   async function commit(nextState,eventType) {
     const patch=buildPatch(state,nextState);
     if(!Object.keys(patch.documents).length&&!patch.deleteKeys.length){state=nextState;emitAll();return;}
+    validateTournamentPatch(state,nextState,patch,eventType);
     const operation=async()=>{
       const {error}=await client.rpc("apply_direct_patch",{p_documents:patch.documents,p_delete_keys:patch.deleteKeys,p_actor_profile_id:actorProfileId(),p_event_type:eventType||"state_change"});
       if(error) throw error;
