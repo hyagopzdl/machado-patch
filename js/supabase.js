@@ -153,8 +153,25 @@
     const presenceMap = {}; presence.forEach(row=>{ presenceMap[row.profile_id]={ online:row.online, updatedAt:ms(row.updated_at) }; });
     const globalMap = {}; globalOwnership.forEach(row=>{ globalMap[row.player_id]={ teamId:row.team_id, forSale:row.for_sale }; });
     const metaRow = meta[0] || {};
-    console.info(`[Supabase] boot otimizado: ${Math.round(performance.now()-started)}ms, 16 consultas paralelas; históricos pesados sob demanda`);
-    return { pes:{ profiles:profiles.map(row=>({ id:row.id,name:row.name,color:row.color,avatar:row.avatar,role:row.role,active:row.active,pinHash:row.pin_hash,pinUpdatedAt:ms(row.pin_updated_at),recoveredFromTournament:row.recovered_from_tournament,recoveredAt:ms(row.recovered_at),createdAt:ms(row.created_at) })), tournaments:tournamentList, meta:{ currentTournamentId:metaRow.current_tournament_id||null, identitySchemaVersion:Number(metaRow.identity_schema_version||0), identityMigratedAt:ms(metaRow.identity_migrated_at), seasonCounter:Number(metaRow.season_counter||0) }, adminSecurity:security || {}, ownership:globalMap, playerReviews:{}, presence:presenceMap, profileChampionshipPreferences:preferenceMap, playerCatalogOverrides:overrideMap } };
+    const currentTournamentId = metaRow.current_tournament_id || null;
+    const currentTournament = tournamentList.find(item => item && String(item.id) === String(currentTournamentId)) || tournamentList[0] || null;
+    const currentContext = asObject(currentTournament && currentTournament.context);
+    // The React app still subscribes to these legacy top-level paths. They must
+    // mirror the normalized current tournament instead of resolving to empty
+    // arrays/objects on every fresh page load.
+    const legacyTeams = clone(asArray(currentContext.teams));
+    const legacyOwnership = clone(asObject(currentContext.ownership));
+    const legacyStats = clone(asObject(currentContext.playerStats));
+    const legacyTransfers = clone(asArray(currentContext.transfers));
+    console.info(`[Supabase] boot ${window.__MANCHA_BUILD__ || "unknown"}: ${Math.round(performance.now()-started)}ms`, {
+      currentTournamentId,
+      teams: legacyTeams.length,
+      ownership: Object.keys(legacyOwnership).length,
+      stats: Object.keys(legacyStats).length,
+      transfers: legacyTransfers.length,
+      matches: currentTournament ? asArray(currentTournament.matches).length : 0
+    });
+    return { pes:{ profiles:profiles.map(row=>({ id:row.id,name:row.name,color:row.color,avatar:row.avatar,role:row.role,active:row.active,pinHash:row.pin_hash,pinUpdatedAt:ms(row.pin_updated_at),recoveredFromTournament:row.recovered_from_tournament,recoveredAt:ms(row.recovered_at),createdAt:ms(row.created_at) })), tournaments:tournamentList, teams:legacyTeams, ownership:legacyOwnership, playerStats:legacyStats, transfers:legacyTransfers, meta:{ currentTournamentId, identitySchemaVersion:Number(metaRow.identity_schema_version||0), identityMigratedAt:ms(metaRow.identity_migrated_at), seasonCounter:Number(metaRow.season_counter||0) }, adminSecurity:security || {}, globalOwnership:globalMap, playerReviews:{}, presence:presenceMap, profileChampionshipPreferences:preferenceMap, playerCatalogOverrides:overrideMap } };
   }
 
   const mapFinancialRow = x => ({ id:x.id, teamId:x.team_id, type:x.transaction_type, amount:Number(x.amount||0), balanceBefore:Number(x.balance_before||0), balanceAfter:Number(x.balance_after||0), label:x.label, referenceId:x.reference_id, createdAt:ms(x.created_at) });
